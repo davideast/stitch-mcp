@@ -1,0 +1,305 @@
+import { type InitCommand, type InitInput, type InitResult } from './spec.js';
+import { GcloudHandler } from '../../services/gcloud/handler.js';
+import { ProjectHandler } from '../../services/project/handler.js';
+import { StitchHandler } from '../../services/stitch/handler.js';
+import { McpConfigHandler } from '../../services/mcp-config/handler.js';
+import { createSpinner } from '../../ui/spinner.js';
+import { promptMcpClient, promptConfirm } from '../../ui/wizard.js';
+import { theme, icons } from '../../ui/theme.js';
+
+export class InitHandler implements InitCommand {
+  async execute(input: InitInput): Promise<InitResult> {
+    try {
+      console.log(`\n${theme.blue('Stitch MCP Setup')}\n`);
+
+      // Initialize services
+      const gcloudService = new GcloudHandler();
+      const projectService = new ProjectHandler(gcloudService);
+      const stitchService = new StitchHandler();
+      const mcpConfigService = new McpConfigHandler();
+
+      // Step 1: MCP Client Selection
+      console.log(theme.gray('Step 1: Select your MCP client\n'));
+      const mcpClient = await promptMcpClient();
+      console.log(theme.green(`${icons.success} Selected: ${mcpClient}\n`));
+
+      // Step 2: gcloud Installation
+      console.log(theme.gray('Step 2: Setting up Google Cloud CLI\n'));
+      const spinner = createSpinner();
+      spinner.start('Checking for Google Cloud CLI...');
+
+      const gcloudResult = await gcloudService.ensureInstalled({
+        minVersion: '400.0.0',
+        forceLocal: input.local,
+      });
+
+      if (!gcloudResult.success) {
+        spinner.fail('Google Cloud CLI setup failed');
+        return {
+          success: false,
+          error: {
+            code: 'GCLOUD_SETUP_FAILED',
+            message: gcloudResult.error.message,
+            suggestion: gcloudResult.error.suggestion,
+            recoverable: gcloudResult.error.recoverable,
+          },
+        };
+      }
+
+      spinner.succeed(
+        `Google Cloud CLI ready (${gcloudResult.data.location}): v${gcloudResult.data.version}`
+      );
+      console.log(theme.gray(`  Location: ${gcloudResult.data.path}\n`));
+
+      // Step 3: User Authentication
+      console.log(theme.gray('Step 3: Authenticating with Google Cloud\n'));
+      console.log(theme.gray('  Please log in via the browser window...\n'));
+
+      const authResult = await gcloudService.authenticate({ skipIfActive: true });
+
+      if (!authResult.success) {
+        return {
+          success: false,
+          error: {
+            code: 'AUTH_FAILED',
+            message: 'User authentication failed',
+            suggestion: authResult.error.suggestion,
+            recoverable: authResult.error.recoverable,
+          },
+        };
+      }
+
+      console.log(theme.green(`${icons.success} User authenticated: ${authResult.data.account}\n`));
+
+      // Step 4: Application Default Credentials
+      console.log(theme.gray('Step 4: Authorizing application credentials\n'));
+      console.log(
+        theme.gray('  This is a separate auth process required for API access...\n')
+      );
+
+      const adcResult = await gcloudService.authenticateADC({ skipIfActive: true });
+
+      if (!adcResult.success) {
+        return {
+          success: false,
+          error: {
+            code: 'AUTH_FAILED',
+            message: 'Application credential authorization failed',
+            suggestion: adcResult.error.suggestion,
+            recoverable: adcResult.error.recoverable,
+          },
+        };
+      }
+
+      console.log(theme.green(`${icons.success} Application credentials ready\n`));
+
+      // Step 5: Project Selection
+      console.log(theme.gray('Step 5: Select a Google Cloud project\n'));
+
+      const projectResult = await projectService.selectProject({
+        allowSearch: true,
+        limit: 5,
+      });
+
+      if (!projectResult.success) {
+        return {
+          success: false,
+          error: {
+            code: 'PROJECT_SELECTION_FAILED',
+            message: projectResult.error.message,
+            suggestion: projectResult.error.suggestion,
+            recoverable: projectResult.error.recoverable,
+          },
+        };
+      }
+
+      console.log(
+        theme.green(
+          `\n${icons.success} Selected project: ${projectResult.data.name} (${projectResult.data.projectId})\n`
+        )
+      );
+
+      // Step 6: Set Active Project
+      spinner.start('Configuring project...');
+
+      const setProjectResult = await gcloudService.setProject({
+        projectId: projectResult.data.projectId,
+      });
+
+      if (!setProjectResult.success) {
+        spinner.fail('Failed to set active project');
+        return {
+          success: false,
+          error: {
+            code: 'API_CONFIG_FAILED',
+            message: setProjectResult.error.message,
+            recoverable: setProjectResult.error.recoverable,
+          },
+        };
+      }
+
+      spinner.succeed(`Selected project: ${theme.blue(projectResult.data.name)} (${theme.gray(projectResult.data.projectId)})`);
+
+      // Step 7: Configure IAM permissions
+      console.log(`\n${theme.gray('Step 7: Configure IAM Permissions')}`);
+
+      const shouldConfigureIam = await promptConfirm(
+        'Do you want to add the required IAM role (serviceusage.serviceUsageConsumer) to your account?',
+        true
+      );
+
+      if (shouldConfigureIam) {
+        spinner.start('Configuring IAM permissions...');
+
+        const iamResult = await stitchService.configureIAM({
+          projectId: projectResult.data.projectId,
+          userEmail: authResult.data.account,
+        });
+
+        if (iamResult.success) {
+          spinner.succeed('IAM permissions configured');
+          console.log(theme.gray(`  Role: ${iamResult.data.role}`));
+        } else {
+          spinner.fail('IAM configuration failed');
+          console.log(theme.yellow(`  ${iamResult.error.message}`));
+          if (iamResult.error.details) {
+            console.log(theme.gray(`\n  Details:\n${iamResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
+          }
+          console.log(theme.gray(`  This may not prevent API usage if permissions already exist\n`));
+        }
+      } else {
+        console.log(theme.yellow('  ⚠ Skipping IAM configuration. API calls may fail if permissions are missing.\n'));
+      }
+
+      // Step 8: Install Beta Components
+      spinner.start('Installing gcloud beta components...');
+
+      const betaResult = await gcloudService.installBetaComponents();
+
+      if (betaResult.success) {
+        spinner.succeed('Beta components installed');
+      } else {
+        spinner.fail('Beta component installation failed');
+        console.log(theme.yellow(`  ${betaResult.error?.message}`));
+        console.log(theme.gray(`  Continuing anyway...\n`));
+      }
+
+      console.log(''); // Add spacing to prevent flickering
+
+      // Step 9: Enable Stitch API
+      spinner.start('Enabling Stitch API...');
+
+      const apiResult = await stitchService.enableAPI({
+        projectId: projectResult.data.projectId,
+        staging: input.staging,
+      });
+
+      if (apiResult.success) {
+        spinner.succeed('Stitch API enabled');
+        console.log(theme.gray(`  API: ${apiResult.data.api}\n`));
+      } else {
+        spinner.fail('API enablement failed');
+        console.log(theme.yellow(`  ${apiResult.error.message}`));
+        if (apiResult.error.details) {
+          console.log(theme.gray(`\n  Details:\n${apiResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
+        }
+        console.log(theme.gray(`  You may need to enable it manually\n`));
+      }
+
+      console.log(''); // Add spacing to prevent flickering
+
+      // Step 10: Get Access Token
+
+      // Get access token for config generation and testing
+      const accessToken = await gcloudService.getAccessToken();
+
+      if (!accessToken) {
+        return {
+          success: false,
+          error: {
+            code: 'API_CONFIG_FAILED',
+            message: 'Could not obtain access token',
+            suggestion: 'Re-run the authentication steps',
+            recoverable: true,
+          },
+        };
+      }
+
+      // Step 10: Generate MCP Config
+      console.log(`\n${theme.gray('Step 8: Generating MCP Configuration')}\n`);
+      spinner.start('Generating MCP configuration...');
+
+      const configResult = await mcpConfigService.generateConfig({
+        client: mcpClient,
+        projectId: projectResult.data.projectId,
+        accessToken,
+        staging: input.staging,
+      });
+
+      if (!configResult.success) {
+        spinner.fail('Configuration generation failed');
+        return {
+          success: false,
+          error: {
+            code: 'CONFIG_GENERATION_FAILED',
+            message: configResult.error.message,
+            recoverable: configResult.error.recoverable,
+          },
+        };
+      }
+
+      spinner.succeed('Configuration generated');
+
+      // Display results
+      console.log(`\n${theme.blue('Setup Complete!')} ${icons.success}\n`);
+      console.log(configResult.data.instructions);
+
+      // Final Step: Test Connection (displayed at the end for visibility)
+      console.log(`\n${theme.blue('─'.repeat(60))}\n`);
+      console.log(theme.gray('Connection Test\n'));
+      const spinner2 = createSpinner();
+      spinner2.start('Testing API connection...');
+
+      const testResult = await stitchService.testConnection({
+        projectId: projectResult.data.projectId,
+        accessToken,
+        staging: input.staging,
+      });
+
+      if (!testResult.success) {
+        spinner2.fail('Connection Failed');
+        console.log(theme.red(`\n  ${icons.error} Error: ${testResult.error.message}`));
+        console.log(theme.yellow(`  ${testResult.error.suggestion}`));
+
+        // Show full error details if available (may contain helpful URLs)
+        if (testResult.error.details) {
+          console.log(theme.gray(`\n  Full API Response:\n`));
+          console.log(theme.gray(testResult.error.details.split('\n').map(line => `  ${line}`).join('\n')));
+        }
+
+        console.log(theme.red(`\n  ⚠️  You may need to fix authentication or permissions before using Stitch.\n`));
+      } else {
+        spinner2.succeed(`Connection Successful (${testResult.data.statusCode})`);
+        console.log(theme.green(`  ${icons.success} Stitch API is ready to use!\n`));
+      }
+
+      return {
+        success: true,
+        data: {
+          projectId: projectResult.data.projectId,
+          mcpConfig: configResult.data.config,
+          instructions: configResult.data.instructions,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: 'UNKNOWN_ERROR',
+          message: error instanceof Error ? error.message : String(error),
+          recoverable: false,
+        },
+      };
+    }
+  }
+}

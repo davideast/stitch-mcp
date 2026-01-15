@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+google-cloud-sdk
+.gcloud-local
+bun.lockb
+gen
+bin
