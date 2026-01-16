@@ -10,6 +10,7 @@ const mockAuthenticateADC = mock();
 const mockListProjects = mock();
 const mockGetAccessToken = mock();
 const mockTestConnection = mock();
+const mockGetProjectId = mock();
 
 // Mocks removed as we use DI now
 
@@ -22,6 +23,7 @@ describe('DoctorHandler', () => {
     mockListProjects.mockClear();
     mockGetAccessToken.mockClear();
     mockTestConnection.mockClear();
+    mockGetProjectId.mockClear();
   });
 
   describe('execute', () => {
@@ -29,17 +31,14 @@ describe('DoctorHandler', () => {
       // Arrange: Set up successful mock return values
       mockEnsureInstalled.mockResolvedValue({
         success: true,
-        data: { location: '/usr/bin/gcloud', version: '450.0.0' },
+        data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' },
       });
       mockAuthenticate.mockResolvedValue({
         success: true,
         data: { account: 'test@example.com' },
       });
       mockAuthenticateADC.mockResolvedValue({ success: true });
-      mockListProjects.mockResolvedValue({
-        success: true,
-        data: { projects: [{ projectId: 'test-project', name: 'Test Project', projectNumber: '123' }] },
-      });
+      mockGetProjectId.mockResolvedValue('test-project');
       mockGetAccessToken.mockResolvedValue('test-token');
       mockTestConnection.mockResolvedValue({
         success: true,
@@ -52,6 +51,7 @@ describe('DoctorHandler', () => {
         authenticate: mockAuthenticate,
         authenticateADC: mockAuthenticateADC,
         listProjects: mockListProjects,
+        getProjectId: mockGetProjectId,
         getAccessToken: mockGetAccessToken,
       };
 
@@ -84,6 +84,7 @@ describe('DoctorHandler', () => {
         authenticate: mockAuthenticate,
         authenticateADC: mockAuthenticateADC,
         listProjects: mockListProjects,
+        getProjectId: mockGetProjectId,
         getAccessToken: mockGetAccessToken,
       };
 
@@ -92,7 +93,7 @@ describe('DoctorHandler', () => {
       // Mock other calls to prevent crash (doctor generally tries to continue)
       mockAuthenticate.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
       mockAuthenticateADC.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
-      mockListProjects.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
+      mockGetProjectId.mockResolvedValue(null);
       mockGetAccessToken.mockResolvedValue(null);
 
       // Act
