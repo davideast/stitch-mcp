@@ -40,7 +40,7 @@ export class GcloudHandler implements GcloudService {
             success: true,
             data: {
               version,
-              location: 'local',
+              location: 'bundled',
               path: localBinaryPath,
             },
           };
@@ -58,7 +58,7 @@ export class GcloudHandler implements GcloudService {
               success: true,
               data: {
                 version,
-                location: 'global',
+                location: 'system',
                 path: globalPath,
               },
             };
@@ -99,7 +99,7 @@ export class GcloudHandler implements GcloudService {
         success: true,
         data: {
           version,
-          location: 'local',
+          location: 'bundled',
           path: localPath,
         },
       };

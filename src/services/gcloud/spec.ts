@@ -52,7 +52,7 @@ export type GcloudErrorCodeType = z.infer<typeof GcloudErrorCode>;
 // Ensure gcloud installation
 export const GcloudInstallDataSchema = z.object({
   version: z.string(),
-  location: z.enum(['global', 'local']),
+  location: z.enum(['system', 'bundled']),
   path: z.string(),
 });
 

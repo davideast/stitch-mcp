@@ -44,7 +44,7 @@ export class DoctorHandler implements DoctorCommand {
         const check = {
           name: 'Google Cloud CLI',
           passed: true,
-          message: `Installed (${gcloudResult.data.location}): v${gcloudResult.data.version}`,
+          message: `Installed (${gcloudResult.data.location}): v${gcloudResult.data.version}\n   Path: ${gcloudResult.data.path}`,
         };
         checks.push(check);
         spinner.succeed(check.message);
