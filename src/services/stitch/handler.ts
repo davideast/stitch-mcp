@@ -129,6 +129,48 @@ export class StitchHandler implements StitchService {
     }
   }
 
+  async checkIAMRole(input: { projectId: string; userEmail: string }): Promise<boolean> {
+    try {
+      const role = 'roles/serviceusage.serviceUsageConsumer';
+      const member = `user:${input.userEmail}`;
+      const result = await execCommand(
+        [
+          this.getGcloudBinary(),
+          'projects',
+          'get-iam-policy',
+          input.projectId,
+          `--flatten=bindings[].members`,
+          `--filter=bindings.role=${role} AND bindings.members=${member}`,
+          '--format=value(bindings.members)',
+        ],
+        { env: this.getGcloudEnv() }
+      );
+      return result.success && result.stdout.trim().includes(member);
+    } catch {
+      return false;
+    }
+  }
+
+  async checkAPIEnabled(input: { projectId: string }): Promise<boolean> {
+    try {
+      const result = await execCommand(
+        [
+          this.getGcloudBinary(),
+          'services',
+          'list',
+          `--project=${input.projectId}`,
+          '--enabled',
+          '--filter=name:stitch.googleapis.com',
+          '--format=value(name)',
+        ],
+        { env: this.getGcloudEnv() }
+      );
+      return result.success && result.stdout.trim().includes('stitch.googleapis.com');
+    } catch {
+      return false;
+    }
+  }
+
   async testConnection(input: TestConnectionInput): Promise<ConnectionTestResult> {
     try {
       const url = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';

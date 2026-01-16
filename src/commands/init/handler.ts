@@ -66,9 +66,20 @@ export class InitHandler implements InitCommand {
 
       // Step 3: User Authentication
       console.log(theme.gray('Step 3: Authenticating with Google Cloud\n'));
-      console.log(theme.gray('  Please log in via the browser window...\n'));
+      let activeAccount = await this.gcloudService.getActiveAccount();
+      if (activeAccount) {
+        const continueWithActive = await promptConfirm(
+          `You are already logged in as ${activeAccount}. Continue?`,
+          true
+        );
+        if (!continueWithActive) {
+          activeAccount = null; // Force re-authentication
+        }
+      }
 
-      const authResult = await this.gcloudService.authenticate({ skipIfActive: true });
+      const authResult = await this.gcloudService.authenticate({
+        skipIfActive: Boolean(activeAccount),
+      });
 
       if (!authResult.success) {
         return {
@@ -83,14 +94,23 @@ export class InitHandler implements InitCommand {
       }
 
       console.log(theme.green(`${icons.success} User authenticated: ${authResult.data.account}\n`));
-
       // Step 4: Application Default Credentials
       console.log(theme.gray('Step 4: Authorizing application credentials\n'));
-      console.log(
-        theme.gray('  This is a separate auth process required for API access...\n')
-      );
-
-      const adcResult = await this.gcloudService.authenticateADC({ skipIfActive: true });
+      let hasADC = await this.gcloudService.hasADC();
+      if (hasADC) {
+        const useExistingADC = await promptConfirm(
+          'Application Default Credentials (ADC) already exist. Use them?',
+          true
+        );
+        if (!useExistingADC) {
+          hasADC = false; // Force re-authentication
+        }
+      } else {
+        console.log(
+          theme.gray('  This is a separate auth process required for API access...\n')
+        );
+      }
+      const adcResult = await this.gcloudService.authenticateADC({ skipIfActive: hasADC });
 
       if (!adcResult.success) {
         return {
@@ -114,10 +134,28 @@ export class InitHandler implements InitCommand {
       // Step 6: Project Selection
       console.log(theme.gray('Step 6: Select a Google Cloud project\n'));
 
-      const projectResult = await this.projectService.selectProject({
-        allowSearch: true,
-        limit: 5,
-      });
+      let projectResult: ProjectSelectionResult | null = null;
+      const activeProjectId = await this.gcloudService.getProjectId();
+
+      if (activeProjectId) {
+        const detailsResult = await this.projectService.getProjectDetails({ projectId: activeProjectId });
+        if (detailsResult.success) {
+          const useActive = await promptConfirm(
+            `Use active project: ${detailsResult.data.name} (${detailsResult.data.projectId})?`,
+            true
+          );
+          if (useActive) {
+            projectResult = detailsResult;
+          }
+        }
+      }
+
+      if (!projectResult) {
+        projectResult = await this.projectService.selectProject({
+          allowSearch: true,
+          limit: 5,
+        });
+      }
 
       if (!projectResult.success) {
         return {
@@ -160,33 +198,42 @@ export class InitHandler implements InitCommand {
 
       // Step 7: Configure IAM permissions
       console.log(`\n${theme.gray('Step 7: Configure IAM Permissions')}`);
+      const iamCheckSpinner = createSpinner('Checking IAM permissions...').start();
+      const hasIAMRole = await this.stitchService.checkIAMRole({
+        projectId: projectResult.data.projectId,
+        userEmail: authResult.data.account,
+      });
+      iamCheckSpinner.stop();
 
-      const shouldConfigureIam = await promptConfirm(
-        'Do you want to add the required IAM role (serviceusage.serviceUsageConsumer) to your account?',
-        true
-      );
-
-      if (shouldConfigureIam) {
-        spinner.start('Configuring IAM permissions...');
-
-        const iamResult = await this.stitchService.configureIAM({
-          projectId: projectResult.data.projectId,
-          userEmail: authResult.data.account,
-        });
-
-        if (iamResult.success) {
-          spinner.succeed('IAM permissions configured');
-          console.log(theme.gray(`  Role: ${iamResult.data.role}`));
-        } else {
-          spinner.fail('IAM configuration failed');
-          console.log(theme.yellow(`  ${iamResult.error.message}`));
-          if (iamResult.error.details) {
-            console.log(theme.gray(`\n  Details:\n${iamResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
-          }
-          console.log(theme.gray(`  This may not prevent API usage if permissions already exist\n`));
-        }
+      if (hasIAMRole) {
+        console.log(theme.green(`${icons.success} Required IAM role is already configured.\n`));
       } else {
-        console.log(theme.yellow('  ⚠ Skipping IAM configuration. API calls may fail if permissions are missing.\n'));
+        const shouldConfigureIam = await promptConfirm(
+          'Add the required IAM role (serviceusage.serviceUsageConsumer) to your account?',
+          true
+        );
+
+        if (shouldConfigureIam) {
+          spinner.start('Configuring IAM permissions...');
+          const iamResult = await this.stitchService.configureIAM({
+            projectId: projectResult.data.projectId,
+            userEmail: authResult.data.account,
+          });
+
+          if (iamResult.success) {
+            spinner.succeed('IAM permissions configured');
+            console.log(theme.gray(`  Role: ${iamResult.data.role}`));
+          } else {
+            spinner.fail('IAM configuration failed');
+            console.log(theme.yellow(`  ${iamResult.error.message}`));
+            if (iamResult.error.details) {
+              console.log(theme.gray(`\n  Details:\n${iamResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
+            }
+            console.log(theme.gray(`  This may not prevent API usage if permissions already exist\n`));
+          }
+        } else {
+          console.log(theme.yellow('  ⚠ Skipping IAM configuration. API calls may fail if permissions are missing.\n'));
+        }
       }
 
       // Step 8: Install Beta Components
@@ -205,22 +252,31 @@ export class InitHandler implements InitCommand {
       console.log(''); // Add spacing to prevent flickering
 
       // Step 9: Enable Stitch API
-      spinner.start('Enabling Stitch API...');
-
-      const apiResult = await this.stitchService.enableAPI({
+      const apiCheckSpinner = createSpinner('Checking Stitch API status...').start();
+      const isApiEnabled = await this.stitchService.checkAPIEnabled({
         projectId: projectResult.data.projectId,
       });
+      apiCheckSpinner.stop();
 
-      if (apiResult.success) {
-        spinner.succeed('Stitch API enabled');
-        console.log(theme.gray(`  API: ${apiResult.data.api}\n`));
+      if (isApiEnabled) {
+        console.log(theme.green(`${icons.success} Stitch API is already enabled.\n`));
       } else {
-        spinner.fail('API enablement failed');
-        console.log(theme.yellow(`  ${apiResult.error.message}`));
-        if (apiResult.error.details) {
-          console.log(theme.gray(`\n  Details:\n${apiResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
+        spinner.start('Enabling Stitch API...');
+        const apiResult = await this.stitchService.enableAPI({
+          projectId: projectResult.data.projectId,
+        });
+
+        if (apiResult.success) {
+          spinner.succeed('Stitch API enabled');
+          console.log(theme.gray(`  API: ${apiResult.data.api}\n`));
+        } else {
+          spinner.fail('API enablement failed');
+          console.log(theme.yellow(`  ${apiResult.error.message}`));
+          if (apiResult.error.details) {
+            console.log(theme.gray(`\n  Details:\n${apiResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
+          }
+          console.log(theme.gray(`  You may need to enable it manually\n`));
         }
-        console.log(theme.gray(`  You may need to enable it manually\n`));
       }
 
       console.log(''); // Add spacing to prevent flickering

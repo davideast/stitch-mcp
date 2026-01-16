@@ -18,6 +18,8 @@ export const ProjectErrorCode = z.enum([
   'NO_PROJECTS_FOUND',
   'SELECTION_CANCELLED',
   'SEARCH_FAILED',
+  'PROJECT_FETCH_FAILED',
+  'PROJECT_NOT_FOUND',
   'UNKNOWN_ERROR',
 ]);
 
@@ -56,4 +58,8 @@ export interface ProjectService {
    * Prompt user to select a project
    */
   selectProject(input: SelectProjectInput): Promise<ProjectSelectionResult>;
+  /**
+   * Get details for a specific project
+   */
+  getProjectDetails(input: { projectId: string }): Promise<ProjectSelectionResult>;
 }

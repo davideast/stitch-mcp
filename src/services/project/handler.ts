@@ -91,6 +91,56 @@ export class ProjectHandler implements ProjectService {
     }
   }
 
+  async getProjectDetails(input: { projectId: string }): Promise<ProjectSelectionResult> {
+    try {
+      const projectResult = await this.gcloudService.listProjects({
+        filter: `projectId:${input.projectId}`,
+        limit: 1,
+      });
+
+      if (!projectResult.success) {
+        return {
+          success: false,
+          error: {
+            code: 'PROJECT_FETCH_FAILED',
+            message: `Failed to fetch project details: ${projectResult.error.message}`,
+            recoverable: true,
+          },
+        };
+      }
+
+      if (projectResult.data.projects.length === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'PROJECT_NOT_FOUND',
+            message: `Project not found: ${input.projectId}`,
+            recoverable: true,
+          },
+        };
+      }
+
+      const project = projectResult.data.projects[0]!;
+
+      return {
+        success: true,
+        data: {
+          projectId: project.projectId,
+          name: project.name,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: 'UNKNOWN_ERROR',
+          message: error instanceof Error ? error.message : String(error),
+          recoverable: false,
+        },
+      };
+    }
+  }
+
   private async searchAndSelect(): Promise<ProjectSelectionResult> {
     try {
       const query = await promptInput('Enter project name or ID to search (press Enter)');

@@ -16,6 +16,7 @@ import {
 import { detectPlatform, getGcloudSdkPath, getGcloudConfigPath, getStitchDir } from '../../platform/detector.js';
 import { execCommand, commandExists } from '../../platform/shell.js';
 import { joinPath } from '../../platform/paths.js';
+import { theme } from '../../ui/theme.js';
 
 export class GcloudHandler implements GcloudService {
   private platform = detectPlatform();
@@ -135,6 +136,17 @@ export class GcloudHandler implements GcloudService {
 
       // Run gcloud auth login
       const gcloudCmd = this.getGcloudCommand();
+      console.log(theme.gray("  Opening browser for authentication..."));
+      const noBrowserResult = await execCommand(
+        [gcloudCmd, 'auth', 'login', '--no-launch-browser'],
+        { env: this.getEnvironment() }
+      );
+      if (noBrowserResult.success || noBrowserResult.stderr) {
+        const urlMatch = (noBrowserResult.stderr || noBrowserResult.stdout).match(/https:\/\/accounts\.google\.com[^\s]+/);
+        if (urlMatch) {
+          console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
+        }
+      }
       const result = await execCommand([gcloudCmd, 'auth', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -204,6 +216,17 @@ export class GcloudHandler implements GcloudService {
 
       // Run gcloud auth application-default login
       const gcloudCmd = this.getGcloudCommand();
+      console.log(theme.gray("  Opening browser for authentication..."));
+      const noBrowserResult = await execCommand(
+        [gcloudCmd, 'auth', 'application-default', 'login', '--no-launch-browser'],
+        { env: this.getEnvironment() }
+      );
+      if (noBrowserResult.success || noBrowserResult.stderr) {
+        const urlMatch = (noBrowserResult.stderr || noBrowserResult.stdout).match(/https:\/\/accounts\.google\.com[^\s]+/);
+        if (urlMatch) {
+          console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
+        }
+      }
       const result = await execCommand([gcloudCmd, 'auth', 'application-default', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -376,14 +399,12 @@ export class GcloudHandler implements GcloudService {
         env: this.getEnvironment(),
       });
 
-      if (result.success) {
+      if (result.success && result.stdout.trim()) {
         return result.stdout.trim();
       }
 
-      console.error('[Gcloud] Project ID fetch failed:', result.stderr || result.error);
       return null;
     } catch (e) {
-      console.error('[Gcloud] Project ID fetch exception:', e);
       return null;
     }
   }
@@ -568,7 +589,7 @@ export class GcloudHandler implements GcloudService {
     return this.platform.gcloudBinaryName;
   }
 
-  private async getActiveAccount(): Promise<string | null> {
+  async getActiveAccount(): Promise<string | null> {
     const gcloudCmd = this.getGcloudCommand();
     const result = await execCommand(
       [gcloudCmd, 'auth', 'list', '--filter=status:ACTIVE', '--format=value(account)'],
@@ -582,7 +603,7 @@ export class GcloudHandler implements GcloudService {
     return null;
   }
 
-  private async hasADC(): Promise<boolean> {
+  async hasADC(): Promise<boolean> {
     const configPath = getGcloudConfigPath();
     const adcPath = joinPath(configPath, 'application_default_credentials.json');
     return fs.existsSync(adcPath);
