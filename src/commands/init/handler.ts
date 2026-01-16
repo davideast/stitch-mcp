@@ -8,7 +8,7 @@ import { type StitchService } from '../../services/stitch/spec.js';
 import { McpConfigHandler } from '../../services/mcp-config/handler.js';
 import { type McpConfigService } from '../../services/mcp-config/spec.js';
 import { createSpinner } from '../../ui/spinner.js';
-import { promptMcpClient, promptConfirm } from '../../ui/wizard.js';
+import { promptMcpClient, promptConfirm, promptTransportType } from '../../ui/wizard.js';
 import { theme, icons } from '../../ui/theme.js';
 
 // Assuming these types are defined elsewhere or are the handler classes themselves
@@ -106,8 +106,13 @@ export class InitHandler implements InitCommand {
 
       console.log(theme.green(`${icons.success} Application credentials ready\n`));
 
-      // Step 5: Project Selection
-      console.log(theme.gray('Step 5: Select a Google Cloud project\n'));
+      // Step 5: Transport Selection
+      console.log(theme.gray('Step 5: Choose connection method\n'));
+      const transport = await promptTransportType();
+      console.log(theme.green(`${icons.success} Selected: ${transport === 'http' ? 'Direct' : 'Proxy'}\n`));
+
+      // Step 6: Project Selection
+      console.log(theme.gray('Step 6: Select a Google Cloud project\n'));
 
       const projectResult = await this.projectService.selectProject({
         allowSearch: true,
@@ -245,6 +250,7 @@ export class InitHandler implements InitCommand {
         client: mcpClient,
         projectId: projectResult.data.projectId,
         accessToken,
+        transport,
       });
 
       if (!configResult.success) {

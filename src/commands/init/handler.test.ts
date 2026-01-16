@@ -5,6 +5,7 @@ import { InitHandler } from './handler';
 mock.module('../../ui/wizard.js', () => ({
   promptMcpClient: mock(() => Promise.resolve('test-client')),
   promptConfirm: mock(() => Promise.resolve(true)),
+  promptTransportType: mock(() => Promise.resolve('http')),
 }));
 
 const mockSpinner = {

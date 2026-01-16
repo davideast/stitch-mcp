@@ -3,13 +3,16 @@ import { z } from 'zod';
 // ============================================================================
 // INPUT SCHEMAS
 // ============================================================================
+// ============================================================================
 
 export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli';
+export type TransportType = 'http' | 'stdio';
 
 export const GenerateConfigInputSchema = z.object({
   client: z.enum(['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli']),
   projectId: z.string().min(1),
   accessToken: z.string().min(1),
+  transport: z.enum(['http', 'stdio']).default('http'),
 });
 export type GenerateConfigInput = z.infer<typeof GenerateConfigInputSchema>;
 

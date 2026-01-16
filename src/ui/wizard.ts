@@ -41,3 +41,24 @@ export async function promptInput(message: string, defaultValue?: string): Promi
 export async function promptConfirm(message: string, defaultValue = true): Promise<boolean> {
   return await confirm({ message, default: defaultValue });
 }
+
+/**
+ * Prompt user to select transport type
+ */
+export async function promptTransportType(): Promise<'http' | 'stdio'> {
+  return await select({
+    message: 'How would you like to connect to Stitch?',
+    choices: [
+      {
+        name: 'Direct (Standard)',
+        value: 'http' as const,
+        description: 'Standard HTTP. Production-ready. Requires manual OAuth token management.',
+      },
+      {
+        name: 'Proxy (Recommended for Dev)',
+        value: 'stdio' as const,
+        description: 'Zero-config. Uses a local bridge to auto-refresh gcloud credentials.',
+      },
+    ],
+  });
+}

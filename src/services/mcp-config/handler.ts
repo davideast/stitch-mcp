@@ -4,23 +4,12 @@ import { theme } from '../../ui/theme.js';
 export class McpConfigHandler implements McpConfigService {
   async generateConfig(input: GenerateConfigInput): Promise<McpConfigResult> {
     try {
-      const url = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';
-
-      const config = {
-        mcpServers: {
-          stitch: {
-            type: 'http',
-            url,
-            headers: {
-              Authorization: `Bearer ${input.accessToken}`,
-              'X-Goog-User-Project': input.projectId,
-            },
-          },
-        },
-      };
+      const config = input.transport === 'http'
+        ? this.generateHttpConfig(input)
+        : this.generateStdioConfig(input);
 
       const configString = JSON.stringify(config, null, 2);
-      const instructions = this.getInstructionsForClient(input.client, configString);
+      const instructions = this.getInstructionsForClient(input.client, configString, input.transport);
 
       return {
         success: true,
@@ -41,13 +30,49 @@ export class McpConfigHandler implements McpConfigService {
     }
   }
 
-  private getInstructionsForClient(client: McpClient, config: string): string {
+  private generateHttpConfig(input: GenerateConfigInput) {
+    const url = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';
+
+    return {
+      mcpServers: {
+        stitch: {
+          type: 'http',
+          url,
+          headers: {
+            Authorization: `Bearer ${input.accessToken}`,
+            'X-Goog-User-Project': input.projectId,
+          },
+        },
+      },
+    };
+  }
+
+  private generateStdioConfig(input: GenerateConfigInput) {
+    return {
+      mcpServers: {
+        stitch: {
+          command: 'npx',
+          args: ['@_davideast/stitch-mcp', 'proxy'],
+          env: {
+            STITCH_PROJECT_ID: input.projectId,
+          },
+        },
+      },
+    };
+  }
+
+  private getInstructionsForClient(client: McpClient, config: string, transport: 'http' | 'stdio'): string {
     const baseInstructions = `\n${theme.blue('MCP Configuration Generated')}\n\n${config}\n`;
+
+    const transportNote = transport === 'stdio'
+      ? `\n${theme.yellow('Note:')} This uses the proxy server. Keep it running with:\n  npx @_davideast/stitch-mcp proxy\n`
+      : '';
 
     switch (client) {
       case 'antigravity':
         return (
           baseInstructions +
+          transportNote +
           `\n${theme.green('Next Steps for Antigravity:')}\n` +
           `1. Open your Antigravity settings\n` +
           `2. Add the above configuration to your MCP servers section\n` +
@@ -57,6 +82,7 @@ export class McpConfigHandler implements McpConfigService {
       case 'vscode':
         return (
           baseInstructions +
+          transportNote +
           `\n${theme.green('Next Steps for VSCode:')}\n` +
           `1. Open VSCode settings (Cmd+, or Ctrl+,)\n` +
           `2. Search for "MCP" in settings\n` +
@@ -67,6 +93,7 @@ export class McpConfigHandler implements McpConfigService {
       case 'cursor':
         return (
           baseInstructions +
+          transportNote +
           `\n${theme.green('Next Steps for Cursor:')}\n` +
           `1. Open Cursor settings\n` +
           `2. Navigate to MCP configuration section\n` +
@@ -77,6 +104,7 @@ export class McpConfigHandler implements McpConfigService {
       case 'claude-code':
         return (
           baseInstructions +
+          transportNote +
           `\n${theme.green('Next Steps for Claude Code:')}\n` +
           `1. Open your Claude Code configuration\n` +
           `2. Add the above MCP server configuration\n` +
@@ -86,6 +114,7 @@ export class McpConfigHandler implements McpConfigService {
       case 'gemini-cli':
         return (
           baseInstructions +
+          transportNote +
           `\n${theme.green('Next Steps for Gemini CLI:')}\n` +
           `1. Save the configuration to a file (e.g., ~/.config/gemini/mcp.json)\n` +
           `2. Ensure your CLI is configured to read from this location\n` +
@@ -93,7 +122,7 @@ export class McpConfigHandler implements McpConfigService {
         );
 
       default:
-        return baseInstructions + `\n${theme.yellow('Add this configuration to your MCP client.')}\n`;
+        return baseInstructions + transportNote + `\n${theme.yellow('Add this configuration to your MCP client.')}\n`;
     }
   }
 }

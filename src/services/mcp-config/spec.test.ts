@@ -60,5 +60,57 @@ describe('McpConfig Service Spec', () => {
       const result = GenerateConfigInputSchema.safeParse(input);
       expect(result.success).toBe(false);
     });
+
+    it('should default transport to http when not provided', () => {
+      const input = {
+        client: 'vscode',
+        projectId: 'test-project',
+        accessToken: 'test-token',
+      };
+      const result = GenerateConfigInputSchema.safeParse(input);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.transport).toBe('http');
+      }
+    });
+
+    it('should accept http as transport', () => {
+      const input = {
+        client: 'vscode',
+        projectId: 'test-project',
+        accessToken: 'test-token',
+        transport: 'http',
+      };
+      const result = GenerateConfigInputSchema.safeParse(input);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.transport).toBe('http');
+      }
+    });
+
+    it('should accept stdio as transport', () => {
+      const input = {
+        client: 'vscode',
+        projectId: 'test-project',
+        accessToken: 'test-token',
+        transport: 'stdio',
+      };
+      const result = GenerateConfigInputSchema.safeParse(input);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.transport).toBe('stdio');
+      }
+    });
+
+    it('should invalidate an input with an invalid transport', () => {
+      const input = {
+        client: 'vscode',
+        projectId: 'test-project',
+        accessToken: 'test-token',
+        transport: 'websocket',
+      };
+      const result = GenerateConfigInputSchema.safeParse(input);
+      expect(result.success).toBe(false);
+    });
   });
 });
