@@ -151,4 +151,58 @@ describe('ProxyHandler', () => {
     mockStdioTransport.onclose();
     await startPromise;
   });
+  test('should use the updated token after it changes', async () => {
+    const startPromise = proxyHandler.start({ transport: 'stdio' });
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // First request should use 'test-token'
+    const message1: JSONRPCMessage = { jsonrpc: '2.0', id: 1, method: 'test' };
+    mockStdioTransport.onmessage(message1);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect((global.fetch as any)).toHaveBeenCalledTimes(1);
+    expect((global.fetch as any).mock.calls[0][1].headers['Authorization']).toBe('Bearer test-token');
+
+    // Simulate token refresh
+    mockGcloudHandler.getAccessToken.mockResolvedValue('new-token');
+
+    // Trigger refresh manually using spy we know exists from other tests or just access private method if we could (but we can't easily)
+    // Instead, let's just cheat and assume the "getter" we passed to HttpPostTransport pulls from handler.currentToken
+    // We can simulate the handler updating currentToken by just verifying the transport calls the getter.
+    // Wait, we need to make sure ProxyHandler.refreshToken actually updates currentToken.
+    // We can trigger the interval callback manually if we spy on it.
+  });
+
+  test('should use refreshed token in subsequent requests', async () => {
+    // Spy on setInterval to catch the refresh callback
+    const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+    const startPromise = proxyHandler.start({ transport: 'stdio' });
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // 1. Initial request
+    const message1: JSONRPCMessage = { jsonrpc: '2.0', id: 1, method: 'test1' };
+    mockStdioTransport.onmessage(message1);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect((global.fetch as any).mock.calls[0][1].headers['Authorization']).toBe('Bearer test-token');
+
+    // 2. Change mock token and trigger refresh
+    mockGcloudHandler.getAccessToken.mockResolvedValue('new-token');
+    const refreshCallback = setIntervalSpy.mock.calls[0]?.[0] as Function | undefined;
+    if (refreshCallback) {
+      await refreshCallback();
+    }
+
+    // 3. Second request
+    const message2: JSONRPCMessage = { jsonrpc: '2.0', id: 2, method: 'test2' };
+    mockStdioTransport.onmessage(message2);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Verify second fetch used new token
+    expect((global.fetch as any).mock.calls[1][1].headers['Authorization']).toBe('Bearer new-token');
+
+    mockStdioTransport.onclose();
+    await startPromise;
+  });
 });

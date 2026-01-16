@@ -18,7 +18,7 @@ class HttpPostTransport {
   onerror?: (error: Error) => void;
   onmessage?: (message: JSONRPCMessage) => void;
 
-  constructor(private url: string, private token: string, private logger: Logger, private projectId?: string) { }
+  constructor(private url: string, private getToken: () => string | null, private logger: Logger, private projectId?: string) { }
 
   async start(): Promise<void> {
     // No connection to establish for HTTP POST
@@ -31,9 +31,14 @@ class HttpPostTransport {
       const method = (message as any).method || 'response';
       this.logger(`Sending JSON-RPC message ID: ${msgId} Method: ${method}`);
 
+      const token = this.getToken();
+      if (!token) {
+        throw new Error('No access token available');
+      }
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.token}`,
+        'Authorization': `Bearer ${token}`,
       };
 
       if (this.projectId) {
@@ -145,7 +150,7 @@ export class ProxyHandler implements ProxyService {
       // Setup Remote Transport (HTTP POST)
       const stitchUrl = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';
       log(`Connecting to ${stitchUrl}`);
-      const remoteTransport = new HttpPostTransport(stitchUrl, this.currentToken, log, projectId ?? undefined);
+      const remoteTransport = new HttpPostTransport(stitchUrl, () => this.currentToken, log, projectId ?? undefined);
 
       // Initialize Local Transport
       if (input.transport !== 'stdio') {
