@@ -110,69 +110,56 @@ export class DoctorHandler implements DoctorCommand {
       // Check 4: Active project
       spinner.start('Checking active project...');
 
-      const projectsResult = await this.gcloudService.listProjects({ limit: 1 });
+      const projectId = await this.gcloudService.getProjectId();
 
-      if (projectsResult.success && projectsResult.data.projects.length > 0) {
-        const currentProject = projectsResult.data.projects[0];
-        if (!currentProject) {
-          const check = {
-            name: 'Active Project',
-            passed: false,
-            message: 'No project configured',
-            suggestion: 'Run: npx @_davideast/stitch-mcp init',
-          };
-          checks.push(check);
-          spinner.fail(check.message);
-        } else {
-          const check = {
-            name: 'Active Project',
-            passed: true,
-            message: `Set: ${currentProject.projectId}`,
-          };
-          checks.push(check);
-          spinner.succeed(check.message);
+      if (projectId) {
+        const check = {
+          name: 'Active Project',
+          passed: true,
+          message: `Set: ${projectId}`,
+        };
+        checks.push(check);
+        spinner.succeed(check.message);
 
-          // Check 5: API connection (only if we have a project)
-          spinner.start('Testing Stitch API...');
+        // Check 5: API connection (only if we have a project)
+        spinner.start('Testing Stitch API...');
 
-          const accessToken = await this.gcloudService.getAccessToken();
+        const accessToken = await this.gcloudService.getAccessToken();
 
-          if (accessToken) {
-            const testResult = await this.stitchService.testConnection({
-              projectId: currentProject.projectId,
-              accessToken,
-            });
+        if (accessToken) {
+          const testResult = await this.stitchService.testConnection({
+            projectId,
+            accessToken,
+          });
 
-            if (testResult.success) {
-              const check = {
-                name: 'Stitch API',
-                passed: true,
-                message: `Healthy (${testResult.data.statusCode})`,
-              };
-              checks.push(check);
-              spinner.succeed(check.message);
-            } else {
-              const check = {
-                name: 'Stitch API',
-                passed: false,
-                message: testResult.error.message,
-                suggestion: testResult.error.suggestion,
-                details: testResult.error.details,
-              };
-              checks.push(check);
-              spinner.fail(check.message);
-
-            }
+          if (testResult.success) {
+            const check = {
+              name: 'Stitch API',
+              passed: true,
+              message: `Healthy (${testResult.data.statusCode})`,
+            };
+            checks.push(check);
+            spinner.succeed(check.message);
           } else {
             const check = {
               name: 'Stitch API',
               passed: false,
-              message: 'Could not obtain access token',
-              suggestion: 'Re-run authentication',
+              message: testResult.error.message,
+              suggestion: testResult.error.suggestion,
+              details: testResult.error.details,
             };
             checks.push(check);
             spinner.fail(check.message);
           }
+        } else {
+          const check = {
+            name: 'Stitch API',
+            passed: false,
+            message: 'Could not obtain access token',
+            suggestion: 'Re-run authentication',
+          };
+          checks.push(check);
+          spinner.fail(check.message);
         }
       } else {
         const check = {

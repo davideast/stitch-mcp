@@ -2,7 +2,7 @@ import { type InitCommand, type InitInput, type InitResult } from './spec.js';
 import { GcloudHandler } from '../../services/gcloud/handler.js';
 import { type GcloudService } from '../../services/gcloud/spec.js';
 import { ProjectHandler } from '../../services/project/handler.js';
-import { type ProjectService } from '../../services/project/spec.js';
+import { type ProjectService, type ProjectSelectionResult } from '../../services/project/spec.js';
 import { StitchHandler } from '../../services/stitch/handler.js';
 import { type StitchService } from '../../services/stitch/spec.js';
 import { McpConfigHandler } from '../../services/mcp-config/handler.js';
@@ -198,7 +198,8 @@ export class InitHandler implements InitCommand {
 
       // Step 7: Configure IAM permissions
       console.log(`\n${theme.gray('Step 7: Configure IAM Permissions')}`);
-      const iamCheckSpinner = createSpinner('Checking IAM permissions...').start();
+      const iamCheckSpinner = createSpinner();
+      iamCheckSpinner.start('Checking IAM permissions...');
       const hasIAMRole = await this.stitchService.checkIAMRole({
         projectId: projectResult.data.projectId,
         userEmail: authResult.data.account,
@@ -252,7 +253,8 @@ export class InitHandler implements InitCommand {
       console.log(''); // Add spacing to prevent flickering
 
       // Step 9: Enable Stitch API
-      const apiCheckSpinner = createSpinner('Checking Stitch API status...').start();
+      const apiCheckSpinner = createSpinner();
+      apiCheckSpinner.start('Checking Stitch API status...');
       const isApiEnabled = await this.stitchService.checkAPIEnabled({
         projectId: projectResult.data.projectId,
       });

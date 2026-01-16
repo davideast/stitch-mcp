@@ -9,6 +9,7 @@ export const theme = {
   gray: chalk.hex('#646464'),
   red: chalk.hex('#E65050'),
   yellow: chalk.hex('#DCDC64'),
+  cyan: chalk.hex('#4DC9FF'),
   bgDark: chalk.bgHex('#151315'),
 };
 

@@ -393,6 +393,14 @@ export class GcloudHandler implements GcloudService {
   }
 
   async getProjectId(): Promise<string | null> {
+    // Check environment variables first
+    if (process.env.STITCH_PROJECT_ID) {
+      return process.env.STITCH_PROJECT_ID;
+    }
+    if (process.env.GOOGLE_CLOUD_PROJECT) {
+      return process.env.GOOGLE_CLOUD_PROJECT;
+    }
+
     try {
       const gcloudCmd = this.getGcloudCommand();
       const result = await execCommand([gcloudCmd, 'config', 'get-value', 'project'], {

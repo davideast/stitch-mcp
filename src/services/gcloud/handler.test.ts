@@ -59,6 +59,29 @@ describe('GcloudHandler', () => {
   });
 
   describe('getProjectId', () => {
+    test('should respect STITCH_PROJECT_ID env var', async () => {
+      process.env.STITCH_PROJECT_ID = 'env-project';
+      const projectId = await handler.getProjectId();
+      expect(projectId).toBe('env-project');
+      delete process.env.STITCH_PROJECT_ID;
+    });
+
+    test('should respect GOOGLE_CLOUD_PROJECT env var', async () => {
+      process.env.GOOGLE_CLOUD_PROJECT = 'google-env-project';
+      const projectId = await handler.getProjectId();
+      expect(projectId).toBe('google-env-project');
+      delete process.env.GOOGLE_CLOUD_PROJECT;
+    });
+
+    test('STITCH_PROJECT_ID should take precedence over GOOGLE_CLOUD_PROJECT', async () => {
+      process.env.STITCH_PROJECT_ID = 'stitch-priority';
+      process.env.GOOGLE_CLOUD_PROJECT = 'google-secondary';
+      const projectId = await handler.getProjectId();
+      expect(projectId).toBe('stitch-priority');
+      delete process.env.STITCH_PROJECT_ID;
+      delete process.env.GOOGLE_CLOUD_PROJECT;
+    });
+
     test('should return the project ID on success', async () => {
       mockExecCommand.mockResolvedValue({ success: true, stdout: 'test-project', stderr: '', exitCode: 0 });
       const projectId = await handler.getProjectId();
