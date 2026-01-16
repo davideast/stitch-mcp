@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "stitch-mcp",
+      "name": "@_davideast/stitch-mcp",
       "dependencies": {
         "@inquirer/prompts": "^7.2.0",
         "@modelcontextprotocol/sdk": "^1.25.2",
