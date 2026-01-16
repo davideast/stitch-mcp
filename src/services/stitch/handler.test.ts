@@ -179,4 +179,48 @@ describe('StitchHandler', () => {
       }
     });
   });
+
+  describe('checkIAMRole', () => {
+    const validInput = { projectId: 'test-project', userEmail: 'user@example.com' };
+
+    test('should return true if IAM role exists', async () => {
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'user:user@example.com', stderr: '', exitCode: 0 });
+      const result = await handler.checkIAMRole(validInput);
+      expect(result).toBe(true);
+    });
+
+    test('should return false if IAM role does not exist', async () => {
+      mockExecCommand.mockResolvedValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
+      const result = await handler.checkIAMRole(validInput);
+      expect(result).toBe(false);
+    });
+
+    test('should return false on command failure', async () => {
+      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
+      const result = await handler.checkIAMRole(validInput);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('checkAPIEnabled', () => {
+    const validInput = { projectId: 'test-project' };
+
+    test('should return true if API is enabled', async () => {
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'stitch.googleapis.com', stderr: '', exitCode: 0 });
+      const result = await handler.checkAPIEnabled(validInput);
+      expect(result).toBe(true);
+    });
+
+    test('should return false if API is not enabled', async () => {
+      mockExecCommand.mockResolvedValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
+      const result = await handler.checkAPIEnabled(validInput);
+      expect(result).toBe(false);
+    });
+
+    test('should return false on command failure', async () => {
+      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
+      const result = await handler.checkAPIEnabled(validInput);
+      expect(result).toBe(false);
+    });
+  });
 });

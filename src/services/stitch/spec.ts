@@ -117,7 +117,17 @@ export interface StitchService {
   enableAPI(input: EnableAPIInput): Promise<APIEnableResult>;
 
   /**
-   * Test connection to Stitch API
+  * Test the connection to the Stitch API
    */
   testConnection(input: TestConnectionInput): Promise<ConnectionTestResult>;
+
+  /**
+   * Check if a user has a specific IAM role on a project
+   */
+  checkIAMRole(input: { projectId: string; userEmail: string }): Promise<boolean>;
+
+  /**
+   * Check if the Stitch API is enabled for a project
+   */
+  checkAPIEnabled(input: { projectId: string }): Promise<boolean>;
 }
