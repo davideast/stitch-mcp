@@ -50,6 +50,23 @@ npx @_davideast/stitch-mcp doctor
 - ✔ Active project configuration
 - ✔ Stitch API connectivity
 
+### `proxy`
+
+Start the Stitch MCP proxy server. This command is typically configured as the entry point in your MCP client settings.
+
+```bash
+npx @_davideast/stitch-mcp proxy
+
+# Options:
+#   --transport <type>  Transport type: 'stdio' or 'sse' (default: 'stdio')
+#   --port <number>     Port number (required for sse)
+#   --debug             Enable debug logging to file
+```
+
+**Debug Mode:**
+
+When the `--debug` flag is provided, the proxy server will write debug logs to `/tmp/stitch-proxy-debug.log`. This is useful for troubleshooting connection issues or inspecting the traffic between the client and the Stitch API.
+
 ## Platform Support
 
 - ✅ macOS (ARM64 & Intel)
