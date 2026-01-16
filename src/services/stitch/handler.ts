@@ -3,6 +3,8 @@ import {
   type ConfigureIAMInput,
   type EnableAPIInput,
   type TestConnectionInput,
+  type CheckIAMRoleInput,
+  type CheckAPIEnabledInput,
   type IAMConfigResult,
   type APIEnableResult,
   type ConnectionTestResult,
@@ -126,6 +128,48 @@ export class StitchHandler implements StitchService {
           recoverable: false,
         },
       };
+    }
+  }
+
+  async checkIAMRole(input: CheckIAMRoleInput): Promise<boolean> {
+    try {
+      const result = await execCommand(
+        [
+          this.getGcloudBinary(),
+          'projects',
+          'get-iam-policy',
+          input.projectId,
+          '--flatten=bindings[].members',
+          '--filter=bindings.role:roles/serviceusage.serviceUsageConsumer AND bindings.members:user:' + input.userEmail,
+          '--format=value(bindings.role)',
+        ],
+        { env: this.getGcloudEnv() }
+      );
+
+      return result.success && result.stdout.trim() !== '';
+    } catch (error) {
+      return false; // Be conservative
+    }
+  }
+
+  async checkAPIEnabled(input: CheckAPIEnabledInput): Promise<boolean> {
+    try {
+      const result = await execCommand(
+        [
+          this.getGcloudBinary(),
+          'services',
+          'list',
+          '--enabled',
+          '--filter=name:stitch.googleapis.com',
+          `--project=${input.projectId}`,
+          '--format=value(name)',
+        ],
+        { env: this.getGcloudEnv() }
+      );
+
+      return result.success && result.stdout.trim() !== '';
+    } catch (error) {
+      return false; // Be conservative
     }
   }
 

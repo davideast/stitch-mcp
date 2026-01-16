@@ -1,6 +1,7 @@
 import {
   type ProjectService,
   type SelectProjectInput,
+  type GetProjectDetailsInput,
   type ProjectSelectionResult,
 } from './spec.js';
 import { type GcloudService } from '../gcloud/spec.js';
@@ -77,6 +78,44 @@ export class ProjectHandler implements ProjectService {
         data: {
           projectId: selectedProject.projectId,
           name: selectedProject.name,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: 'UNKNOWN_ERROR',
+          message: error instanceof Error ? error.message : String(error),
+          recoverable: false,
+        },
+      };
+    }
+  }
+
+  async getProjectDetails(input: GetProjectDetailsInput): Promise<ProjectSelectionResult> {
+    try {
+      const projectsResult = await this.gcloudService.listProjects({
+        filter: `projectId:${input.projectId}`,
+        limit: 1,
+      });
+
+      if (!projectsResult.success || projectsResult.data.projects.length === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'DETAILS_FAILED',
+            message: `Could not find project with ID: ${input.projectId}`,
+            recoverable: false,
+          },
+        };
+      }
+
+      const project = projectsResult.data.projects[0];
+      return {
+        success: true,
+        data: {
+          projectId: project.projectId,
+          name: project.name,
         },
       };
     } catch (error) {

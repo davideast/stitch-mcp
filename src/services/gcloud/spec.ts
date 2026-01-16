@@ -182,4 +182,14 @@ export interface GcloudService {
    * Install beta components
    */
   installBetaComponents(): Promise<{ success: boolean; error?: { message: string } }>;
+
+  /**
+   * Get the active project ID
+   */
+  getProjectId(): Promise<string | null>;
+
+  /**
+   * Check if Application Default Credentials (ADC) are present
+   */
+  hasADC(): Promise<boolean>;
 }

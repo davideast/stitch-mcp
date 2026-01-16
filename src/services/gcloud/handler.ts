@@ -16,6 +16,7 @@ import {
 import { detectPlatform, getGcloudSdkPath, getGcloudConfigPath, getStitchDir } from '../../platform/detector.js';
 import { execCommand, commandExists } from '../../platform/shell.js';
 import { joinPath } from '../../platform/paths.js';
+import { theme } from '../../ui/theme.js';
 
 export class GcloudHandler implements GcloudService {
   private platform = detectPlatform();
@@ -135,6 +136,20 @@ export class GcloudHandler implements GcloudService {
 
       // Run gcloud auth login
       const gcloudCmd = this.getGcloudCommand();
+
+      // First, get the URL without launching the browser
+      const urlResult = await execCommand([gcloudCmd, 'auth', 'login', '--no-launch-browser'], {
+        env: this.getEnvironment(),
+      });
+
+      if (urlResult.stderr) {
+        const urlMatch = urlResult.stderr.match(/(https:\/\/accounts\.google\.com[^\s]+)/);
+        if (urlMatch && urlMatch[0]) {
+          console.log(theme.gray('  If browser doesn\'t open, copy this URL:'));
+          console.log(theme.cyan(`  ${urlMatch[0]}\n`));
+        }
+      }
+
       const result = await execCommand([gcloudCmd, 'auth', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -204,6 +219,20 @@ export class GcloudHandler implements GcloudService {
 
       // Run gcloud auth application-default login
       const gcloudCmd = this.getGcloudCommand();
+
+      // First, get the URL without launching the browser
+      const urlResult = await execCommand([gcloudCmd, 'auth', 'application-default', 'login', '--no-launch-browser'], {
+        env: this.getEnvironment(),
+      });
+
+      if (urlResult.stderr) {
+        const urlMatch = urlResult.stderr.match(/(https:\/\/accounts\.google\.com[^\s]+)/);
+        if (urlMatch && urlMatch[0]) {
+          console.log(theme.gray('  If browser doesn\'t open, copy this URL:'));
+          console.log(theme.cyan(`  ${urlMatch[0]}\n`));
+        }
+      }
+
       const result = await execCommand([gcloudCmd, 'auth', 'application-default', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -568,7 +597,7 @@ export class GcloudHandler implements GcloudService {
     return this.platform.gcloudBinaryName;
   }
 
-  private async getActiveAccount(): Promise<string | null> {
+  async getActiveAccount(): Promise<string | null> {
     const gcloudCmd = this.getGcloudCommand();
     const result = await execCommand(
       [gcloudCmd, 'auth', 'list', '--filter=status:ACTIVE', '--format=value(account)'],
@@ -582,7 +611,7 @@ export class GcloudHandler implements GcloudService {
     return null;
   }
 
-  private async hasADC(): Promise<boolean> {
+  async hasADC(): Promise<boolean> {
     const configPath = getGcloudConfigPath();
     const adcPath = joinPath(configPath, 'application_default_credentials.json');
     return fs.existsSync(adcPath);

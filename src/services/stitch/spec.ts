@@ -10,6 +10,17 @@ export const ConfigureIAMInputSchema = z.object({
 });
 export type ConfigureIAMInput = z.infer<typeof ConfigureIAMInputSchema>;
 
+export const CheckIAMRoleInputSchema = z.object({
+    projectId: z.string().min(1),
+    userEmail: z.string().email(),
+});
+export type CheckIAMRoleInput = z.infer<typeof CheckIAMRoleInputSchema>;
+
+export const CheckAPIEnabledInputSchema = z.object({
+    projectId: z.string().min(1),
+});
+export type CheckAPIEnabledInput = z.infer<typeof CheckAPIEnabledInputSchema>;
+
 export const EnableAPIInputSchema = z.object({
   projectId: z.string().min(1),
 });
@@ -120,4 +131,14 @@ export interface StitchService {
    * Test connection to Stitch API
    */
   testConnection(input: TestConnectionInput): Promise<ConnectionTestResult>;
+
+  /**
+   * Check if IAM role is configured
+   */
+  checkIAMRole(input: CheckIAMRoleInput): Promise<boolean>;
+
+  /**
+   * Check if Stitch API is enabled
+   */
+  checkAPIEnabled(input: CheckAPIEnabledInput): Promise<boolean>;
 }

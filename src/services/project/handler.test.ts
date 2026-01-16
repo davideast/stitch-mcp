@@ -134,6 +134,63 @@ describe('ProjectHandler', () => {
     });
   });
 
+  describe('getProjectDetails', () => {
+    it('should return project details if found', async () => {
+      (mockGcloudService.listProjects as any).mockResolvedValue({
+        success: true,
+        data: {
+          projects: [{ projectId: 'p1', name: 'Project 1' }],
+        },
+      });
+
+      const result = await handler.getProjectDetails({ projectId: 'p1' });
+
+      expect(result).toEqual({
+        success: true,
+        data: {
+          projectId: 'p1',
+          name: 'Project 1',
+        },
+      });
+      expect(mockGcloudService.listProjects).toHaveBeenCalledWith({
+        filter: 'projectId:p1',
+        limit: 1,
+      });
+    });
+
+    it('should return failure if project not found', async () => {
+      (mockGcloudService.listProjects as any).mockResolvedValue({
+        success: true,
+        data: {
+          projects: [],
+        },
+      });
+
+      const result = await handler.getProjectDetails({ projectId: 'p1' });
+
+      expect(result).toEqual({
+        success: false,
+        error: {
+          code: 'DETAILS_FAILED',
+          message: 'Could not find project with ID: p1',
+          recoverable: false,
+        },
+      });
+    });
+
+    it('should return failure if gcloud service fails', async () => {
+      (mockGcloudService.listProjects as any).mockResolvedValue({
+        success: false,
+        error: { message: 'gcloud error' },
+      });
+
+      const result = await handler.getProjectDetails({ projectId: 'p1' });
+
+      expect(result.success).toBe(false);
+      expect((result as any).error.code).toBe('DETAILS_FAILED');
+    });
+  });
+
   it('should handle search with no results and allow manual entry', async () => {
     (mockGcloudService.listProjects as any)
       .mockResolvedValueOnce({

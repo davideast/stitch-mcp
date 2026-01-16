@@ -10,6 +10,11 @@ export const SelectProjectInputSchema = z.object({
 });
 export type SelectProjectInput = z.infer<typeof SelectProjectInputSchema>;
 
+export const GetProjectDetailsInputSchema = z.object({
+  projectId: z.string(),
+});
+export type GetProjectDetailsInput = z.infer<typeof GetProjectDetailsInputSchema>;
+
 // ============================================================================
 // ERROR CODES
 // ============================================================================
@@ -18,6 +23,7 @@ export const ProjectErrorCode = z.enum([
   'NO_PROJECTS_FOUND',
   'SELECTION_CANCELLED',
   'SEARCH_FAILED',
+  'DETAILS_FAILED',
   'UNKNOWN_ERROR',
 ]);
 
@@ -56,4 +62,9 @@ export interface ProjectService {
    * Prompt user to select a project
    */
   selectProject(input: SelectProjectInput): Promise<ProjectSelectionResult>;
+
+  /**
+   * Get details for a specific project
+   */
+  getProjectDetails(input: GetProjectDetailsInput): Promise<ProjectSelectionResult>;
 }
