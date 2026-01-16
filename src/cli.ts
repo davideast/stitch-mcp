@@ -14,11 +14,13 @@ program
   .command('init')
   .description('Initialize authentication and MCP configuration')
   .option('--local', 'Install gcloud locally to project directory instead of user home', false)
+  .option('-y, --defaults', 'Use default values for prompts', false)
   .action(async (options) => {
     try {
       const handler = new InitHandler();
       const result = await handler.execute({
         local: options.local,
+        defaults: options.defaults,
       });
 
       if (!result.success) {

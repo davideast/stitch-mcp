@@ -73,7 +73,7 @@ export class InitHandler implements InitCommand {
       console.log(theme.gray('Step 3: Authenticating with Google Cloud\n'));
       let activeAccount = await this.gcloudService.getActiveAccount();
       if (activeAccount) {
-        const continueWithActive = await promptConfirm(
+        const continueWithActive = input.defaults ? true : await promptConfirm(
           `You are already logged in as ${activeAccount}. Continue?`,
           true
         );
@@ -103,7 +103,7 @@ export class InitHandler implements InitCommand {
       console.log(theme.gray('Step 4: Authorizing application credentials\n'));
       let hasADC = await this.gcloudService.hasADC();
       if (hasADC) {
-        const useExistingADC = await promptConfirm(
+        const useExistingADC = input.defaults ? true : await promptConfirm(
           'Application Default Credentials (ADC) already exist. Use them?',
           true
         );
@@ -145,7 +145,7 @@ export class InitHandler implements InitCommand {
       if (activeProjectId) {
         const detailsResult = await this.projectService.getProjectDetails({ projectId: activeProjectId });
         if (detailsResult.success) {
-          const useActive = await promptConfirm(
+          const useActive = input.defaults ? true : await promptConfirm(
             `Use active project: ${detailsResult.data.name} (${detailsResult.data.projectId})?`,
             true
           );
