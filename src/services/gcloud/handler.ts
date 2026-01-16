@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { $ } from 'bun';
+
 import AdmZip from 'adm-zip';
 import {
   type GcloudService,
@@ -524,7 +524,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       const buffer = await response.arrayBuffer();
-      await Bun.write(downloadPath, buffer);
+      await fs.promises.writeFile(downloadPath, Buffer.from(buffer));
 
       // Extract
       if (this.platform.isWindows) {
@@ -533,7 +533,7 @@ export class GcloudHandler implements GcloudService {
         zip.extractAllTo(stitchDir, true);
       } else {
         // Extract tar.gz
-        await $`tar -xzf ${downloadPath} -C ${stitchDir}`.quiet();
+        await execCommand(['tar', '-xzf', downloadPath, '-C', stitchDir]);
       }
 
       // Clean up download
