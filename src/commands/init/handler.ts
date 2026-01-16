@@ -188,11 +188,7 @@ export class InitHandler implements InitCommand {
         };
       }
 
-      console.log(
-        theme.green(
-          `\n${icons.success} Selected project: ${projectResult.data.name} (${projectResult.data.projectId})\n`
-        )
-      );
+
 
       // Step 6: Set Active Project
       spinner.start('Configuring project...');
