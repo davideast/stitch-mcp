@@ -11,6 +11,11 @@ import { createSpinner } from '../../ui/spinner.js';
 import { promptMcpClient, promptConfirm, promptTransportType } from '../../ui/wizard.js';
 import { theme, icons } from '../../ui/theme.js';
 
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { commandExists, execCommand } from '../../platform/shell.js';
+
 // Assuming these types are defined elsewhere or are the handler classes themselves
 // type GcloudService = GcloudHandler;
 // type ProjectService = ProjectHandler;
@@ -301,6 +306,11 @@ export class InitHandler implements InitCommand {
       }
 
       // Step 10: Generate MCP Config
+      // Special setup for Gemini CLI
+      if (mcpClient === 'gemini-cli') {
+        await this.setupGeminiExtension(projectResult.data.projectId);
+      }
+
       console.log(`\n${theme.gray('Step 8: Generating MCP Configuration')}\n`);
       spinner.start('Generating MCP configuration...');
 
@@ -374,6 +384,61 @@ export class InitHandler implements InitCommand {
           recoverable: false,
         },
       };
+    }
+  }
+
+  private async setupGeminiExtension(projectId: string): Promise<void> {
+    const spinner = createSpinner();
+    console.log(theme.gray('  > gemini extensions install https://github.com/gemini-cli-extensions/stitch'));
+
+    const shouldInstall = await promptConfirm(
+      'Run this command?',
+      true
+    );
+
+    if (!shouldInstall) {
+      return;
+    }
+
+    spinner.start('Installing Stitch extension...');
+
+    const installResult = await execCommand(['gemini', 'extensions', 'install', 'https://github.com/gemini-cli-extensions/stitch']);
+
+    if (!installResult.success) {
+      spinner.fail('Failed to install Stitch extension');
+      console.log(theme.red(`  Error: ${installResult.stderr || installResult.error}`));
+      console.log(theme.gray('  Attempting to configure existing extension...'));
+    } else {
+      spinner.succeed('Extension installed');
+    }
+
+    spinner.start('Configuring extension...');
+
+    const extensionPath = path.join(os.homedir(), '.gemini', 'extensions', 'Stitch', 'gemini-extension.json');
+
+    if (!fs.existsSync(extensionPath)) {
+      spinner.fail('Extension configuration file not found');
+      console.log(theme.gray(`  Expected path: ${extensionPath}`));
+      return;
+    }
+
+    try {
+      const content = fs.readFileSync(extensionPath, 'utf8');
+      const config = JSON.parse(content);
+
+      // Update project ID in headers
+      if (config.mcpServers?.stitch?.headers) {
+        config.mcpServers.stitch.headers['X-Goog-User-Project'] = projectId;
+        fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+        spinner.succeed(`Stitch extension configured: Project ID set to ${theme.blue(projectId)}`);
+        console.log(theme.gray(`  File: ${extensionPath}`));
+      } else {
+        spinner.fail('Invalid extension configuration format');
+      }
+
+    } catch (e) {
+      spinner.fail('Failed to update extension configuration');
+      console.log(theme.red(`  Error: ${e instanceof Error ? e.message : String(e)}`));
     }
   }
 }
