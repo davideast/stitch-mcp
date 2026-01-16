@@ -1,22 +1,35 @@
 import { type InitCommand, type InitInput, type InitResult } from './spec.js';
 import { GcloudHandler } from '../../services/gcloud/handler.js';
+import { type GcloudService } from '../../services/gcloud/spec.js';
 import { ProjectHandler } from '../../services/project/handler.js';
+import { type ProjectService } from '../../services/project/spec.js';
 import { StitchHandler } from '../../services/stitch/handler.js';
+import { type StitchService } from '../../services/stitch/spec.js';
 import { McpConfigHandler } from '../../services/mcp-config/handler.js';
+import { type McpConfigService } from '../../services/mcp-config/spec.js';
 import { createSpinner } from '../../ui/spinner.js';
 import { promptMcpClient, promptConfirm } from '../../ui/wizard.js';
 import { theme, icons } from '../../ui/theme.js';
 
+// Assuming these types are defined elsewhere or are the handler classes themselves
+// type GcloudService = GcloudHandler;
+// type ProjectService = ProjectHandler;
+// type StitchService = StitchHandler;
+// type McpConfigService = McpConfigHandler;
+
 export class InitHandler implements InitCommand {
+  constructor(
+    private readonly gcloudService: GcloudService = new GcloudHandler(),
+    private readonly mcpConfigService: McpConfigService = new McpConfigHandler(),
+    private readonly projectService: ProjectService = new ProjectHandler(new GcloudHandler()), // ProjectHandler depends on GcloudHandler
+    private readonly stitchService: StitchService = new StitchHandler()
+  ) { }
+
   async execute(input: InitInput): Promise<InitResult> {
     try {
       console.log(`\n${theme.blue('Stitch MCP Setup')}\n`);
 
-      // Initialize services
-      const gcloudService = new GcloudHandler();
-      const projectService = new ProjectHandler(gcloudService);
-      const stitchService = new StitchHandler();
-      const mcpConfigService = new McpConfigHandler();
+      // Initialize services (now done via constructor injection)
 
       // Step 1: MCP Client Selection
       console.log(theme.gray('Step 1: Select your MCP client\n'));
@@ -28,7 +41,7 @@ export class InitHandler implements InitCommand {
       const spinner = createSpinner();
       spinner.start('Checking for Google Cloud CLI...');
 
-      const gcloudResult = await gcloudService.ensureInstalled({
+      const gcloudResult = await this.gcloudService.ensureInstalled({
         minVersion: '400.0.0',
         forceLocal: input.local,
       });
@@ -55,7 +68,7 @@ export class InitHandler implements InitCommand {
       console.log(theme.gray('Step 3: Authenticating with Google Cloud\n'));
       console.log(theme.gray('  Please log in via the browser window...\n'));
 
-      const authResult = await gcloudService.authenticate({ skipIfActive: true });
+      const authResult = await this.gcloudService.authenticate({ skipIfActive: true });
 
       if (!authResult.success) {
         return {
@@ -77,7 +90,7 @@ export class InitHandler implements InitCommand {
         theme.gray('  This is a separate auth process required for API access...\n')
       );
 
-      const adcResult = await gcloudService.authenticateADC({ skipIfActive: true });
+      const adcResult = await this.gcloudService.authenticateADC({ skipIfActive: true });
 
       if (!adcResult.success) {
         return {
@@ -96,7 +109,7 @@ export class InitHandler implements InitCommand {
       // Step 5: Project Selection
       console.log(theme.gray('Step 5: Select a Google Cloud project\n'));
 
-      const projectResult = await projectService.selectProject({
+      const projectResult = await this.projectService.selectProject({
         allowSearch: true,
         limit: 5,
       });
@@ -122,7 +135,7 @@ export class InitHandler implements InitCommand {
       // Step 6: Set Active Project
       spinner.start('Configuring project...');
 
-      const setProjectResult = await gcloudService.setProject({
+      const setProjectResult = await this.gcloudService.setProject({
         projectId: projectResult.data.projectId,
       });
 
@@ -151,7 +164,7 @@ export class InitHandler implements InitCommand {
       if (shouldConfigureIam) {
         spinner.start('Configuring IAM permissions...');
 
-        const iamResult = await stitchService.configureIAM({
+        const iamResult = await this.stitchService.configureIAM({
           projectId: projectResult.data.projectId,
           userEmail: authResult.data.account,
         });
@@ -174,7 +187,7 @@ export class InitHandler implements InitCommand {
       // Step 8: Install Beta Components
       spinner.start('Installing gcloud beta components...');
 
-      const betaResult = await gcloudService.installBetaComponents();
+      const betaResult = await this.gcloudService.installBetaComponents();
 
       if (betaResult.success) {
         spinner.succeed('Beta components installed');
@@ -189,7 +202,7 @@ export class InitHandler implements InitCommand {
       // Step 9: Enable Stitch API
       spinner.start('Enabling Stitch API...');
 
-      const apiResult = await stitchService.enableAPI({
+      const apiResult = await this.stitchService.enableAPI({
         projectId: projectResult.data.projectId,
       });
 
@@ -210,7 +223,7 @@ export class InitHandler implements InitCommand {
       // Step 10: Get Access Token
 
       // Get access token for config generation and testing
-      const accessToken = await gcloudService.getAccessToken();
+      const accessToken = await this.gcloudService.getAccessToken();
 
       if (!accessToken) {
         return {
@@ -228,7 +241,7 @@ export class InitHandler implements InitCommand {
       console.log(`\n${theme.gray('Step 8: Generating MCP Configuration')}\n`);
       spinner.start('Generating MCP configuration...');
 
-      const configResult = await mcpConfigService.generateConfig({
+      const configResult = await this.mcpConfigService.generateConfig({
         client: mcpClient,
         projectId: projectResult.data.projectId,
         accessToken,
@@ -258,7 +271,7 @@ export class InitHandler implements InitCommand {
       const spinner2 = createSpinner();
       spinner2.start('Testing API connection...');
 
-      const testResult = await stitchService.testConnection({
+      const testResult = await this.stitchService.testConnection({
         projectId: projectResult.data.projectId,
         accessToken,
       });

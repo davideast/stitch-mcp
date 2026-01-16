@@ -3,17 +3,12 @@ import { ProxyCommandHandler } from './handler.js';
 import { ProxyHandler } from '../../services/proxy/handler.js';
 import type { StartProxyInput } from '../../services/proxy/spec.js';
 
-const mockProxyService = {
+// Mock service
+const mockProxyService: any = {
   start: mock(),
 };
 
-mock.module('../../services/proxy/handler.js', () => {
-  return {
-    ProxyHandler: class {
-      start = mockProxyService.start;
-    },
-  };
-});
+// Removed mock.module since we use DI now
 
 describe('ProxyCommandHandler', () => {
   beforeEach(() => {
@@ -21,7 +16,7 @@ describe('ProxyCommandHandler', () => {
   });
 
   it('should call the proxy service with the correct arguments for sse transport', async () => {
-    const commandHandler = new ProxyCommandHandler();
+    const commandHandler = new ProxyCommandHandler(mockProxyService);
     const input: StartProxyInput = {
       transport: 'sse',
       port: 8080,
@@ -36,7 +31,7 @@ describe('ProxyCommandHandler', () => {
   });
 
   it('should call the proxy service with the correct arguments for stdio transport', async () => {
-    const commandHandler = new ProxyCommandHandler();
+    const commandHandler = new ProxyCommandHandler(mockProxyService);
     const input: StartProxyInput = {
       transport: 'stdio',
       debug: false,
@@ -50,7 +45,7 @@ describe('ProxyCommandHandler', () => {
   });
 
   it('should handle undefined values for optional arguments', async () => {
-    const commandHandler = new ProxyCommandHandler();
+    const commandHandler = new ProxyCommandHandler(mockProxyService);
     const input: StartProxyInput = {
       transport: 'stdio',
     };
