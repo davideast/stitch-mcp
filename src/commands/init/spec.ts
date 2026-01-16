@@ -7,6 +7,8 @@ import { z } from 'zod';
 export const InitInputSchema = z.object({
   local: z.boolean().default(false),
   defaults: z.boolean().default(false),
+  client: z.string().optional(),
+  transport: z.string().optional(),
 });
 export type InitInput = z.infer<typeof InitInputSchema>;
 
