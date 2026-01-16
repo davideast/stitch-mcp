@@ -423,30 +423,35 @@ export class InitHandler implements InitCommand {
 
   private async setupGeminiExtension(projectId: string, transport: 'http' | 'stdio'): Promise<void> {
     const spinner = createSpinner();
-    console.log(theme.gray('  > gemini extensions install https://github.com/gemini-cli-extensions/stitch'));
+    const extensionPath = path.join(os.homedir(), '.gemini', 'extensions', 'Stitch', 'gemini-extension.json');
+    const isInstalled = fs.existsSync(extensionPath);
 
-    const shouldInstall = await promptConfirm(
-      'Run this command?',
-      true
-    );
+    if (isInstalled) {
+      spinner.succeed('Stitch extension is already installed');
+    } else {
+      console.log(theme.gray('  > gemini extensions install https://github.com/gemini-cli-extensions/stitch'));
 
-    if (shouldInstall) {
-      spinner.start('Installing Stitch extension...');
+      const shouldInstall = await promptConfirm(
+        'Run this command?',
+        true
+      );
 
-      const installResult = await execCommand(['gemini', 'extensions', 'install', 'https://github.com/gemini-cli-extensions/stitch']);
+      if (shouldInstall) {
+        spinner.start('Installing Stitch extension...');
 
-      if (!installResult.success) {
-        spinner.fail('Failed to install Stitch extension');
-        console.log(theme.red(`  Error: ${installResult.stderr || installResult.error}`));
-        console.log(theme.gray('  Attempting to configure existing extension...'));
-      } else {
-        spinner.succeed('Extension installed');
+        const installResult = await execCommand(['gemini', 'extensions', 'install', 'https://github.com/gemini-cli-extensions/stitch']);
+
+        if (!installResult.success) {
+          spinner.fail('Failed to install Stitch extension');
+          console.log(theme.red(`  Error: ${installResult.stderr || installResult.error}`));
+          console.log(theme.gray('  Attempting to configure existing extension...'));
+        } else {
+          spinner.succeed('Extension installed');
+        }
       }
     }
 
     spinner.start('Configuring extension...');
-
-    const extensionPath = path.join(os.homedir(), '.gemini', 'extensions', 'Stitch', 'gemini-extension.json');
 
     if (!fs.existsSync(extensionPath)) {
       spinner.fail('Extension configuration file not found');
