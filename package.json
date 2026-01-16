@@ -22,7 +22,7 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir=dist --target=bun --format=esm",
     "dev": "bun run src/cli.ts",
-    "test": "bun test",
+    "test": "bun test --preload tests/setup.ts",
     "prepublishOnly": "bun run build"
   },
   "keywords": [
