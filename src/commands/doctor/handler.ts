@@ -1,6 +1,8 @@
 import { type DoctorCommand, type DoctorInput, type DoctorResult, type HealthCheckSchema } from './spec.js';
 import { GcloudHandler } from '../../services/gcloud/handler.js';
+import { type GcloudService } from '../../services/gcloud/spec.js';
 import { StitchHandler } from '../../services/stitch/handler.js';
+import { type StitchService } from '../../services/stitch/spec.js';
 import { theme, icons } from '../../ui/theme.js';
 import { createSpinner } from '../../ui/spinner.js';
 
@@ -12,20 +14,28 @@ type HealthCheck = {
   details?: string;
 };
 
+// type GcloudService = GcloudHandler;
+// type StitchService = StitchHandler;
+
 export class DoctorHandler implements DoctorCommand {
+  constructor(
+    private readonly gcloudService: GcloudService = new GcloudHandler(),
+    private readonly stitchService: StitchService = new StitchHandler()
+  ) { }
+
   async execute(input: DoctorInput): Promise<DoctorResult> {
     try {
       console.log(`\n${theme.blue('Stitch Doctor')}\n`);
 
       const checks: HealthCheck[] = [];
-      const gcloudService = new GcloudHandler();
-      const stitchService = new StitchHandler();
+      // const gcloudService = new GcloudHandler();
+      // const stitchService = new StitchHandler();
 
       // Check 1: gcloud installation
       const spinner = createSpinner();
       spinner.start('Checking Google Cloud CLI...');
 
-      const gcloudResult = await gcloudService.ensureInstalled({
+      const gcloudResult = await this.gcloudService.ensureInstalled({
         minVersion: '400.0.0',
         forceLocal: false,
       });
@@ -52,7 +62,7 @@ export class DoctorHandler implements DoctorCommand {
       // Check 2: User authentication
       spinner.start('Checking user authentication...');
 
-      const authResult = await gcloudService.authenticate({ skipIfActive: true });
+      const authResult = await this.gcloudService.authenticate({ skipIfActive: true });
 
       if (authResult.success) {
         const check = {
@@ -76,7 +86,7 @@ export class DoctorHandler implements DoctorCommand {
       // Check 3: Application default credentials
       spinner.start('Checking application credentials...');
 
-      const adcResult = await gcloudService.authenticateADC({ skipIfActive: true });
+      const adcResult = await this.gcloudService.authenticateADC({ skipIfActive: true });
 
       if (adcResult.success) {
         const check = {
@@ -100,7 +110,7 @@ export class DoctorHandler implements DoctorCommand {
       // Check 4: Active project
       spinner.start('Checking active project...');
 
-      const projectsResult = await gcloudService.listProjects({ limit: 1 });
+      const projectsResult = await this.gcloudService.listProjects({ limit: 1 });
 
       if (projectsResult.success && projectsResult.data.projects.length > 0) {
         const currentProject = projectsResult.data.projects[0];
@@ -125,10 +135,10 @@ export class DoctorHandler implements DoctorCommand {
           // Check 5: API connection (only if we have a project)
           spinner.start('Testing Stitch API...');
 
-          const accessToken = await gcloudService.getAccessToken();
+          const accessToken = await this.gcloudService.getAccessToken();
 
           if (accessToken) {
-            const testResult = await stitchService.testConnection({
+            const testResult = await this.stitchService.testConnection({
               projectId: currentProject.projectId,
               accessToken,
             });

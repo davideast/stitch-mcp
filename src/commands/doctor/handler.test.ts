@@ -11,22 +11,7 @@ const mockListProjects = mock();
 const mockGetAccessToken = mock();
 const mockTestConnection = mock();
 
-// Mock the entire modules
-mock.module('../../services/gcloud/handler.js', () => ({
-  GcloudHandler: mock(() => ({
-    ensureInstalled: mockEnsureInstalled,
-    authenticate: mockAuthenticate,
-    authenticateADC: mockAuthenticateADC,
-    listProjects: mockListProjects,
-    getAccessToken: mockGetAccessToken,
-  })),
-}));
-
-mock.module('../../services/stitch/handler.js', () => ({
-  StitchHandler: mock(() => ({
-    testConnection: mockTestConnection,
-  })),
-}));
+// Mocks removed as we use DI now
 
 describe('DoctorHandler', () => {
   beforeEach(() => {
@@ -61,8 +46,21 @@ describe('DoctorHandler', () => {
         data: { statusCode: 200 },
       });
 
+      // Mock objects (with just the necessary methods typed as any)
+      const mockGcloudService: any = {
+        ensureInstalled: mockEnsureInstalled,
+        authenticate: mockAuthenticate,
+        authenticateADC: mockAuthenticateADC,
+        listProjects: mockListProjects,
+        getAccessToken: mockGetAccessToken,
+      };
+
+      const mockStitchService: any = {
+        testConnection: mockTestConnection,
+      };
+
       // Act
-      const handler = new DoctorHandler();
+      const handler = new DoctorHandler(mockGcloudService, mockStitchService);
       const result = await handler.execute({ verbose: false });
 
       // Assert
@@ -81,8 +79,24 @@ describe('DoctorHandler', () => {
         error: { code: 'GCLOUD_NOT_FOUND', message: 'gcloud not found' },
       });
 
+      const mockGcloudService: any = {
+        ensureInstalled: mockEnsureInstalled,
+        authenticate: mockAuthenticate,
+        authenticateADC: mockAuthenticateADC,
+        listProjects: mockListProjects,
+        getAccessToken: mockGetAccessToken,
+      };
+
+      const mockStitchService: any = {};
+
+      // Mock other calls to prevent crash (doctor generally tries to continue)
+      mockAuthenticate.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
+      mockAuthenticateADC.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
+      mockListProjects.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
+      mockGetAccessToken.mockResolvedValue(null);
+
       // Act
-      const handler = new DoctorHandler();
+      const handler = new DoctorHandler(mockGcloudService, mockStitchService);
       const result = await handler.execute({ verbose: false });
 
       // Assert

@@ -94,28 +94,25 @@ class HttpPostTransport {
 }
 
 export class ProxyHandler implements ProxyService {
-  private gcloud = new GcloudHandler();
   private currentToken: string | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private pendingToolListIds = new Set<string | number>();
+
+  constructor(
+    private gcloud: GcloudHandler = new GcloudHandler(),
+    private transportFactory: () => StdioServerTransport = () => new StdioServerTransport()
+  ) { }
 
   async start(input: StartProxyInput): Promise<ProxyResult> {
     // Setup logger based on debug flag
     const log: Logger = (message: string) => {
       if (input.debug) {
         try {
-          // Also log to console.error since stdio transport ignores it? 
-          // No, stdio transport reads stdout. console.error goes to stderr which is visible to user.
-          // But user complained they couldn't see it (running in background).
-          // So writing to file is essential if running detached.
-          // We will append to file if debug is true.
           appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${message}\n`);
         } catch (e) {
           // ignore
         }
       }
-      // Always log critical errors or status to stderr if not in file mode?
-      // Or if debug is on, we essentially replicate what we did before.
     };
 
     if (input.debug) {
@@ -154,7 +151,7 @@ export class ProxyHandler implements ProxyService {
       if (input.transport !== 'stdio') {
         throw new Error('Only stdio transport is supported for proxy mode currently');
       }
-      const localTransport = new StdioServerTransport();
+      const localTransport = this.transportFactory();
 
       // Bridge Transports
 

@@ -177,4 +177,9 @@ export interface GcloudService {
    * Get access token for API requests
    */
   getAccessToken(): Promise<string | null>;
+
+  /**
+   * Install beta components
+   */
+  installBetaComponents(): Promise<{ success: boolean; error?: { message: string } }>;
 }
