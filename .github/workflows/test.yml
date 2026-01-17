@@ -24,3 +24,9 @@ jobs:
 
       - name: Run tests
         run: bun test --preload ./tests/setup.ts
+
+      - name: Verify Package Publishability
+        run: bun run verify-pack
+
+      - name: Verify Library Compatibility
+        run: node scripts/verify-lib.mjs

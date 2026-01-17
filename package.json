@@ -1,6 +1,6 @@
 {
   "name": "@_davideast/stitch-mcp",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Stitch MCP CLI helper. Automates Google Cloud authentication. Generates MCP config for your client. Sets up a proxy server.",
   "type": "module",
   "bin": {
@@ -20,10 +20,11 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir=dist --target=bun --format=esm",
+    "build": "bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm && tsc -p tsconfig.build.json",
     "dev": "bun run src/cli.ts",
     "test": "bun test --preload ./tests/setup.ts",
     "prepublishOnly": "bun run build",
+    "verify-pack": "bun scripts/verify-pack.ts",
     "release": "np"
   },
   "keywords": [],

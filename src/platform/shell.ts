@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 
 export interface ShellResult {
   success: boolean;
@@ -11,27 +11,55 @@ export interface ShellResult {
 /**
  * Execute a shell command and return the result
  */
-export async function execCommand(command: string[], options?: { cwd?: string; env?: Record<string, string> }): Promise<ShellResult> {
-  try {
-    const proc = $`${command}`.cwd(options?.cwd || process.cwd()).env(options?.env || {}).quiet().nothrow();
+export async function execCommand(command: string[], options?: { cwd?: string; env?: Record<string, string>; timeout?: number }): Promise<ShellResult> {
+  const cmd = command[0];
+  if (!cmd) throw new Error('Command cannot be empty');
+  const args = command.slice(1);
 
-    const result = await proc;
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
 
-    return {
-      success: result.exitCode === 0,
-      stdout: result.stdout.toString(),
-      stderr: result.stderr.toString(),
-      exitCode: result.exitCode,
+    const spawnOptions: SpawnOptions = {
+      cwd: options?.cwd || process.cwd(),
+      env: { ...process.env, ...(options?.env || {}) },
+      stdio: 'pipe',
+      timeout: options?.timeout
     };
-  } catch (error) {
-    return {
-      success: false,
-      stdout: '',
-      stderr: error instanceof Error ? error.message : String(error),
-      exitCode: 1,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+
+    const child = spawn(cmd, args, spawnOptions) as ChildProcess;
+
+    if (child.stdout) {
+      child.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+    }
+
+    child.on('error', (err: Error) => {
+      resolve({
+        success: false,
+        stdout,
+        stderr,
+        exitCode: 1,
+        error: err.message
+      });
+    });
+
+    child.on('close', (code: number | null) => {
+      resolve({
+        success: (code === 0),
+        stdout,
+        stderr,
+        exitCode: code ?? 1
+      });
+    });
+  });
 }
 
 /**
@@ -43,42 +71,59 @@ export async function execCommandStreaming(
   onStderr?: (data: string) => void,
   options?: { cwd?: string; env?: Record<string, string> }
 ): Promise<ShellResult> {
-  try {
-    const proc = $`${command}`.cwd(options?.cwd || process.cwd()).env(options?.env || {});
+  const cmd = command[0];
+  if (!cmd) throw new Error('Command cannot be empty');
+  const args = command.slice(1);
 
-    const result = await proc;
+  return new Promise((resolve) => {
+    let stdoutFull = '';
+    let stderrFull = '';
 
-    const stdout = result.stdout.toString();
-    const stderr = result.stderr.toString();
-
-    if (onStdout && stdout) {
-      onStdout(stdout);
-    }
-
-    if (onStderr && stderr) {
-      onStderr(stderr);
-    }
-
-    return {
-      success: result.exitCode === 0,
-      stdout,
-      stderr,
-      exitCode: result.exitCode,
+    const spawnOptions: SpawnOptions = {
+      cwd: options?.cwd || process.cwd(),
+      env: { ...process.env, ...(options?.env || {}) },
+      stdio: 'pipe'
     };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (onStderr) {
-      onStderr(errorMsg);
+
+    const child = spawn(cmd, args, spawnOptions) as ChildProcess;
+
+    if (child.stdout) {
+      child.stdout.on('data', (buffer: Buffer) => {
+        const str = buffer.toString();
+        stdoutFull += str;
+        if (onStdout) onStdout(str);
+      });
     }
 
-    return {
-      success: false,
-      stdout: '',
-      stderr: errorMsg,
-      exitCode: 1,
-      error: errorMsg,
-    };
-  }
+    if (child.stderr) {
+      child.stderr.on('data', (buffer: Buffer) => {
+        const str = buffer.toString();
+        stderrFull += str;
+        if (onStderr) onStderr(str);
+      });
+    }
+
+    child.on('error', (err: Error) => {
+      const msg = err.message;
+      if (onStderr) onStderr(msg);
+      resolve({
+        success: false,
+        stdout: stdoutFull,
+        stderr: stderrFull,
+        exitCode: 1,
+        error: msg
+      });
+    });
+
+    child.on('close', (code: number | null) => {
+      resolve({
+        success: (code === 0),
+        stdout: stdoutFull,
+        stderr: stderrFull,
+        exitCode: code ?? 1
+      });
+    });
+  });
 }
 
 /**
