@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { InitHandler } from './commands/init/handler.js';
 import { DoctorHandler } from './commands/doctor/handler.js';
+import { LogoutHandler } from './commands/logout/handler.js';
 import { theme, icons } from './ui/theme.js';
 
 const program = new Command();
@@ -60,6 +61,31 @@ program
 
       // Exit with error code if any checks failed
       if (!result.data.allPassed) {
+        process.exit(1);
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('logout')
+  .description('Log out of Google Cloud and revoke credentials')
+  .option('--force', 'Skip confirmation prompts', false)
+  .option('--clear-config', 'Delete entire gcloud config directory', false)
+  .action(async (options) => {
+    try {
+      const handler = new LogoutHandler();
+      const result = await handler.execute({
+        force: options.force,
+        clearConfig: options.clearConfig,
+      });
+
+      if (!result.success) {
+        console.error(theme.red(`\n${icons.error} Logout failed: ${result.error.message}`));
         process.exit(1);
       }
 
