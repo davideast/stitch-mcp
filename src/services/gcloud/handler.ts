@@ -137,16 +137,27 @@ export class GcloudHandler implements GcloudService {
       // Run gcloud auth login
       const gcloudCmd = this.getGcloudCommand();
       console.log(theme.gray("  Opening browser for authentication..."));
+
+      // CRITICAL: Always extract and print the URL before attempting browser launch
+      // This ensures users can authenticate even if browser opening fails
+      // Use a 5-second timeout to prevent hanging
       const noBrowserResult = await execCommand(
         [gcloudCmd, 'auth', 'login', '--no-launch-browser'],
-        { env: this.getEnvironment() }
+        { env: this.getEnvironment(), timeout: 5000 }
       );
-      if (noBrowserResult.success || noBrowserResult.stderr) {
-        const urlMatch = (noBrowserResult.stderr || noBrowserResult.stdout).match(/https:\/\/accounts\.google\.com[^\s]+/);
-        if (urlMatch) {
-          console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
-        }
+
+      // Extract URL from both stdout and stderr
+      const outputText = noBrowserResult.stderr || noBrowserResult.stdout || '';
+      const urlMatch = outputText.match(/https:\/\/accounts\.google\.com[^\s]+/);
+
+      if (urlMatch) {
+        // ALWAYS print the URL to stdout for user visibility
+        console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
+      } else {
+        // Warn if URL extraction failed, but continue (backward compatibility)
+        console.log(theme.gray("  Note: Could not extract authentication URL from gcloud output\n"));
       }
+
       const result = await execCommand([gcloudCmd, 'auth', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -217,16 +228,27 @@ export class GcloudHandler implements GcloudService {
       // Run gcloud auth application-default login
       const gcloudCmd = this.getGcloudCommand();
       console.log(theme.gray("  Opening browser for authentication..."));
+
+      // CRITICAL: Always extract and print the URL before attempting browser launch
+      // This ensures users can authenticate even if browser opening fails
+      // Use a 5-second timeout to prevent hanging
       const noBrowserResult = await execCommand(
         [gcloudCmd, 'auth', 'application-default', 'login', '--no-launch-browser'],
-        { env: this.getEnvironment() }
+        { env: this.getEnvironment(), timeout: 5000 }
       );
-      if (noBrowserResult.success || noBrowserResult.stderr) {
-        const urlMatch = (noBrowserResult.stderr || noBrowserResult.stdout).match(/https:\/\/accounts\.google\.com[^\s]+/);
-        if (urlMatch) {
-          console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
-        }
+
+      // Extract URL from both stdout and stderr
+      const outputText = noBrowserResult.stderr || noBrowserResult.stdout || '';
+      const urlMatch = outputText.match(/https:\/\/accounts\.google\.com[^\s]+/);
+
+      if (urlMatch) {
+        // ALWAYS print the URL to stdout for user visibility
+        console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
+      } else {
+        // Warn if URL extraction failed, but continue (backward compatibility)
+        console.log(theme.gray("  Note: Could not extract authentication URL from gcloud output\n"));
       }
+
       const result = await execCommand([gcloudCmd, 'auth', 'application-default', 'login', '--quiet'], {
         env: this.getEnvironment(),
       });
