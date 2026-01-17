@@ -252,17 +252,31 @@ export class InitHandler implements InitCommand {
         }
       }
 
-      // Step 8: Install Beta Components
-      spinner.start('Installing gcloud beta components...');
+      // Step 8: Install Beta Components (Required for Stitch API)
+      spinner.start('Installing gcloud beta components (may take up to 30s)...');
 
       const betaResult = await this.gcloudService.installBetaComponents();
 
       if (betaResult.success) {
         spinner.succeed('Beta components installed');
       } else {
-        spinner.fail('Beta component installation failed');
-        console.log(theme.yellow(`  ${betaResult.error?.message}`));
-        console.log(theme.gray(`  Continuing anyway...\n`));
+        spinner.fail('Beta component installation failed or timed out');
+        console.log(theme.yellow('\n  Beta components are required for Stitch API.'));
+        console.log(theme.gray('  The installation may have hung waiting for your password.'));
+        console.log(theme.gray('\n  Please run this command manually:\n'));
+        console.log(theme.cyan('    CLOUDSDK_CONFIG=~/.stitch-mcp/gcloud-config \\'));
+        console.log(theme.cyan('    ~/.stitch-mcp/google-cloud-sdk/bin/gcloud components install beta\n'));
+        console.log(theme.gray('  Then re-run:'));
+        console.log(theme.cyan('    npx @_davideast/stitch-mcp init\n'));
+        return {
+          success: false,
+          error: {
+            code: 'BETA_INSTALL_FAILED',
+            message: 'Beta components installation failed or timed out',
+            suggestion: 'Install beta components manually using the command above, then re-run init',
+            recoverable: true,
+          },
+        };
       }
 
       console.log(''); // Add spacing to prevent flickering

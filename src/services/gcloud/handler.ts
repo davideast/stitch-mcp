@@ -447,7 +447,10 @@ export class GcloudHandler implements GcloudService {
       const gcloudCmd = this.getGcloudCommand();
       const result = await execCommand(
         [gcloudCmd, 'components', 'install', 'beta', '--quiet'],
-        { env: this.getEnvironment() }
+        {
+          env: this.getEnvironment(),
+          timeout: 30000  // 30 second timeout to prevent indefinite hanging
+        }
       );
 
       if (!result.success) {

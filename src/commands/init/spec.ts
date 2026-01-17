@@ -23,6 +23,7 @@ export const InitErrorCode = z.enum([
   'API_CONFIG_FAILED',
   'CONFIG_GENERATION_FAILED',
   'USER_CANCELLED',
+  'BETA_INSTALL_FAILED',
   'UNKNOWN_ERROR',
 ]);
 
