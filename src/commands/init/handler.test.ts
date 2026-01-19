@@ -1,5 +1,4 @@
-
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, beforeAll } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -24,7 +23,7 @@ mock.module('../../ui/checklist.js', () => ({
   verifyAllSteps: async () => new Map(),
 }));
 
-import { InitHandler, type Wizard } from './handler.js';
+import type { InitHandler as InitHandlerType, Wizard } from './handler.js';
 import { type InitInput } from './spec.js';
 
 // Mock dependencies
@@ -63,9 +62,16 @@ const mockWizard: Wizard = {
 };
 
 describe('InitHandler', () => {
-  let initHandler: InitHandler;
+  let InitHandlerClass: new (...args: any[]) => InitHandlerType;
+  let initHandler: InitHandlerType;
   let tempDir: string;
   let pkgPath: string;
+
+  beforeAll(async () => {
+    // Dynamic import to ensure mocks are applied
+    const mod = await import('./handler.js');
+    InitHandlerClass = mod.InitHandler as any;
+  });
 
   beforeEach(() => {
     // Setup temp directory
@@ -80,11 +86,11 @@ describe('InitHandler', () => {
     mockWizard.promptTransportType = mock(() => Promise.resolve('stdio'));
     mockWizard.promptConfirm = mock(() => Promise.resolve(true));
 
-    initHandler = new InitHandler(
-      mockGcloudService as any,
-      mockMcpConfigService as any,
-      mockProjectService as any,
-      mockStitchService as any,
+    initHandler = new InitHandlerClass(
+      mockGcloudService,
+      mockMcpConfigService,
+      mockProjectService,
+      mockStitchService,
       mockWizard,
       tempDir // Pass tempDir as cwd
     );

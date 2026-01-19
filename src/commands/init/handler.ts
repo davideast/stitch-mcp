@@ -24,7 +24,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { commandExists, execCommand } from '../../platform/shell.js';
-import chalk from 'chalk';
 
 // Assuming these types are defined elsewhere or are the handler classes themselves
 // type GcloudService = GcloudHandler;
