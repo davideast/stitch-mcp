@@ -13,6 +13,7 @@ export const GenerateConfigInputSchema = z.object({
   projectId: z.string().min(1),
   accessToken: z.string().min(1),
   transport: z.enum(['http', 'stdio']).default('http'),
+  env: z.record(z.string()).optional(),
 });
 export type GenerateConfigInput = z.infer<typeof GenerateConfigInputSchema>;
 

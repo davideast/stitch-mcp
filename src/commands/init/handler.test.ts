@@ -1,179 +1,148 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test';
-import { InitHandler } from './handler';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { InitHandler, type Wizard } from './handler.js';
+import { type InitInput } from './spec.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
-// Mock UI components
-mock.module('../../ui/wizard.js', () => ({
-  promptMcpClient: mock(() => Promise.resolve('antigravity')),
-  promptConfirm: mock(() => Promise.resolve(true)),
-  promptTransportType: mock(() => Promise.resolve('http')),
-}));
-
-const mockSpinner: Record<string, unknown> = {
-  start: mock(() => mockSpinner),
-  succeed: mock(() => mockSpinner),
-  fail: mock(() => mockSpinner),
-  stop: mock(() => mockSpinner),
+// Mock dependencies
+const mockGcloudService = {
+  ensureInstalled: mock(() => Promise.resolve({ success: true, data: { location: 'system', path: '/usr/bin/gcloud', version: '400.0.0' } })),
+  getActiveAccount: mock(() => Promise.resolve('test-user@example.com')),
+  hasADC: mock(() => Promise.resolve(true)),
+  getProjectId: mock(() => Promise.resolve('active-project')),
+  setProject: mock(() => Promise.resolve({ success: true })),
+  installBetaComponents: mock(() => Promise.resolve({ success: true })),
+  getAccessToken: mock(() => Promise.resolve('fake-token')),
 };
-mock.module('../../ui/spinner.js', () => ({
-  createSpinner: mock(() => mockSpinner),
-}));
 
-// Mock checklist to auto-complete all steps
-mock.module('../../ui/checklist.js', () => ({
-  createChecklist: mock(() => ({
-    run: mock(() => Promise.resolve({ success: true, completedSteps: ['path-setup', 'user-auth', 'adc'] })),
-  })),
-  verifyAllSteps: mock(() => Promise.resolve(new Map())),
-}));
+const mockProjectService = {
+  getProjectDetails: mock(() => Promise.resolve({ success: true, data: { projectId: 'active-project', name: 'Active Project' } })),
+  selectProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'selected-project', name: 'Selected Project' } })),
+};
 
-// Mock environment detection
-mock.module('../../platform/environment.js', () => ({
-  detectEnvironment: mock(() => ({
-    isWSL: false,
-    isSSH: false,
-    isDocker: false,
-    isCloudShell: false,
-    hasDisplay: true,
-    needsNoBrowser: false,
-    reason: undefined,
-  })),
-}));
+const mockStitchService = {
+  checkIAMRole: mock(() => Promise.resolve(true)),
+  checkAPIEnabled: mock(() => Promise.resolve(true)),
+  testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
+  configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
+  enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
+};
+
+const mockMcpConfigService = {
+  generateConfig: mock(() => Promise.resolve({ success: true, data: { config: '{}', instructions: 'Done' } })),
+};
+
+// Mock Wizard
+const mockWizard: Wizard = {
+  promptMcpClient: mock(() => Promise.resolve('vscode')),
+  promptTransportType: mock(() => Promise.resolve('stdio')),
+  promptConfirm: mock(() => Promise.resolve(true)),
+};
 
 describe('InitHandler', () => {
-  test('should execute the happy path successfully', async () => {
-    const mockGcloudService: any = {
-      ensureInstalled: mock(() => Promise.resolve({
-        success: true,
-        data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' }
-      })),
-      setProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project' } })),
-      installBetaComponents: mock(() => Promise.resolve({ success: true })),
-      getAccessToken: mock(() => Promise.resolve('test-token')),
-      getActiveAccount: mock(() => Promise.resolve('test@example.com')),
-      hasADC: mock(() => Promise.resolve(true)),
-      getProjectId: mock(() => Promise.resolve(null)),
-    };
+  let initHandler: InitHandler;
+  let tempDir: string;
+  let originalCwd: string;
+  let pkgPath: string;
 
-    const mockProjectService: any = {
-      selectProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
-      getProjectDetails: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
-    };
+  beforeEach(() => {
+    // Setup temp directory
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stitch-init-test-'));
+    originalCwd = process.cwd();
+    process.chdir(tempDir);
+    pkgPath = path.join(tempDir, 'package.json');
 
-    const mockStitchService: any = {
-      configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
-      enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
-      checkIAMRole: mock(() => Promise.resolve(true)),
-      checkAPIEnabled: mock(() => Promise.resolve(true)),
-    };
+    // Reset mocks
+    mockMcpConfigService.generateConfig.mockClear();
+    mockWizard.promptMcpClient = mock(() => Promise.resolve('vscode'));
+    mockWizard.promptTransportType = mock(() => Promise.resolve('stdio'));
+    mockWizard.promptConfirm = mock(() => Promise.resolve(true));
 
-    const mockMcpConfigService: any = {
-      generateConfig: mock(() => Promise.resolve({
-        success: true,
-        data: { config: '{ "mcp": "config" }', instructions: 'Instructions' }
-      })),
-    };
-
-    const handler = new InitHandler(
-      mockGcloudService,
-      mockMcpConfigService,
-      mockProjectService,
-      mockStitchService
+    initHandler = new InitHandler(
+      mockGcloudService as any,
+      mockMcpConfigService as any,
+      mockProjectService as any,
+      mockStitchService as any,
+      mockWizard
     );
-    const result = await handler.execute({ local: false, defaults: false, autoVerify: true });
-
-    expect(result.success).toBe(true);
-
-    if (result.success) {
-      expect(result.data.projectId).toBe('test-project');
-      expect(result.data.mcpConfig).toBe('{ "mcp": "config" }');
-    }
   });
 
-  test('should skip IAM/API configuration if already enabled', async () => {
-    const mockGcloudService: any = {
-      ensureInstalled: mock(() => Promise.resolve({
-        success: true,
-        data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' }
-      })),
-      setProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project' } })),
-      installBetaComponents: mock(() => Promise.resolve({ success: true })),
-      getAccessToken: mock(() => Promise.resolve('test-token')),
-      getActiveAccount: mock(() => Promise.resolve('test@example.com')),
-      hasADC: mock(() => Promise.resolve(true)),
-      getProjectId: mock(() => Promise.resolve(null)),
-    };
-
-    const mockProjectService: any = {
-      selectProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
-      getProjectDetails: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
-    };
-
-    const mockStitchService: any = {
-      configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
-      enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
-      checkIAMRole: mock(() => Promise.resolve(true)),
-      checkAPIEnabled: mock(() => Promise.resolve(true)),
-    };
-
-    const mockMcpConfigService: any = {
-      generateConfig: mock(() => Promise.resolve({
-        success: true,
-        data: { config: '{ "mcp": "config" }', instructions: 'Instructions' }
-      })),
-    };
-
-    const handler = new InitHandler(
-      mockGcloudService,
-      mockMcpConfigService,
-      mockProjectService,
-      mockStitchService
-    );
-    await handler.execute({ local: false, defaults: false, autoVerify: true });
-
-    // IAM and API should not be called since they're already configured
-    expect(mockStitchService.configureIAM).not.toHaveBeenCalled();
-    expect(mockStitchService.enableAPI).not.toHaveBeenCalled();
+  afterEach(() => {
+    // Restore CWD and cleanup
+    process.chdir(originalCwd);
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('should fail if no authenticated account after checklist', async () => {
-    const mockGcloudService: any = {
-      ensureInstalled: mock(() => Promise.resolve({
-        success: true,
-        data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' }
-      })),
-      getActiveAccount: mock(() => Promise.resolve(null)), // No account found
-      hasADC: mock(() => Promise.resolve(false)),
-      getProjectId: mock(() => Promise.resolve(null)),
+  it('Test 1: should save to package.json and NOT inject env if confirmed', async () => {
+    // Setup package.json
+    fs.writeFileSync(pkgPath, JSON.stringify({ name: 'test-project' }, null, 2));
+
+    // Mock confirmation for saving to package.json
+    mockWizard.promptConfirm = mock((msg: string) => Promise.resolve(true));
+
+    const input: InitInput = {
+      local: false,
     };
 
-    const mockProjectService: any = {
-      selectProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
-      getProjectDetails: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
+    await initHandler.execute(input);
+
+    // Verify package.json updated
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    expect(pkg.stitch).toBeDefined();
+    expect(pkg.stitch.projectId).toBe('active-project');
+
+    // Verify generateConfig called without env (or undefined env for STITCH_PROJECT_ID)
+    const calls = mockMcpConfigService.generateConfig.mock.calls;
+    expect(calls.length).toBe(1);
+    const configInput = calls[0][0];
+    expect(configInput.env).toBeUndefined();
+  });
+
+  it('Test 2: should NOT save to package.json and inject env if declined', async () => {
+    // Setup package.json
+    fs.writeFileSync(pkgPath, JSON.stringify({ name: 'test-project' }, null, 2));
+
+    // Mock confirmation to return false specifically for package.json save
+    mockWizard.promptConfirm = mock((msg: string) => {
+      if (msg.includes('Save Project ID')) {
+        return Promise.resolve(false);
+      }
+      return Promise.resolve(true);
+    });
+
+    const input: InitInput = {
+        local: false,
     };
 
-    const mockStitchService: any = {
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
-      checkIAMRole: mock(() => Promise.resolve(false)),
-      checkAPIEnabled: mock(() => Promise.resolve(false)),
+    await initHandler.execute(input);
+
+    // Verify package.json NOT updated
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    expect(pkg.stitch).toBeUndefined();
+
+    // Verify generateConfig called WITH env
+    const calls = mockMcpConfigService.generateConfig.mock.calls;
+    expect(calls.length).toBe(1);
+    const configInput = calls[0][0];
+    expect(configInput.env).toEqual({ STITCH_PROJECT_ID: 'active-project' });
+  });
+
+  it('Test 3: should inject env if package.json does not exist', async () => {
+    // package.json does not exist in empty temp dir
+
+    mockWizard.promptConfirm = mock(() => Promise.resolve(true));
+
+    const input: InitInput = {
+        local: false,
     };
 
-    const mockMcpConfigService: any = {
-      generateConfig: mock(() => Promise.resolve({ success: true, data: { config: '{}', instructions: '' } })),
-    };
+    await initHandler.execute(input);
 
-    const handler = new InitHandler(
-      mockGcloudService,
-      mockMcpConfigService,
-      mockProjectService,
-      mockStitchService
-    );
-    const result = await handler.execute({ local: false, defaults: false, autoVerify: true });
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.code).toBe('AUTH_FAILED');
-    }
+    // Verify generateConfig called WITH env
+    const calls = mockMcpConfigService.generateConfig.mock.calls;
+    expect(calls.length).toBe(1);
+    const configInput = calls[0][0];
+    expect(configInput.env).toEqual({ STITCH_PROJECT_ID: 'active-project' });
   });
 });

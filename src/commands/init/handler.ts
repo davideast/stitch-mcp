@@ -11,6 +11,12 @@ import { createSpinner } from '../../ui/spinner.js';
 import { promptMcpClient, promptConfirm, promptTransportType, type McpClient } from '../../ui/wizard.js';
 import { theme, icons } from '../../ui/theme.js';
 import { createChecklist, verifyAllSteps, type ChecklistStep } from '../../ui/checklist.js';
+
+export interface Wizard {
+  promptMcpClient: typeof promptMcpClient;
+  promptConfirm: typeof promptConfirm;
+  promptTransportType: typeof promptTransportType;
+}
 import { getGcloudSdkPath } from '../../platform/detector.js';
 import { detectEnvironment } from '../../platform/environment.js';
 
@@ -18,6 +24,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { commandExists, execCommand } from '../../platform/shell.js';
+import chalk from 'chalk';
 
 // Assuming these types are defined elsewhere or are the handler classes themselves
 // type GcloudService = GcloudHandler;
@@ -30,7 +37,12 @@ export class InitHandler implements InitCommand {
     private readonly gcloudService: GcloudService = new GcloudHandler(),
     private readonly mcpConfigService: McpConfigService = new McpConfigHandler(),
     private readonly projectService: ProjectService = new ProjectHandler(new GcloudHandler()), // ProjectHandler depends on GcloudHandler
-    private readonly stitchService: StitchService = new StitchHandler()
+    private readonly stitchService: StitchService = new StitchHandler(),
+    private readonly wizard: Wizard = {
+      promptMcpClient,
+      promptConfirm,
+      promptTransportType
+    }
   ) { }
 
   async execute(input: InitInput): Promise<InitResult> {
@@ -47,7 +59,7 @@ export class InitHandler implements InitCommand {
         mcpClient = this.resolveMcpClient(input.client);
         console.log(theme.green(`${icons.success} Selected (via flag): ${mcpClient}\n`));
       } else {
-        mcpClient = await promptMcpClient();
+        mcpClient = await this.wizard.promptMcpClient();
         console.log(theme.green(`${icons.success} Selected: ${mcpClient}\n`));
       }
 
@@ -144,7 +156,7 @@ export class InitHandler implements InitCommand {
 
       let stepsToRun = authSteps;
       const checkState = input.autoVerify ||
-        await promptConfirm('Check your current setup status?', true);
+        await this.wizard.promptConfirm('Check your current setup status?', true);
 
       if (checkState) {
         const spinner2 = createSpinner();
@@ -215,7 +227,7 @@ export class InitHandler implements InitCommand {
         transport = this.resolveTransport(input.transport);
         console.log(theme.green(`${icons.success} Selected (via flag): ${transport === 'http' ? 'Direct' : 'Proxy'}\n`));
       } else {
-        transport = await promptTransportType();
+        transport = await this.wizard.promptTransportType();
         console.log(theme.green(`${icons.success} Selected: ${transport === 'http' ? 'Direct' : 'Proxy'}\n`));
       }
 
@@ -228,7 +240,7 @@ export class InitHandler implements InitCommand {
       if (activeProjectId) {
         const detailsResult = await this.projectService.getProjectDetails({ projectId: activeProjectId });
         if (detailsResult.success) {
-          const useActive = input.defaults ? true : await promptConfirm(
+          const useActive = input.defaults ? true : await this.wizard.promptConfirm(
             `Use active project: ${detailsResult.data.name} (${detailsResult.data.projectId})?`,
             true
           );
@@ -293,7 +305,7 @@ export class InitHandler implements InitCommand {
       if (hasIAMRole) {
         console.log(theme.green(`${icons.success} Required IAM role is already configured.\n`));
       } else {
-        const shouldConfigureIam = await promptConfirm(
+        const shouldConfigureIam = await this.wizard.promptConfirm(
           'Add the required IAM role (serviceusage.serviceUsageConsumer) to your account?',
           true
         );
@@ -393,11 +405,16 @@ export class InitHandler implements InitCommand {
       console.log(`\n${theme.gray('Step 8: Generating MCP Configuration')}\n`);
       spinner.start('Generating MCP configuration...');
 
+      // Save to package.json if user consents
+      const savedToPackage = await this.detectAndSaveContext(projectResult.data.projectId);
+
       const configResult = await this.mcpConfigService.generateConfig({
         client: mcpClient,
         projectId: projectResult.data.projectId,
         accessToken,
         transport,
+        // Only inject env var if NOT saved to package.json
+        env: savedToPackage ? undefined : { STITCH_PROJECT_ID: projectResult.data.projectId }
       });
 
       if (!configResult.success) {
@@ -500,7 +517,7 @@ export class InitHandler implements InitCommand {
     } else {
       console.log(theme.gray('  > gemini extensions install https://github.com/gemini-cli-extensions/stitch'));
 
-      const shouldInstall = await promptConfirm(
+      const shouldInstall = await this.wizard.promptConfirm(
         'Run this command?',
         true
       );
@@ -570,5 +587,30 @@ export class InitHandler implements InitCommand {
       spinner.fail('Failed to update extension configuration');
       console.log(theme.red(`  Error: ${e instanceof Error ? e.message : String(e)}`));
     }
+  }
+
+  async detectAndSaveContext(projectId: string): Promise<boolean> {
+    const pkgPath = path.join(process.cwd(), 'package.json');
+    if (!fs.existsSync(pkgPath)) {
+      return false;
+    }
+
+    const shouldSave = await this.wizard.promptConfirm(
+      `Found package.json. Save Project ID "${projectId}" to it?`
+    );
+
+    if (shouldSave) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        pkg.stitch = { ...pkg.stitch, projectId };
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+        console.log(theme.green(`✓ Saved Project ID to package.json`));
+        return true;
+      } catch (e) {
+        console.warn(theme.yellow(`Could not save to package.json: ${e}`));
+        return false;
+      }
+    }
+    return false;
   }
 }

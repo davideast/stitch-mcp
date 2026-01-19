@@ -112,7 +112,7 @@ export class McpConfigHandler implements McpConfigService {
           command: 'npx',
           args: ['@_davideast/stitch-mcp', 'proxy'],
           env: {
-            STITCH_PROJECT_ID: input.projectId,
+            ...input.env,
           },
         },
       },
