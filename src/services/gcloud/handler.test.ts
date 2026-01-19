@@ -58,6 +58,76 @@ describe('GcloudHandler', () => {
     });
   });
 
+  describe('Environment Configuration', () => {
+    let originalEnv: NodeJS.ProcessEnv;
+
+    beforeEach(() => {
+      originalEnv = { ...process.env };
+      mockExecCommand.mockClear();
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    test('should use isolated environment by default', async () => {
+      // Mock successful ensureInstalled to set defaults
+      (fs.existsSync as any).mockReturnValue(true); // Pretend local binary exists
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'Google Cloud SDK 400.0.0', stderr: '', exitCode: 0 });
+
+      await handler.ensureInstalled({ minVersion: '0.0.0' } as any);
+
+      // Call a method that uses getEnvironment, e.g., authenticate
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'user@example.com', stderr: '', exitCode: 0 });
+      await handler.authenticate({ skipIfActive: false });
+
+      const calls = mockExecCommand.mock.calls;
+      const authCall = calls.find((call: any[]) => call[0].includes('auth') && call[0].includes('login'));
+      const env = authCall[1].env;
+
+      expect(env.CLOUDSDK_CONFIG).toBeDefined();
+      expect(env.CLOUDSDK_CONFIG).toContain('.stitch-mcp');
+    });
+
+    test('should use system environment when useSystemGcloud is true via ensureInstalled', async () => {
+      (fs.existsSync as any).mockReturnValue(true);
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'Google Cloud SDK 400.0.0', stderr: '', exitCode: 0 });
+
+      // Set useSystemGcloud: true
+      await handler.ensureInstalled({ minVersion: '0.0.0', useSystemGcloud: true } as any);
+
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'user@example.com', stderr: '', exitCode: 0 });
+      await handler.authenticate({ skipIfActive: false });
+
+      const calls = mockExecCommand.mock.calls;
+      const authCall = calls.find((call: any[]) => call[0].includes('auth') && call[0].includes('login'));
+      const env = authCall[1].env;
+
+      // Should NOT have CLOUDSDK_CONFIG (or at least not our isolated one)
+      // Since we mocked process.env, CLOUDSDK_CONFIG shouldn't be there unless we put it.
+      expect(env.CLOUDSDK_CONFIG).toBeUndefined();
+    });
+
+    test('should use system environment when STITCH_USE_SYSTEM_GCLOUD is set', async () => {
+      process.env.STITCH_USE_SYSTEM_GCLOUD = 'true';
+
+      (fs.existsSync as any).mockReturnValue(true);
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'Google Cloud SDK 400.0.0', stderr: '', exitCode: 0 });
+
+      // Even with useSystemGcloud: false (default)
+      await handler.ensureInstalled({ minVersion: '0.0.0' } as any);
+
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'user@example.com', stderr: '', exitCode: 0 });
+      await handler.authenticate({ skipIfActive: false });
+
+      const calls = mockExecCommand.mock.calls;
+      const authCall = calls.find((call: any[]) => call[0].includes('auth') && call[0].includes('login'));
+      const env = authCall[1].env;
+
+      expect(env.CLOUDSDK_CONFIG).toBeUndefined();
+    });
+  });
+
   describe('getProjectId', () => {
     test('should respect STITCH_PROJECT_ID env var', async () => {
       process.env.STITCH_PROJECT_ID = 'env-project';

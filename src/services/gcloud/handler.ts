@@ -21,11 +21,14 @@ import { theme } from '../../ui/theme.js';
 export class GcloudHandler implements GcloudService {
   private platform = detectPlatform();
   private gcloudPath: string | null = null;
+  private useSystemGcloud = false;
 
   /**
    * Ensure gcloud is installed and available
    */
   async ensureInstalled(input: EnsureGcloudInput): Promise<GcloudResult> {
+    this.useSystemGcloud = input.useSystemGcloud || false;
+
     try {
       // Fast path: Check if local installation already exists (just a file check)
       const localSdkPath = getGcloudSdkPath();
@@ -570,18 +573,22 @@ export class GcloudHandler implements GcloudService {
 
   private setupEnvironment(): void {
     const sdkPath = getGcloudSdkPath();
-    const configPath = getGcloudConfigPath();
     const binPath = joinPath(sdkPath, 'bin');
 
     process.env.PATH = `${binPath}:${process.env.PATH}`;
+
+    if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
+      return;
+    }
+
+    const configPath = getGcloudConfigPath();
     process.env.CLOUDSDK_CONFIG = configPath;
     process.env.CLOUDSDK_CORE_DISABLE_PROMPTS = '1';
     process.env.CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK = '1';
     process.env.CLOUDSDK_CORE_DISABLE_USAGE_REPORTING = 'true';
   }
 
-  private getEnvironment(): Record<string, string> {
-    const configPath = getGcloudConfigPath();
+  private getEnvironment(useSystem?: boolean): Record<string, string> {
     const env: Record<string, string> = {};
 
     // Copy existing env vars, filtering out undefined
@@ -591,6 +598,14 @@ export class GcloudHandler implements GcloudService {
       }
     }
 
+    // CHECK: If system mode is requested via flag or env var
+    if (useSystem || this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
+      // Return clean env (let gcloud find its own global config)
+      // We might still want to forward standard vars, but we DO NOT set CLOUDSDK_CONFIG
+      return env;
+    }
+
+    const configPath = getGcloudConfigPath();
     // Override with our config
     env.CLOUDSDK_CONFIG = configPath;
     env.CLOUDSDK_CORE_DISABLE_PROMPTS = '1';

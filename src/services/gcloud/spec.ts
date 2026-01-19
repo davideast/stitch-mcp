@@ -7,6 +7,7 @@ import { z } from 'zod';
 export const EnsureGcloudInputSchema = z.object({
   minVersion: z.string().default('400.0.0'),
   forceLocal: z.boolean().default(false),
+  useSystemGcloud: z.boolean().default(false).optional(),
 });
 export type EnsureGcloudInput = z.infer<typeof EnsureGcloudInputSchema>;
 

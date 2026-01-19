@@ -46,6 +46,7 @@
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
     "@types/bun": "latest",
+    "@types/clipboardy": "^2.0.4",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.9",
     "np": "^10.2.0",
