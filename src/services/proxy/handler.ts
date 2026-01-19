@@ -185,10 +185,6 @@ export class ProxyHandler implements ProxyService {
 
       log('Access token retrieved and bridge established. Ready.');
 
-      if (!input.debug) {
-        console.log('[Proxy] Access token retrieved and bridge established. Ready.');
-      }
-
       // Keep alive
       await new Promise((resolve) => {
         process.on('SIGINT', resolve);
