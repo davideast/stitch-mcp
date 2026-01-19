@@ -1,5 +1,5 @@
-import { GcloudService } from '../gcloud/spec';
-import { ResolveContextResult, ConfigService } from './spec';
+import type { GcloudService } from '../gcloud/spec';
+import type { ResolveContextResult, ConfigService } from './spec';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
