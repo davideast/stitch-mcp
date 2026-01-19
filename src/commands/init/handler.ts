@@ -42,7 +42,8 @@ export class InitHandler implements InitCommand {
       promptMcpClient,
       promptConfirm,
       promptTransportType
-    }
+    },
+    private readonly cwd: string = process.cwd()
   ) { }
 
   async execute(input: InitInput): Promise<InitResult> {
@@ -590,7 +591,7 @@ export class InitHandler implements InitCommand {
   }
 
   async detectAndSaveContext(projectId: string): Promise<boolean> {
-    const pkgPath = path.join(process.cwd(), 'package.json');
+    const pkgPath = path.join(this.cwd, 'package.json');
     if (!fs.existsSync(pkgPath)) {
       return false;
     }

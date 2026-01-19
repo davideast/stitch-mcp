@@ -130,6 +130,7 @@ describe('McpConfigHandler', () => {
       projectId: 'test-project',
       accessToken: 'test-token',
       transport: 'stdio' as const,
+        env: { STITCH_PROJECT_ID: 'test-project' },
     };
 
     const result = await handler.generateConfig(input);
@@ -155,6 +156,7 @@ describe('McpConfigHandler', () => {
         projectId: 'test-project',
         accessToken: 'test-token',
         transport: 'stdio' as const,
+        env: { STITCH_PROJECT_ID: 'test-project' },
       };
 
       const result = await handler.generateConfig(input);

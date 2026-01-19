@@ -1,9 +1,31 @@
+
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
-import { InitHandler, type Wizard } from './handler.js';
-import { type InitInput } from './spec.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+
+// Mock UI modules BEFORE importing handler
+mock.module('../../ui/spinner.js', () => ({
+  createSpinner: () => ({
+    start: () => {},
+    stop: () => {},
+    succeed: () => {},
+    fail: () => {},
+    warn: () => {},
+    info: () => {},
+    text: '',
+  }),
+}));
+
+mock.module('../../ui/checklist.js', () => ({
+  createChecklist: () => ({
+    run: async () => ({ success: true }),
+  }),
+  verifyAllSteps: async () => new Map(),
+}));
+
+import { InitHandler, type Wizard } from './handler.js';
+import { type InitInput } from './spec.js';
 
 // Mock dependencies
 const mockGcloudService = {
@@ -43,18 +65,17 @@ const mockWizard: Wizard = {
 describe('InitHandler', () => {
   let initHandler: InitHandler;
   let tempDir: string;
-  let originalCwd: string;
   let pkgPath: string;
 
   beforeEach(() => {
     // Setup temp directory
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stitch-init-test-'));
-    originalCwd = process.cwd();
-    process.chdir(tempDir);
     pkgPath = path.join(tempDir, 'package.json');
 
     // Reset mocks
     mockMcpConfigService.generateConfig.mockClear();
+
+    // Reset mockWizard functions
     mockWizard.promptMcpClient = mock(() => Promise.resolve('vscode'));
     mockWizard.promptTransportType = mock(() => Promise.resolve('stdio'));
     mockWizard.promptConfirm = mock(() => Promise.resolve(true));
@@ -64,14 +85,18 @@ describe('InitHandler', () => {
       mockMcpConfigService as any,
       mockProjectService as any,
       mockStitchService as any,
-      mockWizard
+      mockWizard,
+      tempDir // Pass tempDir as cwd
     );
   });
 
   afterEach(() => {
-    // Restore CWD and cleanup
-    process.chdir(originalCwd);
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    // Cleanup
+    try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (e) {
+        // ignore
+    }
   });
 
   it('Test 1: should save to package.json and NOT inject env if confirmed', async () => {
