@@ -138,6 +138,7 @@ describe('GcloudHandler', () => {
       const calls = mockExecCommand.mock.calls;
       // Find the auth call (it should be the 4th call, or verify by arguments)
       const authCall = calls.find((call: any[]) => call[0].includes('auth') && call[0].includes('login'));
+      if (!authCall) throw new Error('Auth call not found');
       const env = authCall[1].env;
 
       // Should NOT have CLOUDSDK_CONFIG (or at least not our isolated one)
