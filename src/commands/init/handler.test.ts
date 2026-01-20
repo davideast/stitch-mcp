@@ -6,12 +6,12 @@ import os from 'node:os';
 // Mock UI modules BEFORE importing handler
 mock.module('../../ui/spinner.js', () => ({
   createSpinner: () => ({
-    start: () => {},
-    stop: () => {},
-    succeed: () => {},
-    fail: () => {},
-    warn: () => {},
-    info: () => {},
+    start: () => { },
+    stop: () => { },
+    succeed: () => { },
+    fail: () => { },
+    warn: () => { },
+    info: () => { },
     text: '',
   }),
 }));
@@ -25,6 +25,7 @@ mock.module('../../ui/checklist.js', () => ({
 
 import type { InitHandler as InitHandlerType, Wizard } from './handler.js';
 import { type InitInput } from './spec.js';
+import type { GenerateConfigInput } from '../../services/mcp-config/spec.js';
 
 // Mock dependencies
 const mockGcloudService = {
@@ -56,8 +57,8 @@ const mockMcpConfigService = {
 
 // Mock Wizard
 const mockWizard: Wizard = {
-  promptMcpClient: mock(() => Promise.resolve('vscode')),
-  promptTransportType: mock(() => Promise.resolve('stdio')),
+  promptMcpClient: mock(() => Promise.resolve('vscode' as any)),
+  promptTransportType: mock(() => Promise.resolve('stdio' as any)),
   promptConfirm: mock(() => Promise.resolve(true)),
 };
 
@@ -82,8 +83,8 @@ describe('InitHandler', () => {
     mockMcpConfigService.generateConfig.mockClear();
 
     // Reset mockWizard functions
-    mockWizard.promptMcpClient = mock(() => Promise.resolve('vscode'));
-    mockWizard.promptTransportType = mock(() => Promise.resolve('stdio'));
+    mockWizard.promptMcpClient = mock(() => Promise.resolve('vscode' as any));
+    mockWizard.promptTransportType = mock(() => Promise.resolve('stdio' as any));
     mockWizard.promptConfirm = mock(() => Promise.resolve(true));
 
     initHandler = new InitHandlerClass(
@@ -92,16 +93,17 @@ describe('InitHandler', () => {
       mockProjectService,
       mockStitchService,
       mockWizard,
-      tempDir // Pass tempDir as cwd
+      tempDir, // Pass tempDir as cwd
+      fs // Pass real fs dependency
     );
   });
 
   afterEach(() => {
     // Cleanup
     try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (e) {
-        // ignore
+      // ignore
     }
   });
 
@@ -114,6 +116,8 @@ describe('InitHandler', () => {
 
     const input: InitInput = {
       local: false,
+      defaults: false,
+      autoVerify: true,
     };
 
     await initHandler.execute(input);
@@ -126,8 +130,9 @@ describe('InitHandler', () => {
     // Verify generateConfig called without env (or undefined env for STITCH_PROJECT_ID)
     const calls = mockMcpConfigService.generateConfig.mock.calls;
     expect(calls.length).toBe(1);
-    const configInput = calls[0][0];
-    expect(configInput.env).toBeUndefined();
+    const configInput = (calls[0] as any)[0] as GenerateConfigInput;
+    expect(configInput).toBeDefined();
+    expect(configInput?.env).toBeUndefined();
   });
 
   it('Test 2: should NOT save to package.json and inject env if declined', async () => {
@@ -143,7 +148,9 @@ describe('InitHandler', () => {
     });
 
     const input: InitInput = {
-        local: false,
+      local: false,
+      defaults: false,
+      autoVerify: true,
     };
 
     await initHandler.execute(input);
@@ -155,7 +162,7 @@ describe('InitHandler', () => {
     // Verify generateConfig called WITH env
     const calls = mockMcpConfigService.generateConfig.mock.calls;
     expect(calls.length).toBe(1);
-    const configInput = calls[0][0];
+    const configInput = (calls[0] as any)[0] as GenerateConfigInput;
     expect(configInput.env).toEqual({ STITCH_PROJECT_ID: 'active-project' });
   });
 
@@ -165,7 +172,9 @@ describe('InitHandler', () => {
     mockWizard.promptConfirm = mock(() => Promise.resolve(true));
 
     const input: InitInput = {
-        local: false,
+      local: false,
+      defaults: false,
+      autoVerify: true,
     };
 
     await initHandler.execute(input);
@@ -173,7 +182,7 @@ describe('InitHandler', () => {
     // Verify generateConfig called WITH env
     const calls = mockMcpConfigService.generateConfig.mock.calls;
     expect(calls.length).toBe(1);
-    const configInput = calls[0][0];
+    const configInput = (calls[0] as any)[0] as GenerateConfigInput;
     expect(configInput.env).toEqual({ STITCH_PROJECT_ID: 'active-project' });
   });
 });

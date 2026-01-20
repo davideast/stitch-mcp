@@ -42,7 +42,8 @@ export class InitHandler implements InitCommand {
       promptConfirm,
       promptTransportType
     },
-    private readonly cwd: string = process.cwd()
+    private readonly cwd: string = process.cwd(),
+    private readonly fileSystem: typeof fs = fs
   ) { }
 
   async execute(input: InitInput): Promise<InitResult> {
@@ -510,7 +511,7 @@ export class InitHandler implements InitCommand {
   private async setupGeminiExtension(projectId: string, transport: 'http' | 'stdio'): Promise<void> {
     const spinner = createSpinner();
     const extensionPath = path.join(os.homedir(), '.gemini', 'extensions', 'Stitch', 'gemini-extension.json');
-    const isInstalled = fs.existsSync(extensionPath);
+    const isInstalled = this.fileSystem.existsSync(extensionPath);
 
     if (isInstalled) {
       spinner.succeed('Stitch extension is already installed');
@@ -539,14 +540,14 @@ export class InitHandler implements InitCommand {
 
     spinner.start('Configuring extension...');
 
-    if (!fs.existsSync(extensionPath)) {
+    if (!this.fileSystem.existsSync(extensionPath)) {
       spinner.fail('Extension configuration file not found');
       console.log(theme.gray(`  Expected path: ${extensionPath}`));
       return;
     }
 
     try {
-      const content = fs.readFileSync(extensionPath, 'utf8');
+      const content = this.fileSystem.readFileSync(extensionPath, 'utf8');
       const config = JSON.parse(content);
 
       if (!config.mcpServers?.stitch) {
@@ -564,7 +565,7 @@ export class InitHandler implements InitCommand {
           },
         };
 
-        fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+        this.fileSystem.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
         spinner.succeed(`Stitch extension configured for STDIO: Project ID set to ${theme.blue(projectId)}`);
       } else {
         // HTTP
@@ -577,7 +578,7 @@ export class InitHandler implements InitCommand {
             'X-Goog-User-Project': projectId,
           },
         };
-        fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+        this.fileSystem.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
         spinner.succeed(`Stitch extension configured for HTTP: Project ID set to ${theme.blue(projectId)}`);
       }
 
@@ -591,7 +592,7 @@ export class InitHandler implements InitCommand {
 
   async detectAndSaveContext(projectId: string): Promise<boolean> {
     const pkgPath = path.join(this.cwd, 'package.json');
-    if (!fs.existsSync(pkgPath)) {
+    if (!this.fileSystem.existsSync(pkgPath)) {
       return false;
     }
 
@@ -601,9 +602,9 @@ export class InitHandler implements InitCommand {
 
     if (shouldSave) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const pkg = JSON.parse(this.fileSystem.readFileSync(pkgPath, 'utf8'));
         pkg.stitch = { ...pkg.stitch, projectId };
-        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+        this.fileSystem.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
         console.log(theme.green(`✓ Saved Project ID to package.json`));
         return true;
       } catch (e) {
