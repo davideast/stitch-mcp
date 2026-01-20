@@ -1,15 +1,8 @@
 # Stitch MCP Helper CLI
 
-> Stitch MCP OAuth setup assistant - automates Google Cloud authentication for Stitch API
+> A guided checklist and proxy server for the Stitch MCP
 
-## One command to connect any MCP client to Stitch
-
-`npx @_davideast/stitch-mcp init` walks you through the complete Google Cloud authentication setup for Stitch API in a single interactive session. It guides you through installing `gcloud`, configuring authentication, managing IAM permissions, enabling APIs, and generating your client-specific MCP config.
-
-- **Zero Config Setup:** One `npx` command handles gcloud install, authentication, project setup, and MCP configuration
-- **Universal Client Support:** Works with Antigravity, Claude Code, Cursor, VSCode, or Gemini CLI
-- **Smart Defaults:** Automatically detects existing gcloud installations and reuses active projects
-- **Self-Healing:** Built-in `doctor` command diagnoses and reports setup issues
+![Example usage](/assets/splash.png)
 
 ## Quick Start
 
