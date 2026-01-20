@@ -10,26 +10,33 @@ import { type McpConfigService } from '../../services/mcp-config/spec.js';
 import { createSpinner } from '../../ui/spinner.js';
 import { promptMcpClient, promptConfirm, promptTransportType, type McpClient } from '../../ui/wizard.js';
 import { theme, icons } from '../../ui/theme.js';
-import { createChecklist, verifyAllSteps, type ChecklistStep } from '../../ui/checklist.js';
-import { getGcloudSdkPath } from '../../platform/detector.js';
+import { ChecklistUIHandler } from '../../ui/checklist/handler.js';
+import type { ChecklistItemStateType } from '../../ui/checklist/spec.js';
 import { detectEnvironment } from '../../platform/environment.js';
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { commandExists, execCommand } from '../../platform/shell.js';
+import { execCommand } from '../../platform/shell.js';
 
-// Assuming these types are defined elsewhere or are the handler classes themselves
-// type GcloudService = GcloudHandler;
-// type ProjectService = ProjectHandler;
-// type StitchService = StitchHandler;
-// type McpConfigService = McpConfigHandler;
+// Checklist step IDs
+const STEPS = {
+  CLIENT: 'mcp-client',
+  GCLOUD: 'gcloud-cli',
+  AUTH: 'authentication',
+  CONNECTION: 'connection-method',
+  PROJECT: 'project-selection',
+  IAM_API: 'iam-and-api',
+  CONFIG: 'mcp-config',
+  TEST: 'connection-test',
+} as const;
 
 export class InitHandler implements InitCommand {
   private readonly gcloudService: GcloudService;
   private readonly mcpConfigService: McpConfigService;
   private readonly projectService: ProjectService;
   private readonly stitchService: StitchService;
+  private checklist: ChecklistUIHandler;
 
   constructor(
     gcloudService?: GcloudService,
@@ -41,30 +48,49 @@ export class InitHandler implements InitCommand {
     this.mcpConfigService = mcpConfigService || new McpConfigHandler();
     this.projectService = projectService || new ProjectHandler(this.gcloudService);
     this.stitchService = stitchService || new StitchHandler();
+    this.checklist = new ChecklistUIHandler();
   }
 
   async execute(input: InitInput): Promise<InitResult> {
     try {
-      console.log(`\n${theme.blue('Stitch MCP Setup')}\n`);
+      // Initialize the checklist
+      this.checklist.initialize({
+        title: 'Stitch MCP Setup',
+        items: [
+          { id: STEPS.CLIENT, label: 'Select MCP client' },
+          { id: STEPS.GCLOUD, label: 'Install Google Cloud CLI' },
+          { id: STEPS.AUTH, label: 'Authenticate with Google' },
+          { id: STEPS.CONNECTION, label: 'Choose connection method' },
+          { id: STEPS.PROJECT, label: 'Select Google Cloud project' },
+          { id: STEPS.IAM_API, label: 'Configure IAM & enable API' },
+          { id: STEPS.CONFIG, label: 'Generate MCP configuration' },
+          { id: STEPS.TEST, label: 'Test connection' },
+        ],
+        showProgress: true,
+        animationDelayMs: 100,
+      });
 
-      // Initialize services (now done via constructor injection)
+      // Show header - steps will print progressively as they complete
+      console.log(`\n${theme.blue('🧵 Stitch MCP Setup')}\n`);
 
+      // ─────────────────────────────────────────────────────────────────────
       // Step 1: MCP Client Selection
-      console.log(theme.gray('Step 1: Select your MCP client\n'));
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.CLIENT, 'IN_PROGRESS');
 
       let mcpClient: McpClient;
       if (input.client) {
         mcpClient = this.resolveMcpClient(input.client);
-        console.log(theme.green(`${icons.success} Selected (via flag): ${mcpClient}\n`));
+        this.updateStep(STEPS.CLIENT, 'SKIPPED', mcpClient, 'Set via --client flag');
       } else {
         mcpClient = await promptMcpClient();
-        console.log(theme.green(`${icons.success} Selected: ${mcpClient}\n`));
+        this.updateStep(STEPS.CLIENT, 'COMPLETE', mcpClient);
       }
 
+      // ─────────────────────────────────────────────────────────────────────
       // Step 2: gcloud Installation
-      console.log(theme.gray('Step 2: Setting up Google Cloud CLI\n'));
-      const spinner = createSpinner();
-      spinner.start('Checking for Google Cloud CLI...');
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.GCLOUD, 'IN_PROGRESS');
 
       const gcloudResult = await this.gcloudService.ensureInstalled({
         minVersion: '400.0.0',
@@ -72,7 +98,7 @@ export class InitHandler implements InitCommand {
       });
 
       if (!gcloudResult.success) {
-        spinner.fail('Google Cloud CLI setup failed');
+        this.updateStep(STEPS.GCLOUD, 'FAILED', gcloudResult.error.message);
         return {
           success: false,
           error: {
@@ -84,157 +110,116 @@ export class InitHandler implements InitCommand {
         };
       }
 
-      spinner.succeed(
-        `Google Cloud CLI ready (${gcloudResult.data.location}): v${gcloudResult.data.version}`
-      );
-      console.log(theme.gray(`  Location: ${gcloudResult.data.path}\n`));
-
-      // Determine gcloud path for checklist commands
       const gcloudPath = gcloudResult.data.path;
       const isBundled = gcloudResult.data.location === 'bundled';
       const gcloudBinDir = path.dirname(gcloudPath);
 
-      // Build auth checklist steps
-      const authSteps: ChecklistStep[] = [];
+      this.updateStep(
+        STEPS.GCLOUD,
+        'COMPLETE',
+        `v${gcloudResult.data.version} (${gcloudResult.data.location})`
+      );
 
-      // If bundled, add PATH setup step
-      if (isBundled) {
-        authSteps.push({
-          id: 'path-setup',
-          title: 'Configure gcloud PATH',
-          instruction: 'Open a NEW terminal tab/window and run this command:',
-          command: `export PATH="${gcloudBinDir}:$PATH"`,
-          // No verification - verified indirectly when gcloud commands work
-        });
-      }
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 3: Authentication
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.AUTH, 'IN_PROGRESS');
 
       // Detect environment for auth guidance
       const env = detectEnvironment();
-
-      // For WSL/problematic environments, show guidance rather than --no-browser
-      // (--no-browser has its own complexity with --remote-bootstrap)
       if (env.needsNoBrowser && env.reason) {
-        console.log(theme.yellow(`  ⚠ ${env.reason}`));
+        console.log(theme.yellow(`\n  ⚠ ${env.reason}`));
         console.log(theme.gray('  If browser auth fails, copy the URL from terminal and open manually.\n'));
       }
 
-      // Config path for commands to save to bundled location
-      let configPrefix = '';
-      if (isBundled) {
-        const configPath = path.dirname(gcloudBinDir) + '/../config';
-        configPrefix = `CLOUDSDK_CONFIG="${configPath}"`;
-      }
+      // Check existing auth state
+      const existingAccount = await this.gcloudService.getActiveAccount();
+      const hasADC = await this.gcloudService.hasADC();
 
-      // User auth step
-      authSteps.push({
-        id: 'user-auth',
-        title: 'Authenticate with Google Cloud',
-        command: `${configPrefix} gcloud auth login`,
-        verifyFn: async () => {
-          const account = await this.gcloudService.getActiveAccount();
-          return {
-            success: !!account,
-            message: account ? `Logged in as ${account}` : 'No account found',
-          };
-        },
-      });
+      if (existingAccount && hasADC) {
+        this.updateStep(STEPS.AUTH, 'SKIPPED', existingAccount, 'Already authenticated');
+      } else {
+        // Need to guide through auth
+        let configPrefix = '';
+        if (isBundled) {
+          const configPath = path.dirname(gcloudBinDir) + '/../config';
+          configPrefix = `CLOUDSDK_CONFIG="${configPath}"`;
 
-      // ADC step
-      authSteps.push({
-        id: 'adc',
-        title: 'Authorize Application Default Credentials',
-        command: `${configPrefix} gcloud auth application-default login`,
-        verifyFn: async () => {
-          const hasADC = await this.gcloudService.hasADC();
-          return {
-            success: hasADC,
-            message: hasADC ? 'ADC configured' : 'ADC not found',
-          };
-        },
-      });
+          // PATH setup for bundled gcloud
+          console.log(theme.yellow('\nConfigure gcloud PATH\n'));
+          console.log('  Open a NEW terminal tab/window and run this command:\n');
+          console.log(theme.cyan(`  export PATH="${gcloudBinDir}:$PATH"\n`));
 
-      // Check current state upfront
-      console.log(theme.gray('Step 3: Setup Authentication\n'));
+          try {
+            const { default: clipboard } = await import('clipboardy');
+            await clipboard.write(`export PATH="${gcloudBinDir}:$PATH"`);
+            console.log(theme.gray('  (copied to clipboard)'));
+          } catch { /* clipboard not available */ }
 
-      let stepsToRun = authSteps;
-      const checkState = input.autoVerify ||
-        await promptConfirm('Check your current setup status?', true);
-
-      if (checkState) {
-        const spinner2 = createSpinner();
-        spinner2.start('Checking current state...');
-        const verified = await verifyAllSteps(authSteps);
-        spinner2.stop();
-
-        // Filter to only steps that need to be run
-        const completedSteps: string[] = [];
-        for (const step of authSteps) {
-          const result = verified.get(step.id);
-          if (result?.success) {
-            console.log(theme.green(`  ${icons.success} ${step.title}: ${result.message || 'Complete'} (skipping)`));
-            completedSteps.push(step.id);
-          }
+          await promptConfirm('Press Enter when complete', true);
         }
 
-        stepsToRun = authSteps.filter(s => !completedSteps.includes(s.id));
-
-        if (stepsToRun.length === 0) {
-          console.log(theme.green(`\n  ${icons.success} All authentication steps already complete\n`));
-        } else {
-          console.log('');
+        // User auth
+        if (!existingAccount) {
+          console.log(theme.yellow('\nAuthenticate with Google Cloud\n'));
+          console.log(theme.cyan(`  ${configPrefix} gcloud auth login\n`));
+          await promptConfirm('Press Enter when complete', true);
         }
-      }
 
-      // Run remaining auth steps via checklist
-      if (stepsToRun.length > 0) {
-        const checklist = createChecklist();
-        const checklistResult = await checklist.run(stepsToRun, {
-          autoVerify: input.autoVerify,
-        });
+        // ADC auth
+        if (!hasADC) {
+          console.log(theme.yellow('\nAuthorize Application Default Credentials\n'));
+          console.log(theme.cyan(`  ${configPrefix} gcloud auth application-default login\n`));
+          await promptConfirm('Press Enter when complete', true);
+        }
 
-        if (!checklistResult.success) {
+        const verifyAccount = await this.gcloudService.getActiveAccount();
+        if (!verifyAccount) {
+          this.updateStep(STEPS.AUTH, 'FAILED', 'No account found');
           return {
             success: false,
             error: {
               code: 'AUTH_FAILED',
-              message: checklistResult.error || 'Authentication setup failed',
-              suggestion: 'Complete the authentication steps and try again',
+              message: 'No authenticated account found after setup',
+              suggestion: 'Run gcloud auth login and try again',
               recoverable: true,
             },
           };
         }
+        this.updateStep(STEPS.AUTH, 'COMPLETE', verifyAccount);
       }
 
-      // Get the authenticated account for later steps
       const authAccount = await this.gcloudService.getActiveAccount();
       if (!authAccount) {
         return {
           success: false,
           error: {
             code: 'AUTH_FAILED',
-            message: 'No authenticated account found after setup',
+            message: 'No authenticated account found',
             suggestion: 'Run gcloud auth login and try again',
             recoverable: true,
           },
         };
       }
 
-      console.log(theme.green(`${icons.success} Authenticated as: ${authAccount}\n`));
-
-      // Step 5: Transport Selection
-      console.log(theme.gray('Step 5: Choose connection method\n'));
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 4: Transport Selection
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.CONNECTION, 'IN_PROGRESS');
 
       let transport: 'http' | 'stdio';
       if (input.transport) {
         transport = this.resolveTransport(input.transport);
-        console.log(theme.green(`${icons.success} Selected (via flag): ${transport === 'http' ? 'Direct' : 'Proxy'}\n`));
+        this.updateStep(STEPS.CONNECTION, 'SKIPPED', transport === 'http' ? 'Direct' : 'Proxy', 'Set via --transport flag');
       } else {
         transport = await promptTransportType();
-        console.log(theme.green(`${icons.success} Selected: ${transport === 'http' ? 'Direct' : 'Proxy'}\n`));
+        this.updateStep(STEPS.CONNECTION, 'COMPLETE', transport === 'http' ? 'Direct' : 'Proxy');
       }
 
-      // Step 6: Project Selection
-      console.log(theme.gray('Step 6: Select a Google Cloud project\n'));
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 5: Project Selection
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.PROJECT, 'IN_PROGRESS');
 
       let projectResult: ProjectSelectionResult | null = null;
       const activeProjectId = await this.gcloudService.getProjectId();
@@ -260,133 +245,95 @@ export class InitHandler implements InitCommand {
       }
 
       if (!projectResult.success) {
+        const error = (projectResult as any).error || { message: 'Unknown error', recoverable: false };
+        this.updateStep(STEPS.PROJECT, 'FAILED', error.message);
         return {
           success: false,
           error: {
             code: 'PROJECT_SELECTION_FAILED',
-            message: projectResult.error.message,
-            suggestion: projectResult.error.suggestion,
-            recoverable: projectResult.error.recoverable,
+            message: error.message,
+            suggestion: error.suggestion,
+            recoverable: error.recoverable,
           },
         };
       }
 
-
-
-      // Step 6: Set Active Project
-      spinner.start('Configuring project...');
-
+      // Set active project
       const setProjectResult = await this.gcloudService.setProject({
         projectId: projectResult.data.projectId,
       });
 
       if (!setProjectResult.success) {
-        spinner.fail('Failed to set active project');
+        const error = (setProjectResult as any).error || { message: 'Unknown error', recoverable: false };
+        this.updateStep(STEPS.PROJECT, 'FAILED', 'Failed to set project');
         return {
           success: false,
           error: {
             code: 'API_CONFIG_FAILED',
-            message: setProjectResult.error.message,
-            recoverable: setProjectResult.error.recoverable,
+            message: error.message,
+            recoverable: error.recoverable,
           },
         };
       }
 
-      spinner.succeed(`Selected project: ${theme.blue(projectResult.data.name)} (${theme.gray(projectResult.data.projectId)})`);
+      this.updateStep(STEPS.PROJECT, 'COMPLETE', projectResult.data.projectId);
 
-      // Step 7: Configure IAM permissions
-      console.log(`\n${theme.gray('Step 7: Configure IAM Permissions')}`);
-      const iamCheckSpinner = createSpinner();
-      iamCheckSpinner.start('Checking IAM permissions...');
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 6: Configure IAM & Enable API
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.IAM_API, 'IN_PROGRESS');
+
+      const spinner = createSpinner();
+
+      // Check and configure IAM
       const hasIAMRole = await this.stitchService.checkIAMRole({
         projectId: projectResult.data.projectId,
         userEmail: authAccount,
       });
-      iamCheckSpinner.stop();
 
-      if (hasIAMRole) {
-        console.log(theme.green(`${icons.success} Required IAM role is already configured.\n`));
-      } else {
-        const shouldConfigureIam = await promptConfirm(
-          'Add the required IAM role (serviceusage.serviceUsageConsumer) to your account?',
+      if (!hasIAMRole) {
+        const shouldConfigureIam = input.autoVerify || await promptConfirm(
+          'Add the required IAM role to your account?',
           true
         );
 
         if (shouldConfigureIam) {
-          spinner.start('Configuring IAM permissions...');
-          const iamResult = await this.stitchService.configureIAM({
+          await this.stitchService.configureIAM({
             projectId: projectResult.data.projectId,
             userEmail: authAccount,
           });
-
-          if (iamResult.success) {
-            spinner.succeed('IAM permissions configured');
-            console.log(theme.gray(`  Role: ${iamResult.data.role}`));
-          } else {
-            spinner.fail('IAM configuration failed');
-            console.log(theme.yellow(`  ${iamResult.error.message}`));
-            if (iamResult.error.details) {
-              console.log(theme.gray(`\n  Details:\n${iamResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
-            }
-            console.log(theme.gray(`  This may not prevent API usage if permissions already exist\n`));
-          }
-        } else {
-          console.log(theme.yellow('  ⚠ Skipping IAM configuration. API calls may fail if permissions are missing.\n'));
         }
       }
 
-      // Step 8: Install Beta Components
-      spinner.start('Installing gcloud beta components...');
+      // Install beta components
+      await this.gcloudService.installBetaComponents();
 
-      const betaResult = await this.gcloudService.installBetaComponents();
-
-      if (betaResult.success) {
-        spinner.succeed('Beta components installed');
-      } else {
-        spinner.fail('Beta component installation failed');
-        console.log(theme.yellow(`  ${betaResult.error?.message}`));
-        console.log(theme.gray(`  Continuing anyway...\n`));
-      }
-
-      console.log(''); // Add spacing to prevent flickering
-
-      // Step 9: Enable Stitch API
-      const apiCheckSpinner = createSpinner();
-      apiCheckSpinner.start('Checking Stitch API status...');
+      // Check and enable API
       const isApiEnabled = await this.stitchService.checkAPIEnabled({
         projectId: projectResult.data.projectId,
       });
-      apiCheckSpinner.stop();
 
-      if (isApiEnabled) {
-        console.log(theme.green(`${icons.success} Stitch API is already enabled.\n`));
-      } else {
-        spinner.start('Enabling Stitch API...');
-        const apiResult = await this.stitchService.enableAPI({
+      if (!isApiEnabled) {
+        await this.stitchService.enableAPI({
           projectId: projectResult.data.projectId,
         });
-
-        if (apiResult.success) {
-          spinner.succeed('Stitch API enabled');
-          console.log(theme.gray(`  API: ${apiResult.data.api}\n`));
-        } else {
-          spinner.fail('API enablement failed');
-          console.log(theme.yellow(`  ${apiResult.error.message}`));
-          if (apiResult.error.details) {
-            console.log(theme.gray(`\n  Details:\n${apiResult.error.details.split('\n').map((line: string) => `  ${line}`).join('\n')}`));
-          }
-          console.log(theme.gray(`  You may need to enable it manually\n`));
-        }
       }
 
-      console.log(''); // Add spacing to prevent flickering
+      this.updateStep(STEPS.IAM_API, 'COMPLETE', 'Ready');
 
-      // Step 10: Get Access Token
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 7: Generate MCP Config
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.CONFIG, 'IN_PROGRESS');
 
-      // Get access token for config generation and testing
+      // Special setup for Gemini CLI
+      if (mcpClient === 'gemini-cli') {
+        await this.setupGeminiExtension(projectResult.data.projectId, transport);
+      }
+
       const accessToken = await this.gcloudService.getAccessToken();
-
       if (!accessToken) {
+        this.updateStep(STEPS.CONFIG, 'FAILED', 'No access token');
         return {
           success: false,
           error: {
@@ -398,15 +345,6 @@ export class InitHandler implements InitCommand {
         };
       }
 
-      // Step 10: Generate MCP Config
-      // Special setup for Gemini CLI
-      if (mcpClient === 'gemini-cli') {
-        await this.setupGeminiExtension(projectResult.data.projectId, transport);
-      }
-
-      console.log(`\n${theme.gray('Step 8: Generating MCP Configuration')}\n`);
-      spinner.start('Generating MCP configuration...');
-
       const configResult = await this.mcpConfigService.generateConfig({
         client: mcpClient,
         projectId: projectResult.data.projectId,
@@ -415,28 +353,24 @@ export class InitHandler implements InitCommand {
       });
 
       if (!configResult.success) {
-        spinner.fail('Configuration generation failed');
+        const error = (configResult as any).error || { message: 'Unknown error', recoverable: false };
+        this.updateStep(STEPS.CONFIG, 'FAILED', error.message);
         return {
           success: false,
           error: {
             code: 'CONFIG_GENERATION_FAILED',
-            message: configResult.error.message,
-            recoverable: configResult.error.recoverable,
+            message: error.message,
+            recoverable: error.recoverable,
           },
         };
       }
 
-      spinner.succeed('Configuration generated');
+      this.updateStep(STEPS.CONFIG, 'COMPLETE', 'Generated');
 
-      // Display results
-      console.log(`\n${theme.blue('Setup Complete!')} ${icons.success}\n`);
-      console.log(configResult.data.instructions);
-
-      // Final Step: Test Connection (displayed at the end for visibility)
-      console.log(`\n${theme.blue('─'.repeat(60))}\n`);
-      console.log(theme.gray('Connection Test\n'));
-      const spinner2 = createSpinner();
-      spinner2.start('Testing API connection...');
+      // ─────────────────────────────────────────────────────────────────────
+      // Step 8: Test Connection
+      // ─────────────────────────────────────────────────────────────────────
+      this.updateStep(STEPS.TEST, 'IN_PROGRESS');
 
       const testResult = await this.stitchService.testConnection({
         projectId: projectResult.data.projectId,
@@ -444,22 +378,28 @@ export class InitHandler implements InitCommand {
       });
 
       if (!testResult.success) {
-        spinner2.fail('Connection Failed');
-        console.log(theme.red(`\n  ${icons.error} Error: ${testResult.error.message}`));
-        console.log(theme.yellow(`  ${testResult.error.suggestion}`));
-
-        // Show full error details if available (may contain helpful URLs)
-        if (testResult.error.details) {
-          console.log(theme.gray(`\n  Full API Response:\n`));
-          console.log(theme.gray(testResult.error.details.split('\n').map(line => `  ${line}`).join('\n')));
-        }
-
-        console.log(theme.red(`\n  ⚠️  You may need to fix authentication or permissions before using Stitch.\n`));
+        const error = (testResult as any).error || { message: 'Unknown error', suggestion: '' };
+        this.updateStep(STEPS.TEST, 'FAILED', error.message);
+        console.log(theme.red(`\n  ${icons.error} Error: ${error.message}`));
+        console.log(theme.yellow(`  ${error.suggestion}`));
       } else {
-        spinner2.succeed(`Connection Successful (${testResult.data.statusCode})`);
-        console.log(theme.gray(`  ✔ ${testResult.data.url}`));
-        console.log(theme.green(`  ${icons.success} Stitch API is ready to use!\n`));
+        this.updateStep(STEPS.TEST, 'COMPLETE', `${testResult.data.statusCode} OK`);
       }
+
+      // ─────────────────────────────────────────────────────────────────────
+      // Final Summary
+      // ─────────────────────────────────────────────────────────────────────
+      const { percent } = this.checklist.getProgress();
+      const barWidth = 40;
+      const filled = Math.round((percent / 100) * barWidth);
+      const bar = '━'.repeat(filled) + '─'.repeat(barWidth - filled);
+      console.log(`\n  ${bar} ${percent}%`);
+
+      if (this.checklist.isComplete()) {
+        console.log(`\n${theme.green('🎉 Setup complete!')}\n`);
+      }
+
+      console.log(configResult.data.instructions);
 
       return {
         success: true,
@@ -478,6 +418,75 @@ export class InitHandler implements InitCommand {
           recoverable: false,
         },
       };
+    }
+  }
+
+  /**
+   * Helper to update checklist item state and print the completed step
+   */
+  private updateStep(
+    stepId: string,
+    state: ChecklistItemStateType,
+    detail?: string,
+    reason?: string
+  ): void {
+    this.checklist.updateItem({ itemId: stepId, state, detail, reason });
+
+    // Only print completed/skipped/failed steps (not IN_PROGRESS)
+    if (state !== 'IN_PROGRESS') {
+      this.printStepResult(stepId, state, detail, reason);
+    }
+  }
+
+  /**
+   * Print a single step result line
+   */
+  private printStepResult(
+    stepId: string,
+    state: ChecklistItemStateType,
+    detail?: string,
+    reason?: string
+  ): void {
+    const stepIndex = Object.values(STEPS).indexOf(stepId as any);
+    const stepNum = stepIndex + 1;
+    const labels: Record<string, string> = {
+      [STEPS.CLIENT]: 'Select MCP client',
+      [STEPS.GCLOUD]: 'Install Google Cloud CLI',
+      [STEPS.AUTH]: 'Authenticate with Google',
+      [STEPS.CONNECTION]: 'Choose connection method',
+      [STEPS.PROJECT]: 'Select Google Cloud project',
+      [STEPS.IAM_API]: 'Configure IAM & enable API',
+      [STEPS.CONFIG]: 'Generate MCP configuration',
+      [STEPS.TEST]: 'Test connection',
+    };
+    const label = labels[stepId] || stepId;
+
+    const icons: Record<ChecklistItemStateType, string> = {
+      PENDING: '○',
+      IN_PROGRESS: '▸',
+      COMPLETE: '✓',
+      SKIPPED: '−',
+      FAILED: '✗',
+    };
+    const icon = icons[state];
+
+    const colors: Record<ChecklistItemStateType, (s: string) => string> = {
+      PENDING: theme.gray,
+      IN_PROGRESS: theme.yellow,
+      COMPLETE: theme.green,
+      SKIPPED: theme.gray,
+      FAILED: theme.red,
+    };
+    const color = colors[state];
+
+    let line = `  ${color(icon)}  ${stepNum}. ${label}`;
+    if (detail) {
+      line += ` ${theme.gray('·')} ${detail}`;
+    }
+    console.log(line);
+
+    if (reason) {
+      console.log(`     └─ ${theme.gray(reason)}`);
     }
   }
 
