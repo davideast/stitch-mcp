@@ -22,6 +22,11 @@ export class GcloudHandler implements GcloudService {
   private platform = detectPlatform();
   private gcloudPath: string | null = null;
   private useSystemGcloud = false;
+  private readonly fileSystem: typeof fs;
+
+  constructor(injectedFs: typeof fs = fs) {
+    this.fileSystem = injectedFs;
+  }
 
   /**
    * Ensure gcloud is installed and available
@@ -34,7 +39,7 @@ export class GcloudHandler implements GcloudService {
       const localSdkPath = getGcloudSdkPath();
       const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
 
-      if (fs.existsSync(localBinaryPath)) {
+      if (this.fileSystem.existsSync(localBinaryPath)) {
         const version = await this.getVersionFromPath(localBinaryPath);
         if (version) {
           this.gcloudPath = localBinaryPath;
@@ -534,8 +539,8 @@ export class GcloudHandler implements GcloudService {
     const stitchDir = getStitchDir();
 
     // Create directories
-    if (!fs.existsSync(stitchDir)) {
-      fs.mkdirSync(stitchDir, { recursive: true });
+    if (!this.fileSystem.existsSync(stitchDir)) {
+      this.fileSystem.mkdirSync(stitchDir, { recursive: true });
     }
 
     // Download gcloud
@@ -549,7 +554,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       const buffer = await response.arrayBuffer();
-      await fs.promises.writeFile(downloadPath, Buffer.from(buffer));
+      await this.fileSystem.promises.writeFile(downloadPath, Buffer.from(buffer));
 
       // Extract
       if (this.platform.isWindows) {
@@ -562,7 +567,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       // Clean up download
-      fs.unlinkSync(downloadPath);
+      this.fileSystem.unlinkSync(downloadPath);
 
       // Return path to gcloud binary
       return joinPath(sdkPath, 'bin', this.platform.gcloudBinaryName);
@@ -624,7 +629,7 @@ export class GcloudHandler implements GcloudService {
     const localSdkPath = getGcloudSdkPath();
     const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
 
-    if (fs.existsSync(localBinaryPath)) {
+    if (this.fileSystem.existsSync(localBinaryPath)) {
       this.gcloudPath = localBinaryPath;
       this.setupEnvironment();
       return localBinaryPath;
@@ -654,6 +659,6 @@ export class GcloudHandler implements GcloudService {
     // Only check bundled stitch config path - we need ADC there for getAccessToken
     const stitchConfigPath = getGcloudConfigPath();
     const stitchAdcPath = joinPath(stitchConfigPath, 'application_default_credentials.json');
-    return fs.existsSync(stitchAdcPath);
+    return this.fileSystem.existsSync(stitchAdcPath);
   }
 }
