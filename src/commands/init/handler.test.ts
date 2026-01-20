@@ -62,7 +62,7 @@ describe('InitHandler', () => {
     const mockStitchService: any = {
       configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
       enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
+      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200, url: 'https://stitch.googleapis.com/mcp' } })),
       checkIAMRole: mock(() => Promise.resolve(true)),
       checkAPIEnabled: mock(() => Promise.resolve(true)),
     };
@@ -112,7 +112,7 @@ describe('InitHandler', () => {
     const mockStitchService: any = {
       configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
       enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
+      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200, url: 'https://stitch.googleapis.com/mcp' } })),
       checkIAMRole: mock(() => Promise.resolve(true)),
       checkAPIEnabled: mock(() => Promise.resolve(true)),
     };
@@ -154,7 +154,7 @@ describe('InitHandler', () => {
     };
 
     const mockStitchService: any = {
-      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200 } })),
+      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200, url: 'https://stitch.googleapis.com/mcp' } })),
       checkIAMRole: mock(() => Promise.resolve(false)),
       checkAPIEnabled: mock(() => Promise.resolve(false)),
     };

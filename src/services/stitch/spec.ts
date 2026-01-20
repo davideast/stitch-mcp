@@ -84,6 +84,7 @@ export const ConnectionTestSuccess = z.object({
   data: z.object({
     connected: z.boolean(),
     statusCode: z.number(),
+    url: z.string(),
     response: z.any().optional(),
   }),
 });

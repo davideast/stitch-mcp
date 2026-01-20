@@ -443,6 +443,7 @@ export class InitHandler implements InitCommand {
         console.log(theme.red(`\n  ⚠️  You may need to fix authentication or permissions before using Stitch.\n`));
       } else {
         spinner2.succeed(`Connection Successful (${testResult.data.statusCode})`);
+        console.log(theme.gray(`  ✔ ${testResult.data.url}`));
         console.log(theme.green(`  ${icons.success} Stitch API is ready to use!\n`));
       }
 

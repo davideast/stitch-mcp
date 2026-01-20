@@ -240,6 +240,7 @@ export class StitchHandler implements StitchService {
         data: {
           connected: true,
           statusCode: response.status,
+          url,
           response: data,
         },
       };

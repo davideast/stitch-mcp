@@ -22,7 +22,7 @@ describe('StitchHandler', () => {
   beforeEach(() => {
     handler = new StitchHandler();
     mockExecCommand.mockClear();
-    global.fetch = mock();
+    (global.fetch as any) = mock();
   });
 
   afterEach(() => {
@@ -51,7 +51,7 @@ describe('StitchHandler', () => {
         stderr: 'Permission denied',
         stdout: '',
         exitCode: 1,
-        error: new Error('gcloud error'),
+        error: 'gcloud error',
       };
       mockExecCommand.mockResolvedValue(mockResult);
 
@@ -119,7 +119,7 @@ describe('StitchHandler', () => {
 
     test('should return success on a successful connection', async () => {
       const mockResponse = { ok: true, status: 200, json: async () => ({ result: 'ok' }) };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await handler.testConnection(validInput);
 
@@ -127,6 +127,7 @@ describe('StitchHandler', () => {
       if (result.success) {
         expect(result.data.connected).toBe(true);
         expect(result.data.statusCode).toBe(200);
+        expect(result.data.url).toBe('https://stitch.googleapis.com/mcp');
         expect(result.data.response).toEqual({ result: 'ok' });
       }
     });
@@ -137,7 +138,7 @@ describe('StitchHandler', () => {
         status: 403,
         json: async () => ({ error: { message: 'Permission denied' } }),
       };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await handler.testConnection(validInput);
 
@@ -154,7 +155,7 @@ describe('StitchHandler', () => {
         status: 500,
         json: async () => ({ error: { message: 'Internal Server Error' } }),
       };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await handler.testConnection(validInput);
 
@@ -167,7 +168,7 @@ describe('StitchHandler', () => {
 
     test('should handle fetch exceptions', async () => {
       const error = new Error('Network error');
-      (global.fetch as jest.Mock).mockRejectedValue(error);
+      (global.fetch as any).mockRejectedValue(error);
 
       const result = await handler.testConnection(validInput);
 
