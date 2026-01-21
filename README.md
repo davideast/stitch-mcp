@@ -79,6 +79,46 @@ Setup Complete! ✔
 
 Copy this config into your MCP client settings and you're ready to use the Stitch MCP server.
 
+## Quick Start (Existing gcloud Users)
+
+If you already have `gcloud` configured, skip `init` and use the proxy directly.
+
+**Prerequisites:**
+```bash
+# 1. Application Default Credentials
+gcloud auth application-default login
+
+# 2. Set project (if not already set)
+gcloud config set project <PROJECT_ID>
+
+# 3. Enable Stitch API (requires beta component)
+gcloud components install beta
+gcloud beta services mcp enable stitch.googleapis.com --project=<PROJECT_ID>
+```
+
+**MCP Configuration:**
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["@_davideast/stitch-mcp", "proxy"],
+      "env": {
+        "STITCH_USE_SYSTEM_GCLOUD": "1"
+      }
+    }
+  }
+}
+```
+
+**Environment Variables:**
+| Variable | Description |
+|----------|-------------|
+| `STITCH_USE_SYSTEM_GCLOUD` | Use system gcloud config instead of isolated config |
+| `STITCH_PROJECT_ID` | Override project ID |
+| `GOOGLE_CLOUD_PROJECT` | Alternative project ID variable |
+| `STITCH_HOST` | Custom Stitch API endpoint |
+
 ## Verify Your Setup
 
 ```bash
