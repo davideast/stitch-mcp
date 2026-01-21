@@ -13,6 +13,16 @@ describe('McpConfig Service Spec', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should validate opencode as a valid client', () => {
+      const input = {
+        client: 'opencode',
+        projectId: 'test-project',
+        accessToken: 'test-token',
+      };
+      const result = GenerateConfigInputSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
     it('should invalidate an input with an invalid client', () => {
       const input = {
         client: 'invalid-client',

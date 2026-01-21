@@ -506,13 +506,14 @@ export class InitHandler implements InitCommand {
       'cursor': 'cursor', 'cur': 'cursor',
       'claude-code': 'claude-code', 'cc': 'claude-code',
       'gemini-cli': 'gemini-cli', 'gcli': 'gemini-cli',
-      'codex': 'codex', 'cdx': 'codex'
+      'codex': 'codex', 'cdx': 'codex',
+      'opencode': 'opencode', 'opc': 'opencode'
     };
 
     const normalized = input.trim().toLowerCase();
     const client = map[normalized];
     if (!client) {
-      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli), codex (cdx)`);
+      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli), codex (cdx), opencode (opc)`);
     }
     return client;
   }

@@ -1,6 +1,6 @@
 import { select, input, confirm } from '@inquirer/prompts';
 
-export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli' | 'codex';
+export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli' | 'codex' | 'opencode';
 
 /**
  * Prompt user to select their MCP client
@@ -15,6 +15,7 @@ export async function promptMcpClient(): Promise<McpClient> {
       { name: 'Claude Code', value: 'claude-code' as McpClient },
       { name: 'Gemini CLI', value: 'gemini-cli' as McpClient },
       { name: 'Codex CLI', value: 'codex' as McpClient },
+      { name: 'OpenCode', value: 'opencode' as McpClient },
     ],
   });
 }
