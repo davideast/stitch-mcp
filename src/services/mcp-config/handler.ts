@@ -207,30 +207,34 @@ export class McpConfigHandler implements McpConfigService {
         );
 
       case 'codex': {
-        const transportWarning = transport === 'http'
-          ? `${theme.yellow('Note:')} Codex CLI uses the proxy (stdio) transport. Re-run init and choose "Proxy (Recommended for Dev)".\n`
-          : '';
+        const isHttp = transport === 'http';
+        const configBlock = isHttp
+          ? [
+              '[mcp_servers.stitch]',
+              'url = "https://stitch.googleapis.com/mcp"',
+              'bearer_token_env_var = "STITCH_ACCESS_TOKEN"',
+              '',
+              '[mcp_servers.stitch.env_http_headers]',
+              'X-Goog-User-Project = "GOOGLE_CLOUD_PROJECT"',
+            ].join('\n')
+          : [
+              '[mcp_servers.stitch]',
+              'command = "npx"',
+              'args = ["@_davideast/stitch-mcp", "proxy"]',
+              '',
+              '[mcp_servers.stitch.env]',
+              `STITCH_PROJECT_ID = "${projectId}"`,
+            ].join('\n');
 
-        const configBlock = [
-          '[mcp_servers.stitch]',
-          'command = "npx"',
-          'args = ["@_davideast/stitch-mcp", "proxy"]',
-          'enabled = false',
-          '',
-          '[mcp_servers.stitch.env]',
-          `STITCH_PROJECT_ID = "${projectId}"`,
-        ].join('\n');
+        const note = isHttp
+          ? `${theme.yellow('Note:')} Direct mode requires a valid access token in ${theme.blue('STITCH_ACCESS_TOKEN')} and a project id in ${theme.blue('GOOGLE_CLOUD_PROJECT')}.\n`
+          : `${theme.yellow('Note:')} Proxy mode handles token refresh automatically.\n`;
 
         return (
-          transportWarning +
           `\n${theme.green('Setup Codex CLI:')}\n\n` +
           `Add this to ${theme.blue('~/.codex/config.toml')}:\n\n` +
-          `${configBlock}\n` +
-          transportNote +
-          `\n${theme.green('Next Steps:')}\n` +
-          `1. Enable per run:\n` +
-          `   ${theme.blue("codex exec -c 'mcp_servers.stitch.enabled=true' \"Use the stitch MCP server\"")}\n` +
-          `2. Or set ${theme.blue('enabled = true')} in the config to always enable it.\n`
+          `${configBlock}\n\n` +
+          note
         );
       }
 
