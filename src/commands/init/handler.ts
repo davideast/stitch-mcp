@@ -208,7 +208,16 @@ export class InitHandler implements InitCommand {
       this.updateStep(STEPS.CONNECTION, 'IN_PROGRESS');
 
       let transport: 'http' | 'stdio';
-      if (input.transport) {
+      if (mcpClient === 'codex') {
+        if (input.transport) {
+          const requestedTransport = this.resolveTransport(input.transport);
+          if (requestedTransport !== 'stdio') {
+            console.log(theme.yellow('  ⚠ Codex CLI uses the proxy (stdio) transport. Ignoring --transport http.'));
+          }
+        }
+        transport = 'stdio';
+        this.updateStep(STEPS.CONNECTION, 'SKIPPED', 'Proxy', 'Codex uses proxy transport');
+      } else if (input.transport) {
         transport = this.resolveTransport(input.transport);
         this.updateStep(STEPS.CONNECTION, 'SKIPPED', transport === 'http' ? 'Direct' : 'Proxy', 'Set via --transport flag');
       } else {
@@ -496,13 +505,14 @@ export class InitHandler implements InitCommand {
       'vscode': 'vscode', 'vsc': 'vscode',
       'cursor': 'cursor', 'cur': 'cursor',
       'claude-code': 'claude-code', 'cc': 'claude-code',
-      'gemini-cli': 'gemini-cli', 'gcli': 'gemini-cli'
+      'gemini-cli': 'gemini-cli', 'gcli': 'gemini-cli',
+      'codex': 'codex', 'cdx': 'codex'
     };
 
     const normalized = input.trim().toLowerCase();
     const client = map[normalized];
     if (!client) {
-      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli)`);
+      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli), codex (cdx)`);
     }
     return client;
   }

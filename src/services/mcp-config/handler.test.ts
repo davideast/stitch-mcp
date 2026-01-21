@@ -5,7 +5,7 @@ import type { McpClient } from './spec';
 describe('McpConfigHandler', () => {
   const handler = new McpConfigHandler();
 
-  const clients: McpClient[] = ['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli'];
+  const clients: McpClient[] = ['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex'];
 
   const clientDisplayNames: Record<McpClient, string> = {
     antigravity: 'Antigravity',
@@ -13,6 +13,7 @@ describe('McpConfigHandler', () => {
     cursor: 'Cursor',
     'claude-code': 'Claude Code',
     'gemini-cli': 'Gemini CLI',
+    codex: 'Codex CLI',
   };
 
   it('should generate Cursor configuration with correct format', async () => {
@@ -124,6 +125,26 @@ describe('McpConfigHandler', () => {
     }
   });
 
+  it('should generate Codex CLI config instructions instead of JSON config', async () => {
+    const input = {
+      client: 'codex' as const,
+      projectId: 'test-project',
+      accessToken: 'test-token',
+      transport: 'stdio' as const,
+    };
+
+    const result = await handler.generateConfig(input);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.config).toBe('');
+      expect(result.data.instructions).toContain('Codex CLI');
+      expect(result.data.instructions).toContain('~/.codex/config.toml');
+      expect(result.data.instructions).toContain('STITCH_PROJECT_ID = "test-project"');
+      expect(result.data.instructions).toContain('codex exec -c');
+    }
+  });
+
   it('should generate Claude Code stdio command for proxy transport', async () => {
     const input = {
       client: 'claude-code' as const,
@@ -147,7 +168,7 @@ describe('McpConfigHandler', () => {
 
   it('should generate a valid STDIO configuration for JSON-based clients', async () => {
     // Skip command-based clients that don't generate JSON configs
-    const jsonBasedClients = clients.filter(c => c !== 'claude-code' && c !== 'gemini-cli');
+    const jsonBasedClients = clients.filter(c => c !== 'claude-code' && c !== 'gemini-cli' && c !== 'codex');
 
     for (const client of jsonBasedClients) {
       const input = {

@@ -10,7 +10,12 @@ export class McpConfigHandler implements McpConfigService {
 
       // Command-based clients return null
       const configString = config ? JSON.stringify(config, null, 2) : '';
-      const instructions = this.getInstructionsForClient(input.client, configString, input.transport);
+      const instructions = this.getInstructionsForClient(
+        input.client,
+        configString,
+        input.transport,
+        input.projectId
+      );
 
       return {
         success: true,
@@ -43,6 +48,8 @@ export class McpConfigHandler implements McpConfigService {
         return this.generateClaudeCodeConfig();
       case 'gemini-cli':
         return this.generateGeminiCliConfig();
+      case 'codex':
+        return null;
     }
   }
 
@@ -102,7 +109,7 @@ export class McpConfigHandler implements McpConfigService {
 
   private generateStdioConfig(input: GenerateConfigInput) {
     // Command-based clients use CLI commands, not JSON config
-    if (input.client === 'claude-code' || input.client === 'gemini-cli') {
+    if (input.client === 'claude-code' || input.client === 'gemini-cli' || input.client === 'codex') {
       return null;
     }
 
@@ -119,7 +126,12 @@ export class McpConfigHandler implements McpConfigService {
     };
   }
 
-  private getInstructionsForClient(client: McpClient, config: string, transport: 'http' | 'stdio'): string {
+  private getInstructionsForClient(
+    client: McpClient,
+    config: string,
+    transport: 'http' | 'stdio',
+    projectId: string
+  ): string {
     const baseInstructions = `\n${theme.blue('MCP Configuration Generated')}\n\n${config}\n`;
 
     const transportNote = transport === 'stdio'
@@ -193,6 +205,34 @@ export class McpConfigHandler implements McpConfigService {
           `Install the Stitch extension for the Gemini CLI:\n\n` +
           `${theme.blue('gemini extensions install https://github.com/gemini-cli-extensions/stitch')}\n`
         );
+
+      case 'codex': {
+        const transportWarning = transport === 'http'
+          ? `${theme.yellow('Note:')} Codex CLI uses the proxy (stdio) transport. Re-run init and choose "Proxy (Recommended for Dev)".\n`
+          : '';
+
+        const configBlock = [
+          '[mcp_servers.stitch]',
+          'command = "npx"',
+          'args = ["@_davideast/stitch-mcp", "proxy"]',
+          'enabled = false',
+          '',
+          '[mcp_servers.stitch.env]',
+          `STITCH_PROJECT_ID = "${projectId}"`,
+        ].join('\n');
+
+        return (
+          transportWarning +
+          `\n${theme.green('Setup Codex CLI:')}\n\n` +
+          `Add this to ${theme.blue('~/.codex/config.toml')}:\n\n` +
+          `${configBlock}\n` +
+          transportNote +
+          `\n${theme.green('Next Steps:')}\n` +
+          `1. Enable per run:\n` +
+          `   ${theme.blue("codex exec -c 'mcp_servers.stitch.enabled=true' \"Use the stitch MCP server\"")}\n` +
+          `2. Or set ${theme.blue('enabled = true')} in the config to always enable it.\n`
+        );
+      }
 
       default:
         return baseInstructions + transportNote + `\n${theme.yellow('Add this configuration to your MCP client.')}\n`;
