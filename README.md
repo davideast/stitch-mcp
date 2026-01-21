@@ -79,6 +79,26 @@ Setup Complete! ✔
 
 Copy this config into your MCP client settings and you're ready to use the Stitch MCP server.
 
+**Codex CLI (manual config):**
+
+Codex isn't a selectable client yet, but it works with a manual MCP server entry. Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.stitch]
+command = "npx"
+args = ["-y", "@_davideast/stitch-mcp", "proxy"]
+enabled = false
+
+[mcp_servers.stitch.env]
+STITCH_PROJECT_ID = "your-project-id"
+```
+
+Enable it per run:
+
+```bash
+codex exec -c 'mcp_servers.stitch.enabled=true' "Use the stitch MCP server"
+```
+
 ## Verify Your Setup
 
 ```bash
