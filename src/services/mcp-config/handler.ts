@@ -169,6 +169,13 @@ export class McpConfigHandler implements McpConfigService {
         `Access tokens expire after 1 hour. Consider using ${theme.blue('stdio')} transport for automatic refresh.\n`
       : '';
 
+    const vscodeTokenHint = transport === 'http'
+      ? `\n${theme.yellow('To get your access token, run:')}\n` +
+        `  CLOUDSDK_CONFIG=~/.stitch-mcp/config ~/.stitch-mcp/google-cloud-sdk/bin/gcloud auth print-access-token\n` +
+        `\n${theme.yellow('Important:')} When prompted, paste the token from the command above.\n` +
+        `Access tokens expire after 1 hour. Consider using ${theme.blue('stdio')} transport for automatic refresh.\n`
+      : '';
+
     switch (client) {
       case 'antigravity':
         if (transport === 'stdio') {
@@ -205,7 +212,7 @@ export class McpConfigHandler implements McpConfigService {
         }
         return (
           baseInstructions +
-          tokenHint +
+          vscodeTokenHint +
           `\n${theme.green('Next Steps for VSCode:')}\n` +
           `1. Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P)\n` +
           `2. Run "MCP: Open User Configuration" or "MCP: Open Workspace Folder Configuration"\n` +

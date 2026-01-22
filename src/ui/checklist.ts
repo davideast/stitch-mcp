@@ -48,8 +48,11 @@ export interface ChecklistResult {
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
     const { default: clipboard } = await import('clipboardy');
-    await clipboard.write(text);
-    return true;
+    const result = await Promise.race([
+      clipboard.write(text).then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 200)),
+    ]);
+    return result;
   } catch {
     return false;
   }
@@ -198,6 +201,15 @@ export class Checklist {
           spinner.succeed(msg);
         } else {
           spinner.fail(`Verification failed: ${result.message || 'Unknown error'}`);
+
+          if (options.autoVerify) {
+            return {
+              success: false,
+              completedSteps: this.completedSteps,
+              failedStep: step.id,
+              error: result.message,
+            };
+          }
 
           // Ask if they want to retry
           const retry = await confirm({

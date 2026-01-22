@@ -26,17 +26,17 @@ describe('McpConfigHandler', () => {
 
     const result = await handler.generateConfig(input);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const config = JSON.parse(result.data.config);
-      expect(config.mcpServers).toBeDefined();
-      expect(config.mcpServers.stitch.url).toBe('https://stitch.googleapis.com/mcp');
-      expect(config.mcpServers.stitch.headers.Authorization).toBe('Bearer $STITCH_ACCESS_TOKEN');
-      expect(config.mcpServers.stitch.headers['X-Goog-User-Project']).toBe('$GOOGLE_CLOUD_PROJECT');
-      expect(config.mcpServers.stitch.type).toBeUndefined(); // Cursor doesn't use type field
-      expect(result.data.instructions).toContain('Cursor');
-      expect(result.data.instructions).toContain('.cursor/mcp.json');
-    }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const config = JSON.parse(result.data.config);
+        expect(config.mcpServers).toBeDefined();
+        expect(config.mcpServers.stitch.url).toBe('https://stitch.googleapis.com/mcp');
+        expect(config.mcpServers.stitch.headers.Authorization).toBe('Bearer <YOUR_ACCESS_TOKEN>');
+        expect(config.mcpServers.stitch.headers['X-Goog-User-Project']).toBe('test-project');
+        expect(config.mcpServers.stitch.type).toBeUndefined(); // Cursor doesn't use type field
+        expect(result.data.instructions).toContain('Cursor');
+        expect(result.data.instructions).toContain('.cursor/mcp.json');
+      }
   });
 
   it('should generate Antigravity configuration with serverUrl', async () => {
@@ -49,17 +49,17 @@ describe('McpConfigHandler', () => {
 
     const result = await handler.generateConfig(input);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const config = JSON.parse(result.data.config);
-      expect(config.mcpServers).toBeDefined();
-      expect(config.mcpServers.stitch.serverUrl).toBe('https://stitch.googleapis.com/mcp'); // serverUrl not url
-      expect(config.mcpServers.stitch.url).toBeUndefined();
-      expect(config.mcpServers.stitch.headers.Authorization).toBe('Bearer $STITCH_ACCESS_TOKEN');
-      expect(config.mcpServers.stitch.headers['X-Goog-User-Project']).toBe('$GOOGLE_CLOUD_PROJECT');
-      expect(result.data.instructions).toContain('Antigravity');
-      expect(result.data.instructions).toContain('Agent Panel');
-    }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const config = JSON.parse(result.data.config);
+        expect(config.mcpServers).toBeDefined();
+        expect(config.mcpServers.stitch.serverUrl).toBe('https://stitch.googleapis.com/mcp'); // serverUrl not url
+        expect(config.mcpServers.stitch.url).toBeUndefined();
+        expect(config.mcpServers.stitch.headers.Authorization).toBe('Bearer <YOUR_ACCESS_TOKEN>');
+        expect(config.mcpServers.stitch.headers['X-Goog-User-Project']).toBe('test-project');
+        expect(result.data.instructions).toContain('Antigravity');
+        expect(result.data.instructions).toContain('Agent Panel');
+      }
   });
 
   it('should generate VSCode configuration with servers root key', async () => {
@@ -72,19 +72,19 @@ describe('McpConfigHandler', () => {
 
     const result = await handler.generateConfig(input);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const config = JSON.parse(result.data.config);
-      expect(config.servers).toBeDefined(); // servers not mcpServers
-      expect(config.mcpServers).toBeUndefined();
-      expect(config.servers.stitch.url).toBe('https://stitch.googleapis.com/mcp');
-      expect(config.servers.stitch.type).toBe('http');
-      expect(config.servers.stitch.headers.Accept).toBe('application/json');
-      expect(config.servers.stitch.headers.Authorization).toBe('Bearer $STITCH_ACCESS_TOKEN');
-      expect(config.servers.stitch.headers['X-Goog-User-Project']).toBe('$GOOGLE_CLOUD_PROJECT');
-      expect(result.data.instructions).toContain('VSCode');
-      expect(result.data.instructions).toContain('Command Palette');
-    }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const config = JSON.parse(result.data.config);
+        expect(config.inputs).toBeDefined();
+        expect(config.servers).toBeDefined(); // servers not mcpServers
+        expect(config.mcpServers).toBeUndefined();
+        expect(config.servers.stitch.url).toBe('https://stitch.googleapis.com/mcp');
+        expect(config.servers.stitch.type).toBe('http');
+        expect(config.servers.stitch.headers.Authorization).toBe('Bearer ${input:stitch-access-token}');
+        expect(config.servers.stitch.headers['X-Goog-User-Project']).toBe('test-project');
+        expect(result.data.instructions).toContain('VSCode');
+        expect(result.data.instructions).toContain('Command Palette');
+      }
   });
 
   it('should generate Claude Code command instead of config', async () => {
@@ -97,14 +97,14 @@ describe('McpConfigHandler', () => {
 
     const result = await handler.generateConfig(input);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.config).toBe(''); // No JSON config
-      expect(result.data.instructions).toContain('claude mcp add');
-      expect(result.data.instructions).toContain('$STITCH_ACCESS_TOKEN');
-      expect(result.data.instructions).toContain('$GOOGLE_CLOUD_PROJECT');
-      expect(result.data.instructions).toContain('-s user');
-    }
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.config).toBe(''); // No JSON config
+        expect(result.data.instructions).toContain('claude mcp add');
+        expect(result.data.instructions).toContain('<YOUR_ACCESS_TOKEN>');
+        expect(result.data.instructions).toContain('test-project');
+        expect(result.data.instructions).toContain('-s user');
+      }
   });
 
   it('should generate Gemini CLI extension command instead of config', async () => {
@@ -181,14 +181,20 @@ describe('McpConfigHandler', () => {
       const result = await handler.generateConfig(input);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        const config = JSON.parse(result.data.config);
-        expect(config.mcpServers.stitch.command).toBe('npx');
-        expect(config.mcpServers.stitch.args).toEqual(['@_davideast/stitch-mcp', 'proxy']);
-        expect(config.mcpServers.stitch.env.STITCH_PROJECT_ID).toBe('test-project');
-        expect(result.data.instructions).toContain(clientDisplayNames[client]);
-        expect(result.data.instructions).toContain('proxy server'); // Should mention proxy
-      }
+        if (result.success) {
+          const config = JSON.parse(result.data.config);
+          if (client === 'vscode') {
+            expect(config.servers.stitch.command).toBe('npx');
+            expect(config.servers.stitch.args).toEqual(['@_davideast/stitch-mcp', 'proxy']);
+            expect(config.servers.stitch.env.STITCH_PROJECT_ID).toBe('test-project');
+          } else {
+            expect(config.mcpServers.stitch.command).toBe('npx');
+            expect(config.mcpServers.stitch.args).toEqual(['@_davideast/stitch-mcp', 'proxy']);
+            expect(config.mcpServers.stitch.env.STITCH_PROJECT_ID).toBe('test-project');
+          }
+          expect(result.data.instructions).toContain(clientDisplayNames[client]);
+          expect(result.data.instructions).toContain('proxy server'); // Should mention proxy
+        }
     }
   });
 
