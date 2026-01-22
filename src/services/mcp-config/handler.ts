@@ -39,11 +39,11 @@ export class McpConfigHandler implements McpConfigService {
   private generateHttpConfig(input: GenerateConfigInput) {
     switch (input.client) {
       case 'cursor':
-        return this.generateCursorConfig();
+        return this.generateCursorConfig(input.projectId);
       case 'antigravity':
-        return this.generateAntigravityConfig();
+        return this.generateAntigravityConfig(input.projectId);
       case 'vscode':
-        return this.generateVSCodeConfig();
+        return this.generateVSCodeConfig(input.projectId);
       case 'claude-code':
         return this.generateClaudeCodeConfig();
       case 'gemini-cli':
@@ -53,44 +53,51 @@ export class McpConfigHandler implements McpConfigService {
     }
   }
 
-  private generateCursorConfig() {
+  private generateCursorConfig(projectId: string) {
     return {
       mcpServers: {
         stitch: {
           url: 'https://stitch.googleapis.com/mcp',
           headers: {
-            Authorization: 'Bearer $STITCH_ACCESS_TOKEN',
-            'X-Goog-User-Project': '$GOOGLE_CLOUD_PROJECT',
+            Authorization: 'Bearer <YOUR_ACCESS_TOKEN>',
+            'X-Goog-User-Project': projectId,
           },
         },
       },
     };
   }
 
-  private generateAntigravityConfig() {
+  private generateAntigravityConfig(projectId: string) {
     return {
       mcpServers: {
         stitch: {
           serverUrl: 'https://stitch.googleapis.com/mcp',
           headers: {
-            Authorization: 'Bearer $STITCH_ACCESS_TOKEN',
-            'X-Goog-User-Project': '$GOOGLE_CLOUD_PROJECT',
+            Authorization: 'Bearer <YOUR_ACCESS_TOKEN>',
+            'X-Goog-User-Project': projectId,
           },
         },
       },
     };
   }
 
-  private generateVSCodeConfig() {
+  private generateVSCodeConfig(projectId: string) {
     return {
+      inputs: [
+        {
+          type: 'promptString',
+          id: 'stitch-access-token',
+          description: 'Google Cloud Access Token (run: gcloud auth print-access-token)',
+          password: true,
+        },
+      ],
       servers: {
         stitch: {
-          url: 'https://stitch.googleapis.com/mcp',
           type: 'http',
+          url: 'https://stitch.googleapis.com/mcp',
           headers: {
-            Accept: 'application/json',
-            Authorization: 'Bearer $STITCH_ACCESS_TOKEN',
-            'X-Goog-User-Project': '$GOOGLE_CLOUD_PROJECT',
+            'Authorization': 'Bearer ${input:stitch-access-token}',
+            'X-Goog-User-Project': projectId,
           },
         },
       },
@@ -113,6 +120,23 @@ export class McpConfigHandler implements McpConfigService {
       return null;
     }
 
+    // VS Code uses different format
+    if (input.client === 'vscode') {
+      return {
+        servers: {
+          stitch: {
+            type: 'stdio',
+            command: 'npx',
+            args: ['@_davideast/stitch-mcp', 'proxy'],
+            env: {
+              STITCH_PROJECT_ID: input.projectId,
+            },
+          },
+        },
+      };
+    }
+
+    // Other clients (Cursor, Antigravity, etc.) use mcpServers format
     return {
       mcpServers: {
         stitch: {
@@ -138,11 +162,29 @@ export class McpConfigHandler implements McpConfigService {
       ? `\n${theme.yellow('Note:')} This uses the proxy server. Keep it running with:\n  npx @_davideast/stitch-mcp proxy\n`
       : '';
 
+    const tokenHint = transport === 'http'
+      ? `\n${theme.yellow('To get your access token, run:')}\n` +
+        `  CLOUDSDK_CONFIG=~/.stitch-mcp/config ~/.stitch-mcp/google-cloud-sdk/bin/gcloud auth print-access-token\n` +
+        `\n${theme.yellow('Important:')} Replace ${theme.blue('<YOUR_ACCESS_TOKEN>')} in the config with the token from the command above.\n` +
+        `Access tokens expire after 1 hour. Consider using ${theme.blue('stdio')} transport for automatic refresh.\n`
+      : '';
+
     switch (client) {
       case 'antigravity':
+        if (transport === 'stdio') {
+          return (
+            baseInstructions +
+            transportNote +
+            `\n${theme.green('Next Steps for Antigravity:')}\n` +
+            `1. In the Agent Panel, click the three dots in the top right\n` +
+            `2. Select "MCP Servers" → "Manage MCP Servers"\n` +
+            `3. Select "View raw config" and add the above configuration\n` +
+            `4. Restart Antigravity to load the configuration\n`
+          );
+        }
         return (
           baseInstructions +
-          transportNote +
+          tokenHint +
           `\n${theme.green('Next Steps for Antigravity:')}\n` +
           `1. In the Agent Panel, click the three dots in the top right\n` +
           `2. Select "MCP Servers" → "Manage MCP Servers"\n` +
@@ -151,22 +193,41 @@ export class McpConfigHandler implements McpConfigService {
         );
 
       case 'vscode':
+        if (transport === 'stdio') {
+          return (
+            baseInstructions +
+            `\n${theme.green('Next Steps for VSCode:')}\n` +
+            `1. Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P)\n` +
+            `2. Run "MCP: Open User Configuration" or "MCP: Open Workspace Folder Configuration"\n` +
+            `3. Add the above configuration to the mcp.json file\n` +
+            `4. VS Code will automatically start the proxy server when needed\n`
+          );
+        }
         return (
           baseInstructions +
-          transportNote +
+          tokenHint +
           `\n${theme.green('Next Steps for VSCode:')}\n` +
-          `1. Open the Command Palette (Cmd+Shift+P)\n` +
-          `2. Type "MCP: Add Server" and select it\n` +
-          `3. Select "HTTP" to add a remote MCP server\n` +
-          `4. Enter the URL: https://stitch.googleapis.com/mcp\n` +
-          `5. Set the name to "stitch" and confirm\n` +
-          `6. Modify the generated mcp.json file to add the headers shown above\n`
+          `1. Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P)\n` +
+          `2. Run "MCP: Open User Configuration" or "MCP: Open Workspace Folder Configuration"\n` +
+          `3. Add the above configuration to the mcp.json file\n` +
+          `4. When prompted, paste the access token from the command above\n` +
+          `5. Restart VS Code or run "MCP: List Servers" to start the server\n`
         );
 
       case 'cursor':
+        if (transport === 'stdio') {
+          return (
+            baseInstructions +
+            transportNote +
+            `\n${theme.green('Next Steps for Cursor:')}\n` +
+            `1. Create a .cursor/mcp.json file in your project root\n` +
+            `2. Add the above configuration to the file\n` +
+            `3. Restart Cursor to load the configuration\n`
+          );
+        }
         return (
           baseInstructions +
-          transportNote +
+          tokenHint +
           `\n${theme.green('Next Steps for Cursor:')}\n` +
           `1. Create a .cursor/mcp.json file in your project root\n` +
           `2. Add the above configuration to the file\n` +
@@ -186,13 +247,13 @@ export class McpConfigHandler implements McpConfigService {
           );
         } else {
           return (
-            transportNote +
+            tokenHint +
             `\n${theme.green('Setup Claude Code:')}\n\n` +
             `Run the following command to add the Stitch MCP server:\n\n` +
             `${theme.blue('claude mcp add stitch \\')}\n` +
             `${theme.blue('  --transport http https://stitch.googleapis.com/mcp \\')}\n` +
-            `${theme.blue('  --header "Authorization: Bearer $STITCH_ACCESS_TOKEN" \\')}\n` +
-            `${theme.blue('  --header "X-Goog-User-Project: $GOOGLE_CLOUD_PROJECT" \\')}\n` +
+            `${theme.blue('  --header "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \\')}\n` +
+            `${theme.blue(`  --header "X-Goog-User-Project: ${projectId}" \\`)}\n` +
             `${theme.blue('  -s user')}\n\n` +
             `${theme.yellow('Note:')} -s user saves to $HOME/.claude.json, use -s project for ./.mcp.json\n`
           );
