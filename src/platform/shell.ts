@@ -24,7 +24,8 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
       cwd: options?.cwd || process.cwd(),
       env: { ...process.env, ...(options?.env || {}) },
       stdio: 'pipe',
-      timeout: options?.timeout
+      timeout: options?.timeout,
+      shell: process.platform === 'win32'
     };
 
     const child = spawn(cmd, args, spawnOptions) as ChildProcess;
@@ -82,7 +83,8 @@ export async function execCommandStreaming(
     const spawnOptions: SpawnOptions = {
       cwd: options?.cwd || process.cwd(),
       env: { ...process.env, ...(options?.env || {}) },
-      stdio: 'pipe'
+      stdio: 'pipe',
+      shell: process.platform === 'win32'
     };
 
     const child = spawn(cmd, args, spawnOptions) as ChildProcess;
