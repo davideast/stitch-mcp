@@ -574,7 +574,7 @@ export class InitHandler implements InitCommand {
       if (transport === 'stdio') {
         config.mcpServers.stitch = {
           command: 'npx',
-          args: ['@_davideast/stitch-mcp', 'proxy'],
+          args: ['@YUxiangLuo/stitch-mcp', 'proxy'],
           env: {
             STITCH_PROJECT_ID: projectId,
             PATH: process.env.PATH || '',

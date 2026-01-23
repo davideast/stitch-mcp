@@ -127,7 +127,7 @@ export class McpConfigHandler implements McpConfigService {
           stitch: {
             type: 'stdio',
             command: 'npx',
-            args: ['@_davideast/stitch-mcp', 'proxy'],
+            args: ['@YUxiangLuo/stitch-mcp', 'proxy'],
             env: {
               STITCH_PROJECT_ID: input.projectId,
             },
@@ -141,7 +141,7 @@ export class McpConfigHandler implements McpConfigService {
       mcpServers: {
         stitch: {
           command: 'npx',
-          args: ['@_davideast/stitch-mcp', 'proxy'],
+          args: ['@YUxiangLuo/stitch-mcp', 'proxy'],
           env: {
             STITCH_PROJECT_ID: input.projectId,
           },
@@ -159,7 +159,7 @@ export class McpConfigHandler implements McpConfigService {
     const baseInstructions = `\n${theme.blue('MCP Configuration Generated')}\n\n${config}\n`;
 
     const transportNote = transport === 'stdio'
-      ? `\n${theme.yellow('Note:')} This uses the proxy server. Keep it running with:\n  npx @_davideast/stitch-mcp proxy\n`
+      ? `\n${theme.yellow('Note:')} This uses the proxy server. Keep it running with:\n  npx @YUxiangLuo/stitch-mcp proxy\n`
       : '';
 
     const tokenHint = transport === 'http'
@@ -248,7 +248,7 @@ export class McpConfigHandler implements McpConfigService {
             `\n${theme.green('Setup Claude Code:')}\n\n` +
             `Run the following command to add the Stitch MCP server:\n\n` +
             `${theme.blue('claude mcp add stitch \\')}\n` +
-            `${theme.blue('  -- npx @_davideast/stitch-mcp proxy')}`
+            `${theme.blue('  -- npx @YUxiangLuo/stitch-mcp proxy')}`
           );
         } else {
           return (
@@ -280,7 +280,7 @@ export class McpConfigHandler implements McpConfigService {
         const configBlock = [
           '[mcp_servers.stitch]',
           'command = "npx"',
-          'args = ["@_davideast/stitch-mcp", "proxy"]',
+          'args = ["@YUxiangLuo/stitch-mcp", "proxy"]',
           'enabled = false',
           '',
           '[mcp_servers.stitch.env]',
