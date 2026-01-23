@@ -248,9 +248,7 @@ export class McpConfigHandler implements McpConfigService {
             `\n${theme.green('Setup Claude Code:')}\n\n` +
             `Run the following command to add the Stitch MCP server:\n\n` +
             `${theme.blue('claude mcp add stitch \\')}\n` +
-            `${theme.blue('  --command npx @_davideast/stitch-mcp proxy \\')}\n` +
-            `${theme.blue('  -s user')}\n\n` +
-            `${theme.yellow('Note:')} -s user saves to $HOME/.claude.json, use -s project for ./.mcp.json\n`
+            `${theme.blue('  -- npx @_davideast/stitch-mcp proxy')}`
           );
         } else {
           return (

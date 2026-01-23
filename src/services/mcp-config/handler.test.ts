@@ -159,7 +159,7 @@ describe('McpConfigHandler', () => {
     if (result.success) {
       expect(result.data.config).toBe(''); // No JSON config for command-based client
       expect(result.data.instructions).toContain('claude mcp add stitch');
-      expect(result.data.instructions).toContain('--command npx @_davideast/stitch-mcp proxy');
+      expect(result.data.instructions).toContain('-- npx @_davideast/stitch-mcp proxy');
       expect(result.data.instructions).not.toContain('--transport http'); // Should NOT have HTTP transport
       expect(result.data.instructions).not.toContain('Authorization'); // Should NOT have auth headers for stdio
       expect(result.data.instructions).toContain('proxy server'); // Should mention proxy
