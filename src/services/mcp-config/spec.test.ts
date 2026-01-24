@@ -3,9 +3,9 @@ import { GenerateConfigInputSchema } from './spec';
 
 describe('McpConfig Service Spec', () => {
   describe('GenerateConfigInputSchema', () => {
-    it('should validate a correct input', () => {
+    it.each(['vscode', 'codex'])('should validate a %s client input', (client) => {
       const input = {
-        client: 'vscode',
+        client,
         projectId: 'test-project',
         accessToken: 'test-token',
       };

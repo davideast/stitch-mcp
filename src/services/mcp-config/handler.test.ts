@@ -125,12 +125,31 @@ describe('McpConfigHandler', () => {
     }
   });
 
-  it('should generate Codex CLI config instructions instead of JSON config', async () => {
+  it.each([
+    {
+      transport: 'stdio' as const,
+      expected: [
+        'command = "npx"',
+        'args = ["@_davideast/stitch-mcp", "proxy"]',
+        'STITCH_PROJECT_ID = "test-project"',
+        'Proxy mode handles token refresh',
+      ],
+    },
+    {
+      transport: 'http' as const,
+      expected: [
+        'url = "https://stitch.googleapis.com/mcp"',
+        'bearer_token_env_var = "STITCH_ACCESS_TOKEN"',
+        'env_http_headers',
+        'X-Goog-User-Project = "GOOGLE_CLOUD_PROJECT"',
+      ],
+    },
+  ])('should generate Codex CLI $transport config instructions instead of JSON config', async ({ transport, expected }) => {
     const input = {
       client: 'codex' as const,
       projectId: 'test-project',
       accessToken: 'test-token',
-      transport: 'stdio' as const,
+      transport,
     };
 
     const result = await handler.generateConfig(input);
@@ -140,8 +159,9 @@ describe('McpConfigHandler', () => {
       expect(result.data.config).toBe('');
       expect(result.data.instructions).toContain('Codex CLI');
       expect(result.data.instructions).toContain('~/.codex/config.toml');
-      expect(result.data.instructions).toContain('STITCH_PROJECT_ID = "test-project"');
-      expect(result.data.instructions).toContain('codex exec -c');
+      for (const fragment of expected) {
+        expect(result.data.instructions).toContain(fragment);
+      }
     }
   });
 

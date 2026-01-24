@@ -208,21 +208,14 @@ export class InitHandler implements InitCommand {
       this.updateStep(STEPS.CONNECTION, 'IN_PROGRESS');
 
       let transport: 'http' | 'stdio';
-      if (mcpClient === 'codex') {
-        if (input.transport) {
-          const requestedTransport = this.resolveTransport(input.transport);
-          if (requestedTransport !== 'stdio') {
-            console.log(theme.yellow('  ⚠ Codex CLI uses the proxy (stdio) transport. Ignoring --transport http.'));
-          }
-        }
-        transport = 'stdio';
-        this.updateStep(STEPS.CONNECTION, 'SKIPPED', 'Proxy', 'Codex uses proxy transport');
-      } else if (input.transport) {
+      if (input.transport) {
         transport = this.resolveTransport(input.transport);
-        this.updateStep(STEPS.CONNECTION, 'SKIPPED', transport === 'http' ? 'Direct' : 'Proxy', 'Set via --transport flag');
+        const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+        this.updateStep(STEPS.CONNECTION, 'SKIPPED', transportLabel, 'Set via --transport flag');
       } else {
         transport = await promptTransportType();
-        this.updateStep(STEPS.CONNECTION, 'COMPLETE', transport === 'http' ? 'Direct' : 'Proxy');
+        const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+        this.updateStep(STEPS.CONNECTION, 'COMPLETE', transportLabel);
       }
 
       // ─────────────────────────────────────────────────────────────────────
