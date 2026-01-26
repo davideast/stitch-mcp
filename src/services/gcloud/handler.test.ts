@@ -45,10 +45,18 @@ describe('GcloudHandler', () => {
   });
 
   describe('hasADC', () => {
-    test('should return true if ADC file exists', async () => {
+    test('should return true if ADC file exists and token is valid', async () => {
       (fs.existsSync as any).mockReturnValue(true);
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'ya29.token', stderr: '', exitCode: 0 });
       const result = await handler.hasADC();
       expect(result).toBe(true);
+    });
+
+    test('should return false if ADC file exists but token is expired', async () => {
+      (fs.existsSync as any).mockReturnValue(true);
+      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'Token expired', exitCode: 1 });
+      const result = await handler.hasADC();
+      expect(result).toBe(false);
     });
 
     test('should return false if ADC file does not exist', async () => {
