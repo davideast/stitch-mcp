@@ -430,12 +430,30 @@ export class GcloudHandler implements GcloudService {
         return result.stdout.trim();
       }
 
-      console.error('[Gcloud] Token fetch failed:', result.stderr || result.error);
+      // Build the correct login command with config prefix for bundled gcloud
+      const loginCmd = this.getLoginCommand();
+      console.error(`[Gcloud] Token fetch failed. Please run:\n\n  ${loginCmd}\n\nto obtain new credentials.`);
       return null;
     } catch (e) {
       console.error('[Gcloud] Token fetch exception:', e);
       return null;
     }
+  }
+
+  /**
+   * Get the correct login command with config prefix if using bundled gcloud
+   */
+  private getLoginCommand(): string {
+    const gcloudCmd = this.getGcloudCommand();
+
+    // If using system gcloud, no config prefix needed
+    if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
+      return `${gcloudCmd} auth application-default login`;
+    }
+
+    // For bundled gcloud, include the CLOUDSDK_CONFIG prefix
+    const configPath = getGcloudConfigPath();
+    return `CLOUDSDK_CONFIG="${configPath}" ${gcloudCmd} auth application-default login`;
   }
 
   async getProjectId(): Promise<string | null> {
@@ -677,40 +695,50 @@ export class GcloudHandler implements GcloudService {
   }
 
   async hasADC(): Promise<boolean> {
-    // Check credentials by attempting to print access token (lightweight check)
-    // or checking the standard location via gcloud info if available.
-    // A reliable way is to check if we can get a token for ADC scope.
+    // Actually verify ADC credentials work by attempting to get an access token.
+    // Just checking if the file exists is not enough - tokens can be expired or revoked.
     const gcloudCmd = this.getGcloudCommand();
 
-    // Command: gcloud auth application-default print-access-token
-    // This verifies that ADC is actually usable, not just that a file exists.
-    // Note: This might refresh tokens, so it requires network if expired.
-    // Alternatives: 'gcloud info' parsing.
-
-    // Let's stick to checking if the credential file exists, but using gcloud info to find WHERE it should be.
-    // If not using system, we know it's in our bundled config.
+    // First, quick check if credential file exists
+    let fileExists = false;
     if (!this.useSystemGcloud && !process.env.STITCH_USE_SYSTEM_GCLOUD) {
       const stitchConfigPath = getGcloudConfigPath();
       const stitchAdcPath = joinPath(stitchConfigPath, 'application_default_credentials.json');
-      return fs.existsSync(stitchAdcPath);
+      fileExists = fs.existsSync(stitchAdcPath);
+    } else {
+      // For system gcloud, check via gcloud info
+      try {
+        const result = await execCommand(
+          [gcloudCmd, 'info', '--format=value(config.paths.global_config_dir)'],
+          { env: this.getEnvironment() }
+        );
+
+        if (result.success && result.stdout.trim()) {
+          const configDir = result.stdout.trim();
+          const adcPath = joinPath(configDir, 'application_default_credentials.json');
+          fileExists = fs.existsSync(adcPath);
+        }
+      } catch {
+        // Fallback - file doesn't exist
+      }
     }
 
-    // For system gcloud, use info command to find config directory
+    // If no file, definitely no ADC
+    if (!fileExists) {
+      return false;
+    }
+
+    // File exists, but verify the credentials are actually valid by trying to get a token
     try {
       const result = await execCommand(
-        [gcloudCmd, 'info', '--format=value(config.paths.global_config_dir)'],
+        [gcloudCmd, 'auth', 'application-default', 'print-access-token'],
         { env: this.getEnvironment() }
       );
 
-      if (result.success && result.stdout.trim()) {
-        const configDir = result.stdout.trim();
-        const adcPath = joinPath(configDir, 'application_default_credentials.json');
-        return fs.existsSync(adcPath);
-      }
-    } catch (e) {
-      // Fallback
+      // Only return true if we successfully got a token
+      return result.success && !!result.stdout.trim();
+    } catch {
+      return false;
     }
-
-    return false;
   }
 }
