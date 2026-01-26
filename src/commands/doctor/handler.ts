@@ -53,7 +53,7 @@ export class DoctorHandler implements DoctorCommand {
           name: 'Google Cloud CLI',
           passed: false,
           message: 'Not found or invalid version',
-          suggestion: 'Run: npx @YUxiangLuo/stitch-mcp init',
+          suggestion: 'Run: npx @_davideast/stitch-mcp init',
         };
         checks.push(check);
         spinner.fail(check.message);
@@ -166,7 +166,7 @@ export class DoctorHandler implements DoctorCommand {
           name: 'Active Project',
           passed: false,
           message: 'No project configured',
-          suggestion: 'Run: npx @YUxiangLuo/stitch-mcp init',
+          suggestion: 'Run: npx @_davideast/stitch-mcp init',
         };
         checks.push(check);
         spinner.fail(check.message);

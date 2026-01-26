@@ -7,7 +7,7 @@
 ## Quick Start
 
 ```bash
-npx @YUxiangLuo/stitch-mcp init
+npx @_davideast/stitch-mcp init
 ```
 
 This single command will:
@@ -68,7 +68,7 @@ Setup Complete! ✔
   "mcpServers": {
     "stitch": {
       "command": "npx",
-      "args": ["@YUxiangLuo/stitch-mcp", "proxy"],
+      "args": ["@_davideast/stitch-mcp", "proxy"],
       "env": {
         "STITCH_PROJECT_ID": "your-project-id"
       }
@@ -102,7 +102,7 @@ gcloud beta services mcp enable stitch.googleapis.com --project=<PROJECT_ID>
   "mcpServers": {
     "stitch": {
       "command": "npx",
-      "args": ["@YUxiangLuo/stitch-mcp", "proxy"],
+      "args": ["@_davideast/stitch-mcp", "proxy"],
       "env": {
         "STITCH_USE_SYSTEM_GCLOUD": "1"
       }
@@ -122,7 +122,7 @@ gcloud beta services mcp enable stitch.googleapis.com --project=<PROJECT_ID>
 ## Verify Your Setup
 
 ```bash
-npx @YUxiangLuo/stitch-mcp doctor
+npx @_davideast/stitch-mcp doctor
 ```
 
 Runs health checks on:
@@ -135,13 +135,13 @@ Runs health checks on:
 ## Logout
 
 ```bash
-npx @YUxiangLuo/stitch-mcp logout
+npx @_davideast/stitch-mcp logout
 
 # Skip confirmation
-npx @YUxiangLuo/stitch-mcp logout --force
+npx @_davideast/stitch-mcp logout --force
 
 # Clear all config
-npx @YUxiangLuo/stitch-mcp logout --clear-config
+npx @_davideast/stitch-mcp logout --clear-config
 ```
 
 ## Deep Dive
@@ -151,13 +151,13 @@ npx @YUxiangLuo/stitch-mcp logout --clear-config
 Can be configured with `npx` or installed globally.
 
 ```bash
-npx @YUxiangLuo/stitch-mcp init
+npx @_davideast/stitch-mcp init
 ```
 
 Or install globally if you prefer:
 
 ```bash
-npm install -g @YUxiangLuo/stitch-mcp
+npm install -g @_davideast/stitch-mcp
 stitch-mcp init
 ```
 
@@ -166,7 +166,7 @@ stitch-mcp init
 #### `init` - Interactive Setup
 
 ```bash
-npx @YUxiangLuo/stitch-mcp init [options]
+npx @_davideast/stitch-mcp init [options]
 ```
 
 **Options:**
@@ -189,7 +189,7 @@ npx @YUxiangLuo/stitch-mcp init [options]
 #### `doctor` - Health Checks
 
 ```bash
-npx @YUxiangLuo/stitch-mcp doctor [options]
+npx @_davideast/stitch-mcp doctor [options]
 ```
 
 **Options:**
@@ -205,7 +205,7 @@ Diagnoses common setup issues and verifies:
 #### `logout` - Revoke Credentials
 
 ```bash
-npx @YUxiangLuo/stitch-mcp logout [options]
+npx @_davideast/stitch-mcp logout [options]
 ```
 
 **Options:**
@@ -220,7 +220,7 @@ Revokes both user authentication and Application Default Credentials. Useful for
 #### `proxy` - MCP Proxy Server
 
 ```bash
-npx @YUxiangLuo/stitch-mcp proxy [options]
+npx @_davideast/stitch-mcp proxy [options]
 ```
 
 **Options:**
@@ -303,7 +303,7 @@ Simply copy the OAuth URL from your terminal and paste it into your browser to c
   "mcpServers": {
     "stitch": {
       "command": "npx",
-      "args": ["@YUxiangLuo/stitch-mcp", "proxy"],
+      "args": ["@_davideast/stitch-mcp", "proxy"],
       "env": {
         "STITCH_PROJECT_ID": "<project-id>"
       }
@@ -325,7 +325,7 @@ Ensure:
 
 Run `doctor` to diagnose:
 ```bash
-npx @YUxiangLuo/stitch-mcp doctor --verbose
+npx @_davideast/stitch-mcp doctor --verbose
 ```
 
 #### Authentication URL not appearing
@@ -341,14 +341,14 @@ The tool now **always prints authentication URLs to the terminal** with a 5-seco
 The bundled gcloud SDK maintains separate authentication from your global gcloud installation. To fully clear authentication:
 
 ```bash
-npx @YUxiangLuo/stitch-mcp logout --force --clear-config
+npx @_davideast/stitch-mcp logout --force --clear-config
 ```
 
 #### API connection fails after setup
 
 1. Run the doctor command:
    ```bash
-   npx @YUxiangLuo/stitch-mcp doctor --verbose
+   npx @_davideast/stitch-mcp doctor --verbose
    ```
 
 2. Verify your project has billing enabled
@@ -360,8 +360,8 @@ npx @YUxiangLuo/stitch-mcp logout --force --clear-config
 
 4. Try re-authenticating:
    ```bash
-   npx @YUxiangLuo/stitch-mcp logout --force
-   npx @YUxiangLuo/stitch-mcp init
+   npx @_davideast/stitch-mcp logout --force
+   npx @_davideast/stitch-mcp init
    ```
 
 ### Development

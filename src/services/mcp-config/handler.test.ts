@@ -159,7 +159,7 @@ describe('McpConfigHandler', () => {
     if (result.success) {
       expect(result.data.config).toBe(''); // No JSON config for command-based client
       expect(result.data.instructions).toContain('claude mcp add stitch');
-      expect(result.data.instructions).toContain('-- npx @YUxiangLuo/stitch-mcp proxy');
+      expect(result.data.instructions).toContain('-- npx @_davideast/stitch-mcp proxy');
       expect(result.data.instructions).not.toContain('--transport http'); // Should NOT have HTTP transport
       expect(result.data.instructions).not.toContain('Authorization'); // Should NOT have auth headers for stdio
       expect(result.data.instructions).toContain('proxy server'); // Should mention proxy
@@ -185,11 +185,11 @@ describe('McpConfigHandler', () => {
           const config = JSON.parse(result.data.config);
           if (client === 'vscode') {
             expect(config.servers.stitch.command).toBe('npx');
-            expect(config.servers.stitch.args).toEqual(['@YUxiangLuo/stitch-mcp', 'proxy']);
+            expect(config.servers.stitch.args).toEqual(['@_davideast/stitch-mcp', 'proxy']);
             expect(config.servers.stitch.env.STITCH_PROJECT_ID).toBe('test-project');
           } else {
             expect(config.mcpServers.stitch.command).toBe('npx');
-            expect(config.mcpServers.stitch.args).toEqual(['@YUxiangLuo/stitch-mcp', 'proxy']);
+            expect(config.mcpServers.stitch.args).toEqual(['@_davideast/stitch-mcp', 'proxy']);
             expect(config.mcpServers.stitch.env.STITCH_PROJECT_ID).toBe('test-project');
           }
           expect(result.data.instructions).toContain(clientDisplayNames[client]);
