@@ -5,7 +5,7 @@ import type { McpClient } from './spec';
 describe('McpConfigHandler', () => {
   const handler = new McpConfigHandler();
 
-  const clients: McpClient[] = ['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex'];
+  const clients: McpClient[] = ['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex', 'opencode'];
 
   const clientDisplayNames: Record<McpClient, string> = {
     antigravity: 'Antigravity',
@@ -14,6 +14,7 @@ describe('McpConfigHandler', () => {
     'claude-code': 'Claude Code',
     'gemini-cli': 'Gemini CLI',
     codex: 'Codex CLI',
+    opencode: 'OpenCode',
   };
 
   it('should generate Cursor configuration with correct format', async () => {
@@ -125,12 +126,31 @@ describe('McpConfigHandler', () => {
     }
   });
 
-  it('should generate Codex CLI config instructions instead of JSON config', async () => {
+  it.each([
+    {
+      transport: 'stdio' as const,
+      expected: [
+        'command = "npx"',
+        'args = ["@_davideast/stitch-mcp", "proxy"]',
+        'STITCH_PROJECT_ID = "test-project"',
+        'Proxy mode handles token refresh',
+      ],
+    },
+    {
+      transport: 'http' as const,
+      expected: [
+        'url = "https://stitch.googleapis.com/mcp"',
+        'bearer_token_env_var = "STITCH_ACCESS_TOKEN"',
+        'env_http_headers',
+        'X-Goog-User-Project = "GOOGLE_CLOUD_PROJECT"',
+      ],
+    },
+  ])('should generate Codex CLI $transport config instructions instead of JSON config', async ({ transport, expected }) => {
     const input = {
       client: 'codex' as const,
       projectId: 'test-project',
       accessToken: 'test-token',
-      transport: 'stdio' as const,
+      transport,
     };
 
     const result = await handler.generateConfig(input);
@@ -140,8 +160,57 @@ describe('McpConfigHandler', () => {
       expect(result.data.config).toBe('');
       expect(result.data.instructions).toContain('Codex CLI');
       expect(result.data.instructions).toContain('~/.codex/config.toml');
-      expect(result.data.instructions).toContain('STITCH_PROJECT_ID = "test-project"');
-      expect(result.data.instructions).toContain('codex exec -c');
+      for (const fragment of expected) {
+        expect(result.data.instructions).toContain(fragment);
+      }
+    }
+  });
+
+  it('should generate OpenCode HTTP configuration with remote type', async () => {
+    const input = {
+      client: 'opencode' as const,
+      projectId: 'test-project',
+      accessToken: 'test-token',
+      transport: 'http' as const,
+    };
+
+    const result = await handler.generateConfig(input);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const config = JSON.parse(result.data.config);
+      expect(config.$schema).toBe('https://opencode.ai/config.json');
+      expect(config.mcp).toBeDefined();
+      expect(config.mcp.stitch.type).toBe('remote');
+      expect(config.mcp.stitch.url).toBe('https://stitch.googleapis.com/mcp');
+      expect(config.mcp.stitch.headers.Authorization).toBe('Bearer $STITCH_ACCESS_TOKEN');
+      expect(config.mcp.stitch.headers['X-Goog-User-Project']).toBe('$GOOGLE_CLOUD_PROJECT');
+      expect(result.data.instructions).toContain('OpenCode');
+      expect(result.data.instructions).toContain('opencode.json');
+      expect(result.data.instructions).toContain('OAuth');
+    }
+  });
+
+  it('should generate OpenCode STDIO configuration with local type', async () => {
+    const input = {
+      client: 'opencode' as const,
+      projectId: 'test-project',
+      accessToken: 'test-token',
+      transport: 'stdio' as const,
+    };
+
+    const result = await handler.generateConfig(input);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const config = JSON.parse(result.data.config);
+      expect(config.$schema).toBe('https://opencode.ai/config.json');
+      expect(config.mcp).toBeDefined();
+      expect(config.mcp.stitch.type).toBe('local');
+      expect(config.mcp.stitch.command).toEqual(['npx', '@_davideast/stitch-mcp', 'proxy']);
+      expect(config.mcp.stitch.environment.STITCH_PROJECT_ID).toBe('test-project');
+      expect(result.data.instructions).toContain('OpenCode');
+      expect(result.data.instructions).toContain('proxy server');
     }
   });
 
@@ -167,8 +236,8 @@ describe('McpConfigHandler', () => {
   });
 
   it('should generate a valid STDIO configuration for JSON-based clients', async () => {
-    // Skip command-based clients that don't generate JSON configs
-    const jsonBasedClients = clients.filter(c => c !== 'claude-code' && c !== 'gemini-cli' && c !== 'codex');
+    // Skip command-based clients that don't generate JSON configs and opencode which has different structure
+    const jsonBasedClients = clients.filter(c => c !== 'claude-code' && c !== 'gemini-cli' && c !== 'codex' && c !== 'opencode');
 
     for (const client of jsonBasedClients) {
       const input = {

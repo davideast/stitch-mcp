@@ -208,21 +208,14 @@ export class InitHandler implements InitCommand {
       this.updateStep(STEPS.CONNECTION, 'IN_PROGRESS');
 
       let transport: 'http' | 'stdio';
-      if (mcpClient === 'codex') {
-        if (input.transport) {
-          const requestedTransport = this.resolveTransport(input.transport);
-          if (requestedTransport !== 'stdio') {
-            console.log(theme.yellow('  ⚠ Codex CLI uses the proxy (stdio) transport. Ignoring --transport http.'));
-          }
-        }
-        transport = 'stdio';
-        this.updateStep(STEPS.CONNECTION, 'SKIPPED', 'Proxy', 'Codex uses proxy transport');
-      } else if (input.transport) {
+      if (input.transport) {
         transport = this.resolveTransport(input.transport);
-        this.updateStep(STEPS.CONNECTION, 'SKIPPED', transport === 'http' ? 'Direct' : 'Proxy', 'Set via --transport flag');
+        const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+        this.updateStep(STEPS.CONNECTION, 'SKIPPED', transportLabel, 'Set via --transport flag');
       } else {
         transport = await promptTransportType();
-        this.updateStep(STEPS.CONNECTION, 'COMPLETE', transport === 'http' ? 'Direct' : 'Proxy');
+        const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+        this.updateStep(STEPS.CONNECTION, 'COMPLETE', transportLabel);
       }
 
       // ─────────────────────────────────────────────────────────────────────
@@ -506,13 +499,14 @@ export class InitHandler implements InitCommand {
       'cursor': 'cursor', 'cur': 'cursor',
       'claude-code': 'claude-code', 'cc': 'claude-code',
       'gemini-cli': 'gemini-cli', 'gcli': 'gemini-cli',
-      'codex': 'codex', 'cdx': 'codex'
+      'codex': 'codex', 'cdx': 'codex',
+      'opencode': 'opencode', 'opc': 'opencode'
     };
 
     const normalized = input.trim().toLowerCase();
     const client = map[normalized];
     if (!client) {
-      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli), codex (cdx)`);
+      throw new Error(`Invalid client '${input}'. Supported: antigravity (agy), vscode (vsc), cursor (cur), claude-code (cc), gemini-cli (gcli), codex (cdx), opencode (opc)`);
     }
     return client;
   }

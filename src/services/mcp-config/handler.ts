@@ -50,6 +50,8 @@ export class McpConfigHandler implements McpConfigService {
         return this.generateGeminiCliConfig();
       case 'codex':
         return null;
+      case 'opencode':
+        return this.generateOpencodeConfig();
     }
   }
 
@@ -114,13 +116,29 @@ export class McpConfigHandler implements McpConfigService {
     return null;
   }
 
+  private generateOpencodeConfig() {
+    return {
+      "$schema": "https://opencode.ai/config.json",
+      mcp: {
+        stitch: {
+          type: "remote",
+          url: "https://stitch.googleapis.com/mcp",
+          headers: {
+            Authorization: "Bearer $STITCH_ACCESS_TOKEN",
+            "X-Goog-User-Project": "$GOOGLE_CLOUD_PROJECT",
+          },
+        },
+      },
+    };
+  }
+
   private generateStdioConfig(input: GenerateConfigInput) {
     // Command-based clients use CLI commands, not JSON config
     if (input.client === 'claude-code' || input.client === 'gemini-cli' || input.client === 'codex') {
       return null;
     }
 
-    // VS Code uses different format
+// VS Code uses different format
     if (input.client === 'vscode') {
       return {
         servers: {
@@ -129,6 +147,21 @@ export class McpConfigHandler implements McpConfigService {
             command: 'npx',
             args: ['@_davideast/stitch-mcp', 'proxy'],
             env: {
+              STITCH_PROJECT_ID: input.projectId,
+            },
+          },
+        },
+      };
+    }
+
+    if (input.client === 'opencode') {
+      return {
+        "$schema": "https://opencode.ai/config.json",
+        mcp: {
+          stitch: {
+            type: "local",
+            command: ["npx", "@_davideast/stitch-mcp", "proxy"],
+            environment: {
               STITCH_PROJECT_ID: input.projectId,
             },
           },
@@ -273,30 +306,48 @@ export class McpConfigHandler implements McpConfigService {
         );
 
       case 'codex': {
-        const transportWarning = transport === 'http'
-          ? `${theme.yellow('Note:')} Codex CLI uses the proxy (stdio) transport. Re-run init and choose "Proxy (Recommended for Dev)".\n`
-          : '';
+        const isHttp = transport === 'http';
+        const configBlock = isHttp
+          ? [
+              '[mcp_servers.stitch]',
+              'url = "https://stitch.googleapis.com/mcp"',
+              'bearer_token_env_var = "STITCH_ACCESS_TOKEN"',
+              '',
+              '[mcp_servers.stitch.env_http_headers]',
+              'X-Goog-User-Project = "GOOGLE_CLOUD_PROJECT"',
+            ].join('\n')
+          : [
+              '[mcp_servers.stitch]',
+              'command = "npx"',
+              'args = ["@_davideast/stitch-mcp", "proxy"]',
+              '',
+              '[mcp_servers.stitch.env]',
+              `STITCH_PROJECT_ID = "${projectId}"`,
+            ].join('\n');
 
-        const configBlock = [
-          '[mcp_servers.stitch]',
-          'command = "npx"',
-          'args = ["@_davideast/stitch-mcp", "proxy"]',
-          'enabled = false',
-          '',
-          '[mcp_servers.stitch.env]',
-          `STITCH_PROJECT_ID = "${projectId}"`,
-        ].join('\n');
+        const note = isHttp
+          ? `${theme.yellow('Note:')} Direct mode requires a valid access token in ${theme.blue('STITCH_ACCESS_TOKEN')} and a project id in ${theme.blue('GOOGLE_CLOUD_PROJECT')}.\n`
+          : `${theme.yellow('Note:')} Proxy mode handles token refresh automatically.\n`;
 
         return (
-          transportWarning +
           `\n${theme.green('Setup Codex CLI:')}\n\n` +
           `Add this to ${theme.blue('~/.codex/config.toml')}:\n\n` +
-          `${configBlock}\n` +
+          `${configBlock}\n\n` +
+          note
+        );
+      }
+
+      case 'opencode': {
+        const fileName = transport === 'http' ? 'opencode.json' : 'opencode.json';
+        return (
+          baseInstructions +
           transportNote +
-          `\n${theme.green('Next Steps:')}\n` +
-          `1. Enable per run:\n` +
-          `   ${theme.blue("codex exec -c 'mcp_servers.stitch.enabled=true' \"Use the stitch MCP server\"")}\n` +
-          `2. Or set ${theme.blue('enabled = true')} in the config to always enable it.\n`
+          `\n${theme.green('Setup OpenCode:')}\n\n` +
+          `1. Add the above configuration to ${theme.blue(fileName)} in your project root\n` +
+          `2. If using HTTP transport, OpenCode will automatically handle OAuth when you first use the MCP server\n` +
+          `3. If using STDIO transport, make sure the proxy server is running with:\n` +
+          `   ${theme.blue('npx @_davideast/stitch-mcp proxy')}\n\n` +
+          `${theme.gray('Note:')} You can now use Stitch tools by adding "use the stitch tool" to your prompts.\n`
         );
       }
 

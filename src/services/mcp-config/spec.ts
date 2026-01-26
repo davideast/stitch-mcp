@@ -5,11 +5,11 @@ import { z } from 'zod';
 // ============================================================================
 // ============================================================================
 
-export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli' | 'codex';
+export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli' | 'codex' | 'opencode';
 export type TransportType = 'http' | 'stdio';
 
 export const GenerateConfigInputSchema = z.object({
-  client: z.enum(['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex']),
+  client: z.enum(['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex', 'opencode']),
   projectId: z.string().min(1),
   accessToken: z.string().min(1),
   transport: z.enum(['http', 'stdio']).default('http'),

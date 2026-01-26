@@ -172,7 +172,7 @@ npx @_davideast/stitch-mcp init [options]
 **Options:**
 - `--local` - Install gcloud locally to project instead of user home
 - `-y, --yes` - Auto-approve verification prompts (skips "Check your current setup status?")
-- `-c, --client <client>` - Specify MCP client (antigravity, vscode, cursor, claude-code, gemini-cli)
+- `-c, --client <client>` - Specify MCP client (antigravity, vscode, cursor, claude-code, gemini-cli, opencode)
 - `-t, --transport <type>` - Transport type (http or stdio)
 
 **What happens:**
