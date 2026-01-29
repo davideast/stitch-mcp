@@ -1,4 +1,4 @@
-import { select, input, confirm } from '@inquirer/prompts';
+import { select, input, confirm, password } from '@inquirer/prompts';
 
 export type McpClient = 'antigravity' | 'vscode' | 'cursor' | 'claude-code' | 'gemini-cli' | 'codex' | 'opencode';
 
@@ -17,6 +17,63 @@ export async function promptMcpClient(): Promise<McpClient> {
       { name: 'Codex CLI', value: 'codex' as McpClient },
       { name: 'OpenCode', value: 'opencode' as McpClient },
     ],
+  });
+}
+
+/**
+ * Prompt user to select Authentication Mode
+ */
+export async function promptAuthMode(): Promise<'apiKey' | 'oauth'> {
+  return await select({
+    message: 'Select Authentication Mode:',
+    choices: [
+      {
+        name: 'API Key',
+        value: 'apiKey' as const,
+        description: 'Persistent keys generated in the Stitch Settings page.',
+      },
+      {
+        name: 'OAuth',
+        value: 'oauth' as const,
+        description: 'A browser-based authentication flow required by specific AI clients that do not support manual key entry, or for environments where storing persistent secrets on disk is restricted.',
+      },
+    ],
+  });
+}
+
+/**
+ * Prompt user to select API Key storage
+ */
+export async function promptApiKeyStorage(): Promise<'.env' | 'config' | 'skip'> {
+  return await select({
+    message: 'Where would you like to store your API Key?',
+    choices: [
+      {
+        name: '.env file',
+        value: '.env' as const,
+        description: 'Use the current working directory. Append if existing, create if not.',
+      },
+      {
+        name: 'MCP config',
+        value: 'config' as const,
+        description: 'Add it to the final MCP config to copy and paste.',
+      },
+      {
+        name: 'Skip',
+        value: 'skip' as const,
+        description: 'Use a placeholder in the final config.',
+      },
+    ],
+  });
+}
+
+/**
+ * Prompt user to enter API Key
+ */
+export async function promptApiKey(): Promise<string> {
+  return await password({
+    message: 'Enter your Stitch API Key:',
+    mask: '*',
   });
 }
 
