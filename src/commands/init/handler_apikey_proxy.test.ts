@@ -21,16 +21,6 @@ mock.module('../../ui/spinner.js', () => ({
   createSpinner: mock(() => mockSpinner),
 }));
 
-// Mock checklist
-mock.module('../../ui/checklist/handler.js', () => ({
-    ChecklistUIHandler: class {
-        initialize() {}
-        updateItem() {}
-        getProgress() { return { percent: 100 }; }
-        isComplete() { return true; }
-    }
-}));
-
 // Mock environment detection
 mock.module('../../platform/environment.js', () => ({
   detectEnvironment: mock(() => ({
