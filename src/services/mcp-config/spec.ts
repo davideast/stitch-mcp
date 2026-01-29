@@ -11,8 +11,13 @@ export type TransportType = 'http' | 'stdio';
 export const GenerateConfigInputSchema = z.object({
   client: z.enum(['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex', 'opencode']),
   projectId: z.string().min(1),
-  accessToken: z.string().min(1),
+  accessToken: z.string().optional(),
   transport: z.enum(['http', 'stdio']).default('http'),
+  authMode: z.enum(['oauth', 'apiKey']).optional(),
+  apiKey: z.string().optional(),
+}).refine(data => data.accessToken || data.apiKey, {
+  message: "Either accessToken or apiKey must be provided",
+  path: ["accessToken"],
 });
 export type GenerateConfigInput = z.infer<typeof GenerateConfigInputSchema>;
 

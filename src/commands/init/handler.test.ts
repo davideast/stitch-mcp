@@ -6,6 +6,9 @@ mock.module('../../ui/wizard.js', () => ({
   promptMcpClient: mock(() => Promise.resolve('antigravity')),
   promptConfirm: mock(() => Promise.resolve(true)),
   promptTransportType: mock(() => Promise.resolve('http')),
+  promptAuthMode: mock(() => Promise.resolve('oauth')),
+  promptApiKeyStorage: mock(() => Promise.resolve('skip')),
+  promptApiKey: mock(() => Promise.resolve('test-key')),
 }));
 
 const mockSpinner: Record<string, unknown> = {
