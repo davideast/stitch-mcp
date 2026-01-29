@@ -141,12 +141,20 @@ export class InitHandler implements InitCommand {
         // Skip irrelevant steps
         this.updateStep(STEPS.GCLOUD, 'SKIPPED', 'Not required for API Key');
         this.updateStep(STEPS.AUTH, 'SKIPPED', 'Using API Key');
-        this.updateStep(STEPS.CONNECTION, 'SKIPPED', 'Direct', 'Forced by API Key mode');
+
+        if (input.transport) {
+          transport = this.resolveTransport(input.transport);
+          const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+          this.updateStep(STEPS.CONNECTION, 'SKIPPED', transportLabel, 'Set via --transport flag');
+        } else {
+          transport = await promptTransportType('apiKey');
+          const transportLabel = transport === 'http' ? 'Direct' : 'Proxy';
+          this.updateStep(STEPS.CONNECTION, 'COMPLETE', transportLabel);
+        }
+
         this.updateStep(STEPS.PROJECT, 'SKIPPED', 'Not required for API Key');
         this.updateStep(STEPS.IAM_API, 'SKIPPED', 'Not required for API Key');
         this.updateStep(STEPS.TEST, 'SKIPPED', 'Not supported for API Key yet');
-
-        transport = 'http';
 
       } else {
         this.updateStep(STEPS.AUTH_MODE, 'COMPLETE', 'OAuth');

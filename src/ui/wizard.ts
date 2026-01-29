@@ -104,19 +104,24 @@ export async function promptConfirm(message: string, defaultValue = true): Promi
 /**
  * Prompt user to select transport type
  */
-export async function promptTransportType(): Promise<'http' | 'stdio'> {
+export async function promptTransportType(authMode: 'apiKey' | 'oauth' = 'oauth'): Promise<'http' | 'stdio'> {
+  const isApiKey = authMode === 'apiKey';
   return await select({
     message: 'How would you like to connect to Stitch?',
     choices: [
       {
         name: 'Direct (Standard)',
         value: 'http' as const,
-        description: 'Standard HTTP. Production-ready. Requires manual OAuth token management.',
+        description: isApiKey
+          ? 'You or the IDE/CLI handles the loading of the API key.'
+          : 'Standard HTTP. Production-ready. Requires manual OAuth token management.',
       },
       {
         name: 'Proxy (Recommended for Dev)',
         value: 'stdio' as const,
-        description: 'Zero-config. Uses a local bridge to auto-refresh gcloud credentials.',
+        description: isApiKey
+          ? 'stitch-mcp will manage the loading of the API key.'
+          : 'Zero-config. Uses a local bridge to auto-refresh gcloud credentials.',
       },
     ],
   });

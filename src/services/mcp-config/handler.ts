@@ -166,6 +166,14 @@ export class McpConfigHandler implements McpConfigService {
       return null;
     }
 
+    const env: Record<string, string> = {
+      STITCH_PROJECT_ID: input.projectId,
+    };
+
+    if (input.apiKey) {
+      env.STITCH_API_KEY = input.apiKey;
+    }
+
 // VS Code uses different format
     if (input.client === 'vscode') {
       return {
@@ -174,9 +182,7 @@ export class McpConfigHandler implements McpConfigService {
             type: 'stdio',
             command: 'npx',
             args: ['@_davideast/stitch-mcp', 'proxy'],
-            env: {
-              STITCH_PROJECT_ID: input.projectId,
-            },
+            env,
           },
         },
       };
@@ -189,9 +195,7 @@ export class McpConfigHandler implements McpConfigService {
           stitch: {
             type: "local",
             command: ["npx", "@_davideast/stitch-mcp", "proxy"],
-            environment: {
-              STITCH_PROJECT_ID: input.projectId,
-            },
+            environment: env,
           },
         },
       };
@@ -203,9 +207,7 @@ export class McpConfigHandler implements McpConfigService {
         stitch: {
           command: 'npx',
           args: ['@_davideast/stitch-mcp', 'proxy'],
-          env: {
-            STITCH_PROJECT_ID: input.projectId,
-          },
+          env,
         },
       },
     };
