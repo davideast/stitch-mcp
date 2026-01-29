@@ -35,6 +35,12 @@ describe('ProxyHandler', () => {
 
     // Update the shared mock instance reference if tests rely on it (they do)
     // Object.assign(mockGcloudHandlerInstance, mockGcloudHandler); // Removed this line
+
+    delete process.env.STITCH_API_KEY;
+  });
+
+  afterEach(() => {
+    delete process.env.STITCH_API_KEY;
   });
 
   test('start should fail if initial token refresh fails', async () => {
@@ -104,6 +110,31 @@ describe('ProxyHandler', () => {
     expect(options.headers['Authorization']).toBe('Bearer test-token');
     expect(options.headers['x-goog-user-project']).toBe('test-project');
     expect((options.body as string)).toBe(JSON.stringify(message));
+
+    mockStdioTransport.onclose();
+    await startPromise;
+  });
+
+  test('start should use API Key if STITCH_API_KEY is present', async () => {
+    process.env.STITCH_API_KEY = 'test-api-key';
+
+    const startPromise = proxyHandler.start({ transport: 'stdio' });
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Check that gcloud was NOT called
+    expect(mockGcloudHandler.getAccessToken).toHaveBeenCalledTimes(0);
+    expect(mockGcloudHandler.getProjectId).toHaveBeenCalledTimes(0);
+
+    // Send a message to trigger fetch
+    const message: JSONRPCMessage = { jsonrpc: '2.0', id: 1, method: 'test' };
+    mockStdioTransport.onmessage(message);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect((global.fetch as any)).toHaveBeenCalledTimes(1);
+    const [url, options] = (global.fetch as any).mock.calls[0];
+    expect(options.headers['X-Goog-Api-Key']).toBe('test-api-key');
+    expect(options.headers['Authorization']).toBeUndefined();
+    expect(options.headers['x-goog-user-project']).toBeUndefined();
 
     mockStdioTransport.onclose();
     await startPromise;

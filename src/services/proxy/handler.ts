@@ -1,6 +1,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { appendFileSync } from 'node:fs';
+import dotenv from 'dotenv';
 import {
   type ProxyService,
   type StartProxyInput,
@@ -13,16 +14,25 @@ const LOG_FILE = '/tmp/stitch-proxy-debug.log';
 
 type Logger = (message: string) => void;
 
+type AuthConfig =
+  | { type: 'bearer'; token: string; projectId?: string }
+  | { type: 'apiKey'; key: string };
+
 class HttpPostTransport {
   onclose?: () => void;
   onerror?: (error: Error) => void;
   onmessage?: (message: JSONRPCMessage) => void;
 
-  constructor(private url: string, private token: string, private logger: Logger, private projectId?: string) { }
+  constructor(
+    private url: string,
+    private auth: AuthConfig,
+    private logger: Logger
+  ) { }
 
   async start(): Promise<void> {
     // No connection to establish for HTTP POST
-    this.logger(`HttpPostTransport started for ${this.url} (Project: ${this.projectId || 'none'})`);
+    const project = this.auth.type === 'bearer' ? this.auth.projectId : 'N/A';
+    this.logger(`HttpPostTransport started for ${this.url} (Auth: ${this.auth.type}, Project: ${project || 'none'})`);
   }
 
   async send(message: JSONRPCMessage): Promise<void> {
@@ -33,11 +43,15 @@ class HttpPostTransport {
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.token}`,
       };
 
-      if (this.projectId) {
-        headers['x-goog-user-project'] = this.projectId;
+      if (this.auth.type === 'bearer') {
+        headers['Authorization'] = `Bearer ${this.auth.token}`;
+        if (this.auth.projectId) {
+          headers['x-goog-user-project'] = this.auth.projectId;
+        }
+      } else {
+        headers['X-Goog-Api-Key'] = this.auth.key;
       }
 
       const start = Date.now();
@@ -120,32 +134,47 @@ export class ProxyHandler implements ProxyService {
     }
 
     try {
-      // Initial Token Fetch
-      await this.refreshToken();
-      if (!this.currentToken) {
-        log('Failed to get initial token');
-        return {
-          success: false,
-          error: {
-            code: 'AUTH_REFRESH_FAILED',
-            message: 'Failed to retrieve initial access token',
-            suggestion: 'Run "stitch-mcp init" to authenticate first',
-            recoverable: false,
-          },
+      dotenv.config();
+      const apiKey = process.env.STITCH_API_KEY;
+      let authConfig: AuthConfig;
+
+      if (apiKey) {
+        log('Found STITCH_API_KEY in environment, using API Key authentication');
+        authConfig = { type: 'apiKey', key: apiKey };
+      } else {
+        // Initial Token Fetch
+        await this.refreshToken();
+        if (!this.currentToken) {
+          log('Failed to get initial token');
+          return {
+            success: false,
+            error: {
+              code: 'AUTH_REFRESH_FAILED',
+              message: 'Failed to retrieve initial access token',
+              suggestion: 'Run "stitch-mcp init" to authenticate first',
+              recoverable: false,
+            },
+          };
+        }
+
+        // Get Project ID
+        const projectId = await this.gcloud.getProjectId();
+        log(`Using Project ID: ${projectId}`);
+
+        // Start Refresh Timer
+        this.startRefreshTimer();
+
+        authConfig = {
+          type: 'bearer',
+          token: this.currentToken,
+          projectId: projectId ?? undefined
         };
       }
-
-      // Get Project ID
-      const projectId = await this.gcloud.getProjectId();
-      log(`Using Project ID: ${projectId}`);
-
-      // Start Refresh Timer
-      this.startRefreshTimer();
 
       // Setup Remote Transport (HTTP POST)
       const stitchUrl = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';
       log(`Connecting to ${stitchUrl}`);
-      const remoteTransport = new HttpPostTransport(stitchUrl, this.currentToken, log, projectId ?? undefined);
+      const remoteTransport = new HttpPostTransport(stitchUrl, authConfig, log);
 
       // Initialize Local Transport
       if (input.transport !== 'stdio') {
