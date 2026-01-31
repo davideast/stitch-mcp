@@ -41,7 +41,10 @@
     "clipboardy": "^5.0.2",
     "commander": "^12.1.0",
     "dotenv": "^17.2.3",
+    "ink": "^6.6.0",
+    "ink-spinner": "^5.0.0",
     "ora": "^8.1.1",
+    "react": "^19.2.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -50,7 +53,9 @@
     "@types/clipboardy": "^2.0.4",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.9",
+    "@types/react": "^19.2.10",
     "np": "^10.2.0",
+    "react-devtools-core": "^7.0.1",
     "typescript": "^5.7.3"
   },
   "engines": {

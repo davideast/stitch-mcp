@@ -46,6 +46,46 @@ program
   });
 
 program
+  .command('view')
+  .description('Interactively view Stitch resources')
+  .option('--projects', 'List all projects', false)
+  .option('--name <name>', 'Resource name to view')
+  .option('--sourceScreen <name>', 'Source screen resource name')
+  .option('--project <id>', 'Project ID')
+  .option('--screen <id>', 'Screen ID')
+  .action(async (options) => {
+    try {
+      const { ViewHandler } = await import('./services/view/handler.js');
+      const { render } = await import('ink');
+      const React = await import('react');
+      const { JsonTree } = await import('./ui/JsonTree.js');
+
+      const handler = new ViewHandler();
+      const result = await handler.execute({
+        projects: options.projects,
+        name: options.name,
+        sourceScreen: options.sourceScreen,
+        project: options.project,
+        screen: options.screen,
+      });
+
+      if (!result.success) {
+        console.error(theme.red(`\n${icons.error} View failed: ${result.error.message}`));
+        process.exit(1);
+      }
+
+      const createElement = React.createElement || (React.default as any).createElement;
+      const instance = render(createElement(JsonTree, { data: result.data }));
+      await instance.waitUntilExit();
+
+      process.exit(0);
+    } catch (error) {
+      console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('doctor')
   .description('Verify configuration health')
   .option('--verbose', 'Show detailed error information', false)
