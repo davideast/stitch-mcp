@@ -217,6 +217,21 @@ Revokes both user authentication and Application Default Credentials. Useful for
 - Clearing authentication for testing
 - Resetting state when troubleshooting
 
+#### `view` - View Stitch Resources
+
+```bash
+npx @_davideast/stitch-mcp view [options]
+```
+
+**Options:**
+- `--projects` - List all projects
+- `--name <name>` - Resource name to view
+- `--sourceScreen <name>` - Source screen resource name
+- `--project <id>` - Project ID
+- `--screen <id>` - Screen ID
+
+Interactively view Stitch resources such as projects and screens. Displays the resource data in a JSON tree format.
+
 #### `proxy` - MCP Proxy Server
 
 ```bash
