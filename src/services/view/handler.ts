@@ -9,22 +9,44 @@ export class ViewHandler implements ViewSpec {
       let data: any;
 
       if (input.projects) {
-        const response = await this.client.listResources();
-        data = response;
+        data = await this.client.callTool('list_projects', {});
       } else if (input.name) {
-        const response = await this.client.readResource(input.name);
-        data = response;
+        // Parse the resource name to determine the correct tool call
+        // Format: "projects/{id}" or "projects/{id}/screens/{screenId}"
+        const projectMatch = input.name.match(/^projects\/([^/]+)$/);
+        const screenMatch = input.name.match(/^projects\/([^/]+)\/screens\/([^/]+)$/);
+
+        if (screenMatch) {
+          data = await this.client.callTool('get_screen', {
+            projectId: screenMatch[1],
+            screenId: screenMatch[2]
+          });
+        } else if (projectMatch) {
+          data = await this.client.callTool('get_project', {
+            name: `projects/${projectMatch[1]}`
+          });
+        } else {
+          throw new Error(`Invalid resource name format: ${input.name}`);
+        }
       } else if (input.sourceScreen) {
-        const response = await this.client.readResource(input.sourceScreen);
-        data = response;
+        const screenMatch = input.sourceScreen.match(/^projects\/([^/]+)\/screens\/([^/]+)$/);
+        if (screenMatch) {
+            data = await this.client.callTool('get_screen', {
+                projectId: screenMatch[1],
+                screenId: screenMatch[2]
+            });
+        } else {
+            throw new Error(`Invalid sourceScreen format: ${input.sourceScreen}`);
+        }
       } else if (input.project && input.screen) {
-        const uri = `projects/${input.project}/screens/${input.screen}`;
-        const response = await this.client.readResource(uri);
-        data = response;
+        data = await this.client.callTool('get_screen', {
+          projectId: input.project,
+          screenId: input.screen
+        });
       } else if (input.project) {
-        const uri = `projects/${input.project}`;
-        const response = await this.client.readResource(uri);
-        data = response;
+        data = await this.client.callTool('get_project', {
+          name: `projects/${input.project}`
+        });
       } else {
         return {
           success: false,

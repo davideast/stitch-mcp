@@ -13,8 +13,6 @@ export type StitchConfig = z.infer<typeof StitchConfigSchema>;
 export interface StitchMCPClientSpec {
   connect(): Promise<void>;
   callTool<T>(name: string, args: Record<string, any>): Promise<T>;
-  readResource(uri: string): Promise<any>;
-  listResources(): Promise<any>;
   getCapabilities(): Promise<any>;
   close(): Promise<void>;
 }

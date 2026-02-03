@@ -1,6 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { ReadResourceResultSchema, ListResourcesResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { execSync } from "child_process";
 import { StitchConfigSchema, type StitchConfig, type StitchMCPClientSpec } from './spec.js';
 
@@ -184,24 +183,6 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     }
 
     return anyResult as T;
-  }
-
-  async readResource(uri: string): Promise<any> {
-    if (!this.isConnected) await this.connect();
-    const result = await this.client.request(
-      { method: "resources/read", params: { uri } },
-      ReadResourceResultSchema
-    );
-    return result;
-  }
-
-  async listResources(): Promise<any> {
-    if (!this.isConnected) await this.connect();
-    const result = await this.client.request(
-      { method: "resources/list" },
-      ListResourcesResultSchema
-    );
-    return result;
   }
 
   async getCapabilities() {
