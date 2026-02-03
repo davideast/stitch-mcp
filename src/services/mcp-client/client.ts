@@ -56,6 +56,11 @@ export class StitchMCPClient implements StitchMCPClientSpec {
    * Validates the token against Google's tokeninfo endpoint.
    */
   private async validateToken() {
+    // Skip OAuth token validation entirely when using API key authentication
+    if (this.config.apiKey) {
+      return;
+    }
+
     if (!this.config.accessToken) {
          try {
             const newToken = this.refreshGcloudToken();
