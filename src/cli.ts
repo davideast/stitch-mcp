@@ -58,7 +58,7 @@ program
       const { ViewHandler } = await import('./services/view/handler.js');
       const { render } = await import('ink');
       const React = await import('react');
-      const { JsonTree } = await import('./ui/JsonTree.js');
+      const { InteractiveViewer } = await import('./ui/InteractiveViewer.js');
 
       const handler = new ViewHandler();
       const result = await handler.execute({
@@ -75,7 +75,29 @@ program
       }
 
       const createElement = React.createElement || (React.default as any).createElement;
-      const instance = render(createElement(JsonTree, { data: result.data }));
+
+      // Determine rootLabel based on what we're viewing
+      let rootLabel: string | undefined;
+      if (options.sourceScreen) {
+        rootLabel = 'screen';
+      } else if (options.name) {
+        rootLabel = 'resource';
+      }
+
+      // Fetch function for navigation
+      const fetchResource = async (resourceName: string): Promise<any> => {
+        const navResult = await handler.execute({ projects: false, sourceScreen: resourceName });
+        if (!navResult.success) {
+          throw new Error(navResult.error.message);
+        }
+        return navResult.data;
+      };
+
+      const instance = render(createElement(InteractiveViewer, {
+        initialData: result.data,
+        initialRootLabel: rootLabel,
+        onFetch: fetchResource,
+      }));
       await instance.waitUntilExit();
 
       process.exit(0);
