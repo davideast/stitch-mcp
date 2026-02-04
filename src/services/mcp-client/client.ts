@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { execSync } from "child_process";
 import { StitchConfigSchema, type StitchConfig, type StitchMCPClientSpec } from './spec.js';
+import { GcloudHandler } from '../gcloud/handler.js';
 
 /**
  * A robust, authenticated driver for the Stitch MCP Server.
@@ -33,22 +33,17 @@ export class StitchMCPClient implements StitchMCPClientSpec {
   }
 
   /**
-   * Auto-refreshes the Google Access Token via CLI if available.
+   * Auto-refreshes the Google Access Token via GcloudHandler.
+   * This ensures we use the bundled gcloud with proper CLOUDSDK_CONFIG.
    */
-  private refreshGcloudToken(): string {
-    try {
-      // Try Application Default Credentials first
-      const token = execSync("gcloud auth application-default print-access-token", { encoding: 'utf8' }).trim();
-      if (token && !token.includes("ERROR")) return token;
-      throw new Error("ADC token empty");
-    } catch {
-      try {
-        // Fallback to User Credentials
-        return execSync("gcloud auth print-access-token", { encoding: 'utf8' }).trim();
-      } catch (e) {
-        throw new Error("Could not refresh token via gcloud. Please check your authentication.");
-      }
+  private async refreshGcloudToken(): Promise<string> {
+    const gcloudHandler = new GcloudHandler();
+    await gcloudHandler.ensureInstalled({ minVersion: '400.0.0', forceLocal: false });
+    const token = await gcloudHandler.getAccessToken();
+    if (!token) {
+      throw new Error("Could not refresh token via gcloud. Please check your authentication.");
     }
+    return token;
   }
 
   /**
@@ -61,14 +56,14 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     }
 
     if (!this.config.accessToken) {
-         try {
-            const newToken = this.refreshGcloudToken();
-            this.config.accessToken = newToken;
-         } catch (error) {
-             // If we can't get a token, we might rely on API Key if present, but here we are in the "no api key" branch likely.
-             // If both are missing, we'll fail later.
-             return;
-         }
+      try {
+        const newToken = await this.refreshGcloudToken();
+        this.config.accessToken = newToken;
+      } catch (error) {
+        // If we can't get a token, we might rely on API Key if present, but here we are in the "no api key" branch likely.
+        // If both are missing, we'll fail later.
+        return;
+      }
     }
 
     const checkUrl = `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(this.config.accessToken!)}`;
@@ -77,7 +72,7 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     if (!response.ok) {
       // console.warn("⚠️ Initial token validation failed. Attempting refresh...");
       try {
-        const newToken = this.refreshGcloudToken();
+        const newToken = await this.refreshGcloudToken();
         this.config.accessToken = newToken;
         // Re-validate
         response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(newToken)}`);
@@ -109,10 +104,10 @@ export class StitchMCPClient implements StitchMCPClientSpec {
           // No X-Goog-User-Project for API key auth
         } else {
           if (this.config.accessToken) {
-             newHeaders.set("Authorization", `Bearer ${this.config.accessToken}`);
+            newHeaders.set("Authorization", `Bearer ${this.config.accessToken}`);
           }
           if (this.config.projectId) {
-             newHeaders.set("X-Goog-User-Project", this.config.projectId);
+            newHeaders.set("X-Goog-User-Project", this.config.projectId);
           }
         }
 
@@ -127,7 +122,7 @@ export class StitchMCPClient implements StitchMCPClientSpec {
 
         // Preserve method if it was in the Request object but not in init
         if (input instanceof Request && !newInit.method) {
-            newInit.method = input.method;
+          newInit.method = input.method;
         }
 
         return originalFetch(url, newInit);
@@ -139,6 +134,16 @@ export class StitchMCPClient implements StitchMCPClientSpec {
 
   async connect() {
     if (this.isConnected) return;
+
+    // Resolve projectId via GcloudHandler if not set (for OAuth flow)
+    if (!this.config.apiKey && !this.config.projectId) {
+      const gcloudHandler = new GcloudHandler();
+      await gcloudHandler.ensureInstalled({ minVersion: '400.0.0', forceLocal: false });
+      const projectId = await gcloudHandler.getProjectId();
+      if (projectId) {
+        this.config.projectId = projectId;
+      }
+    }
 
     if (!this.config.apiKey) {
       await this.validateToken(); // OAuth only

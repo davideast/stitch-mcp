@@ -34,6 +34,8 @@
   "author": "David East",
   "license": "Apache-2.0",
   "dependencies": {
+    "@google/jules-mcp": "^0.0.4",
+    "@google/jules-sdk": "^0.0.4",
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "adm-zip": "^0.5.16",
