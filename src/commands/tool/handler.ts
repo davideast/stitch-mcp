@@ -2,7 +2,11 @@ import { StitchMCPClient } from '../../services/mcp-client/client.js';
 import type { ToolCommandInput, ToolCommandResult, ToolInfo } from './spec.js';
 
 export class ToolCommandHandler {
-  private client = new StitchMCPClient();
+  private client: StitchMCPClient;
+
+  constructor(client?: StitchMCPClient) {
+    this.client = client || new StitchMCPClient();
+  }
 
   async listTools(): Promise<ToolInfo[]> {
     const result = await this.client.getCapabilities();

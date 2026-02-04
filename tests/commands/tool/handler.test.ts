@@ -1,25 +1,21 @@
 import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
-
-// Define mocks before importing the class under test
-const mockGetCapabilities = mock();
-const mockCallTool = mock();
-
-mock.module("../../../src/services/mcp-client/client.js", () => {
-  return {
-    StitchMCPClient: class {
-      getCapabilities = mockGetCapabilities;
-      callTool = mockCallTool;
-    }
-  };
-});
-
-// Import after mocking
 import { ToolCommandHandler } from "../../../src/commands/tool/handler.js";
+import type { StitchMCPClient } from "../../../src/services/mcp-client/client.js";
 
 describe("ToolCommandHandler", () => {
+  let mockClient: any;
+  let mockGetCapabilities: any;
+  let mockCallTool: any;
+
   beforeEach(() => {
-    mockGetCapabilities.mockReset();
-    mockCallTool.mockReset();
+    mockGetCapabilities = mock();
+    mockCallTool = mock();
+
+    // Create a mock client that matches the interface expected by ToolCommandHandler
+    mockClient = {
+      getCapabilities: mockGetCapabilities,
+      callTool: mockCallTool,
+    };
   });
 
   it("should list tools when no tool name is provided", async () => {
@@ -29,7 +25,7 @@ describe("ToolCommandHandler", () => {
     ];
     mockGetCapabilities.mockResolvedValue({ tools });
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
       showSchema: false,
       output: "pretty"
@@ -54,7 +50,7 @@ describe("ToolCommandHandler", () => {
     };
     mockGetCapabilities.mockResolvedValue({ tools: [tool] });
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
       toolName: "create_project",
       showSchema: true,
@@ -75,7 +71,7 @@ describe("ToolCommandHandler", () => {
   it("should return error if tool not found when showing schema", async () => {
     mockGetCapabilities.mockResolvedValue({ tools: [] });
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
       toolName: "unknown_tool",
       showSchema: true,
@@ -90,7 +86,7 @@ describe("ToolCommandHandler", () => {
     const mockResult = { id: "123", title: "My Project" };
     mockCallTool.mockResolvedValue(mockResult);
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
       toolName: "create_project",
       data: '{"title": "My Project"}',
@@ -111,7 +107,7 @@ describe("ToolCommandHandler", () => {
     const mockFileText = mock(() => Promise.resolve('{"title": "My Project"}'));
     spyOn(Bun, "file").mockReturnValue({ text: mockFileText } as any);
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
       toolName: "create_project",
       dataFile: "@data.json",
