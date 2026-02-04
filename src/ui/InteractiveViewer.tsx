@@ -7,7 +7,7 @@ import { Box, Text } from 'ink';
 import { JsonTree } from './JsonTree.js';
 import type { NavigationResult } from './navigation-behaviors/index.js';
 
-interface ViewerState {
+export interface ViewerState {
   data: any;
   rootLabel?: string;
   resourcePath?: string;
@@ -16,6 +16,8 @@ interface ViewerState {
 interface InteractiveViewerProps {
   initialData: any;
   initialRootLabel?: string;
+  /** Pre-populated navigation history (for back navigation from deep links) */
+  initialHistory?: ViewerState[];
   /** Fetch function to load new resource data */
   onFetch: (resourceName: string) => Promise<any>;
   /** Called when exiting the viewer */
@@ -25,12 +27,17 @@ interface InteractiveViewerProps {
 export const InteractiveViewer = ({
   initialData,
   initialRootLabel,
+  initialHistory,
   onFetch,
   onExit,
 }: InteractiveViewerProps) => {
-  const [history, setHistory] = useState<ViewerState[]>([
-    { data: initialData, rootLabel: initialRootLabel },
-  ]);
+  // Use initialHistory if provided, otherwise start with just the initial data
+  const [history, setHistory] = useState<ViewerState[]>(() => {
+    if (initialHistory && initialHistory.length > 0) {
+      return [...initialHistory, { data: initialData, rootLabel: initialRootLabel }];
+    }
+    return [{ data: initialData, rootLabel: initialRootLabel }];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,6 +99,7 @@ export const InteractiveViewer = ({
       )}
       {error && <Text color="red">{error}</Text>}
       <JsonTree
+        key={history.length}
         data={currentState.data}
         rootLabel={currentState.rootLabel}
         onNavigate={handleNavigate}

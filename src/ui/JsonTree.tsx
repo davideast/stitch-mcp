@@ -89,17 +89,20 @@ interface JsonTreeProps {
 }
 
 export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps) => {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    const ids = new Set<string>();
+    if (rootLabel) {
+      ids.add(rootLabel);
+    } else if (data && typeof data === 'object') {
+      Object.keys(data).forEach((key) => ids.add(key));
+    }
+    return ids;
+  });
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const lastCPressTime = useRef<number>(0);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Initial expansion of root if needed?
-  // Let's start collapsed or maybe expand top level?
-  // If data is an object, we want to see its keys.
-  // The root itself isn't a node in my builder, the keys are.
-  // If we want to see the root object's properties, they are the top level nodes.
 
   const visibleNodes = useMemo(() => {
     return buildVisibleTree(data, expandedIds, '', 0, rootLabel);

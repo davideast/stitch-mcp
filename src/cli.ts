@@ -86,16 +86,66 @@ program
 
       // Fetch function for navigation
       const fetchResource = async (resourceName: string): Promise<any> => {
-        const navResult = await handler.execute({ projects: false, sourceScreen: resourceName });
-        if (!navResult.success) {
-          throw new Error(navResult.error.message);
+        // Determine the type based on the resource name
+        if (resourceName.includes('/screens/')) {
+          const navResult = await handler.execute({ projects: false, sourceScreen: resourceName });
+          if (!navResult.success) throw new Error(navResult.error.message);
+          return navResult.data;
+        } else {
+          const navResult = await handler.execute({ projects: false, name: resourceName });
+          if (!navResult.success) throw new Error(navResult.error.message);
+          return navResult.data;
         }
-        return navResult.data;
       };
+
+      // Build parent history for back navigation
+      const initialHistory: Array<{ data: any; rootLabel?: string; resourcePath?: string }> = [];
+
+      // If viewing a screen, add the projects list and project to history
+      if (options.sourceScreen) {
+        // Extract project ID from screen path (e.g., "projects/123/screens/abc")
+        const projectMatch = options.sourceScreen.match(/^(projects\/\d+)/);
+        if (projectMatch) {
+          const projectName = projectMatch[1];
+
+          // Fetch projects list for the first level
+          try {
+            const projectsResult = await handler.execute({ projects: true });
+            if (projectsResult.success) {
+              initialHistory.push({ data: projectsResult.data, rootLabel: undefined });
+            }
+          } catch (e) {
+            // Ignore - just won't have projects in history
+          }
+
+          // Fetch the project for the second level
+          try {
+            const projectResult = await handler.execute({ projects: false, name: projectName });
+            if (projectResult.success) {
+              initialHistory.push({ data: projectResult.data, rootLabel: 'resource', resourcePath: projectName });
+            }
+          } catch (e) {
+            // Ignore - just won't have project in history
+          }
+        }
+      }
+
+      // If viewing a project (via --name), add projects list to history
+      if (options.name && !options.sourceScreen) {
+        try {
+          const projectsResult = await handler.execute({ projects: true });
+          if (projectsResult.success) {
+            initialHistory.push({ data: projectsResult.data, rootLabel: undefined });
+          }
+        } catch (e) {
+          // Ignore - just won't have projects in history
+        }
+      }
 
       const instance = render(createElement(InteractiveViewer, {
         initialData: result.data,
         initialRootLabel: rootLabel,
+        initialHistory: initialHistory.length > 0 ? initialHistory : undefined,
         onFetch: fetchResource,
       }));
       await instance.waitUntilExit();
