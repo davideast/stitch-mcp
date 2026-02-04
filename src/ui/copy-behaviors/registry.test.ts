@@ -17,6 +17,16 @@ describe('registry', () => {
       // Should match the imageUrlCopyHandler registered in registry.ts
       expect(handler).not.toBe(defaultCopyHandler);
     });
+
+    test('returns image handler for screenshot.downloadUrl', () => {
+      const handler = getHandler('screen.screenshot.downloadUrl');
+      expect(handler).not.toBe(defaultCopyHandler);
+    });
+
+    test('returns html handler for htmlCode.downloadUrl', () => {
+      const handler = getHandler('screen.htmlCode.downloadUrl');
+      expect(handler).not.toBe(defaultCopyHandler);
+    });
   });
 
   describe('endsWith()', () => {

@@ -54,3 +54,16 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
   // Cleanup temp file
   await Bun.file(tempPath).exists() && await Bun.$`rm ${tempPath}`.quiet();
 }
+
+/**
+ * Download text content from URL and copy to clipboard.
+ */
+export async function downloadAndCopyText(url: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download: ${response.status}`);
+  }
+
+  const text = await response.text();
+  await clipboard.write(text);
+}

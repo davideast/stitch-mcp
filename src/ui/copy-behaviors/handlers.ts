@@ -2,7 +2,7 @@
  * Copy handlers - isolated behavior implementations.
  */
 import type { CopyHandler, CopyContext, CopyResult } from './types.js';
-import { copyJson, copyText, downloadAndCopyImage } from './clipboard.js';
+import { copyJson, copyText, downloadAndCopyImage, downloadAndCopyText } from './clipboard.js';
 
 /**
  * Default handler: copies value on "c", copies {key: value} on "cc"
@@ -58,6 +58,36 @@ export const imageUrlCopyHandler: CopyHandler = {
       return { success: true, message: '📷 Image copied to clipboard!' };
     } catch (error) {
       return { success: false, message: `Image copy failed: ${error}` };
+    }
+  },
+};
+
+/**
+ * HTML code URL handler: copies URL on "c", downloads and copies HTML code on "cc"
+ */
+export const htmlCodeCopyHandler: CopyHandler = {
+  async copy(ctx: CopyContext): Promise<CopyResult> {
+    try {
+      if (typeof ctx.value !== 'string') {
+        return { success: false, message: 'Value is not a URL string' };
+      }
+      await copyText(ctx.value);
+      return { success: true, message: `Copied URL: ${ctx.value.slice(0, 60)}...` };
+    } catch (error) {
+      return { success: false, message: `Copy failed: ${error}` };
+    }
+  },
+
+  async copyExtended(ctx: CopyContext): Promise<CopyResult> {
+    try {
+      if (typeof ctx.value !== 'string') {
+        return { success: false, message: 'Value is not a URL string' };
+      }
+      ctx.onProgress?.('📝 Downloading HTML code...');
+      await downloadAndCopyText(ctx.value);
+      return { success: true, message: '📝 HTML code copied to clipboard!' };
+    } catch (error) {
+      return { success: false, message: `HTML copy failed: ${error}` };
     }
   },
 };

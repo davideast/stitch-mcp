@@ -2,7 +2,7 @@
  * Tests for copy handlers.
  */
 import { test, expect, describe, mock } from 'bun:test';
-import { defaultCopyHandler, imageUrlCopyHandler } from './handlers.js';
+import { defaultCopyHandler, imageUrlCopyHandler, htmlCodeCopyHandler } from './handlers.js';
 import type { CopyContext } from './types.js';
 
 // Mock clipboard functions
@@ -10,6 +10,7 @@ mock.module('./clipboard.js', () => ({
   copyJson: mock(() => Promise.resolve()),
   copyText: mock(() => Promise.resolve()),
   downloadAndCopyImage: mock(() => Promise.resolve()),
+  downloadAndCopyText: mock(() => Promise.resolve()),
 }));
 
 describe('defaultCopyHandler', () => {
@@ -137,6 +138,77 @@ describe('imageUrlCopyHandler', () => {
       };
 
       const result = await imageUrlCopyHandler.copyExtended(ctx);
+
+      expect(result.success).toBe(false);
+    });
+  });
+});
+
+describe('htmlCodeCopyHandler', () => {
+  describe('copy()', () => {
+    test('copies URL string', async () => {
+      const ctx: CopyContext = {
+        key: 'downloadUrl',
+        value: 'https://example.com/code.html',
+        path: 'screen.htmlCode.downloadUrl',
+      };
+
+      const result = await htmlCodeCopyHandler.copy(ctx);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Copied URL');
+    });
+
+    test('fails if value is not a string', async () => {
+      const ctx: CopyContext = {
+        key: 'downloadUrl',
+        value: { url: 'https://example.com' },
+        path: 'screen.htmlCode.downloadUrl',
+      };
+
+      const result = await htmlCodeCopyHandler.copy(ctx);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('not a URL string');
+    });
+  });
+
+  describe('copyExtended()', () => {
+    test('calls onProgress callback before download', async () => {
+      let progressMessage = '';
+      const ctx: CopyContext = {
+        key: 'downloadUrl',
+        value: 'https://example.com/code.html',
+        path: 'screen.htmlCode.downloadUrl',
+        onProgress: (msg) => { progressMessage = msg; },
+      };
+
+      await htmlCodeCopyHandler.copyExtended(ctx);
+
+      expect(progressMessage).toContain('HTML');
+    });
+
+    test('returns success message after download', async () => {
+      const ctx: CopyContext = {
+        key: 'downloadUrl',
+        value: 'https://example.com/code.html',
+        path: 'screen.htmlCode.downloadUrl',
+      };
+
+      const result = await htmlCodeCopyHandler.copyExtended(ctx);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('HTML code copied');
+    });
+
+    test('fails if value is not a string', async () => {
+      const ctx: CopyContext = {
+        key: 'downloadUrl',
+        value: 12345,
+        path: 'screen.htmlCode.downloadUrl',
+      };
+
+      const result = await htmlCodeCopyHandler.copyExtended(ctx);
 
       expect(result.success).toBe(false);
     });

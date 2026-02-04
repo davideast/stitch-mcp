@@ -153,6 +153,68 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
       return;
     }
 
+    // Handle 'o' key to open project in Stitch web app
+    if (input === 'o') {
+      const node = visibleNodes[selectedIndex];
+      if (!node) return;
+
+      // Try to extract project ID from various sources
+      let projectId: string | undefined;
+
+      // Check if path contains 'projects' and extract the ID
+      const projectsMatch = node.id.match(/projects\.(\d+)/);
+      if (projectsMatch && projectsMatch[1]) {
+        // We're somewhere inside a project in the list view
+        // Need to find the actual project name from the data
+        const projectIndex = parseInt(projectsMatch[1], 10);
+        const project = data.projects?.[projectIndex];
+        if (project?.name) {
+          projectId = project.name.replace('projects/', '');
+        }
+      }
+
+      // Check if we're in a single project/resource view
+      if (!projectId && typeof node.value === 'object' && node.value?.name) {
+        const nameMatch = node.value.name.match(/projects\/(\d+)/);
+        if (nameMatch) {
+          projectId = nameMatch[1];
+        }
+      }
+
+      // Check if the node's name property contains a project ID
+      if (!projectId && node.key === 'name' && typeof node.value === 'string') {
+        const nameMatch = node.value.match(/projects\/(\d+)/);
+        if (nameMatch) {
+          projectId = nameMatch[1];
+        }
+      }
+
+      // Check if rootLabel is 'screen' or 'resource' and data has a name
+      if (!projectId && (rootLabel === 'screen' || rootLabel === 'resource')) {
+        const nameMatch = data.name?.match(/projects\/(\d+)/);
+        if (nameMatch) {
+          projectId = nameMatch[1];
+        }
+      }
+
+      if (projectId) {
+        const url = `https://stitch.withgoogle.com/projects/${projectId}`;
+        // Open in browser using platform command
+        const openCmd = process.platform === 'darwin' ? 'open' :
+          process.platform === 'win32' ? 'start' : 'xdg-open';
+        Bun.spawn([openCmd, url]);
+
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(`🔗 Opened project in browser`);
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 3000);
+      } else {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(`⚠️ No project found at this path`);
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 3000);
+      }
+      return;
+    }
+
     if (key.upArrow) {
       setSelectedIndex(Math.max(0, selectedIndex - 1));
     }

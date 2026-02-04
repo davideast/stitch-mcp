@@ -2,7 +2,7 @@
  * Registry for path-based copy handler selection.
  */
 import type { CopyHandler, PathMatcher } from './types.js';
-import { defaultCopyHandler, imageUrlCopyHandler } from './handlers.js';
+import { defaultCopyHandler, imageUrlCopyHandler, htmlCodeCopyHandler } from './handlers.js';
 
 interface HandlerRegistration {
   matcher: PathMatcher;
@@ -55,5 +55,11 @@ export function contains(segment: string): PathMatcher {
 // Register image URL handler for thumbnailScreenshot.downloadUrl
 registerHandler(endsWith('.thumbnailScreenshot.downloadUrl'), imageUrlCopyHandler);
 
+// Register image URL handler for screenshot.downloadUrl (in screen view)
+registerHandler(endsWith('.screenshot.downloadUrl'), imageUrlCopyHandler);
+
+// Register HTML code handler for htmlCode.downloadUrl
+registerHandler(endsWith('.htmlCode.downloadUrl'), htmlCodeCopyHandler);
+
 // Export for convenience
-export { defaultCopyHandler, imageUrlCopyHandler };
+export { defaultCopyHandler, imageUrlCopyHandler, htmlCodeCopyHandler };
