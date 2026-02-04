@@ -34,8 +34,6 @@
   "author": "David East",
   "license": "Apache-2.0",
   "dependencies": {
-    "@google/jules-mcp": "^0.0.5",
-    "@google/jules-sdk": "0.0.5",
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "adm-zip": "^0.5.16",
@@ -57,7 +55,7 @@
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.10",
     "np": "^10.2.0",
-    "react-devtools-core": "^7.0.1",
+    "react-devtools-core": "^6.1.2",
     "signal-exit": "^4.1.0",
     "typescript": "^5.7.3"
   },
