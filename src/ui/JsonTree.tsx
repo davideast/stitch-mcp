@@ -104,20 +104,20 @@ export const JsonTree = ({ data }: { data: any }) => {
           newExpanded.delete(node.id);
           setExpandedIds(newExpanded);
         } else {
-            // Move to parent
-            // Find parent ID by removing last segment
-            const lastDot = node.id.lastIndexOf('.');
-            if (lastDot !== -1) {
-                const parentId = node.id.substring(0, lastDot);
-                const parentIndex = visibleNodes.findIndex(n => n.id === parentId);
-                if (parentIndex !== -1) {
-                    setSelectedIndex(parentIndex);
-                    // Optional: Collapse parent when moving back to it?
-                    // Usually Left arrow on a collapsed node moves to parent.
-                }
-            } else {
-                // Top level, do nothing?
+          // Move to parent
+          // Find parent ID by removing last segment
+          const lastDot = node.id.lastIndexOf('.');
+          if (lastDot !== -1) {
+            const parentId = node.id.substring(0, lastDot);
+            const parentIndex = visibleNodes.findIndex(n => n.id === parentId);
+            if (parentIndex !== -1) {
+              setSelectedIndex(parentIndex);
+              // Optional: Collapse parent when moving back to it?
+              // Usually Left arrow on a collapsed node moves to parent.
             }
+          } else {
+            // Top level, do nothing?
+          }
         }
       }
     }
@@ -137,11 +137,11 @@ export const JsonTree = ({ data }: { data: any }) => {
   const viewportNodes = visibleNodes.slice(startRow, endRow);
 
   if (!data || typeof data !== 'object') {
-      return <Text>Invalid data: {String(data)}</Text>;
+    return <Text>Invalid data: {String(data)}</Text>;
   }
 
   if (Object.keys(data).length === 0) {
-      return <Text>Empty object</Text>;
+    return <Text>Empty object</Text>;
   }
 
   return (
@@ -165,7 +165,14 @@ export const JsonTree = ({ data }: { data: any }) => {
             else valueDisplay = String(node.value);
           } else {
             const type = Array.isArray(node.value) ? '[]' : '{}';
-            valueDisplay = `${type} ${Object.keys(node.value).length} items`;
+            const itemCount = Object.keys(node.value).length;
+            // Try to show a meaningful label for objects (title, name, id, etc.)
+            const label = node.value.title || node.value.name || node.value.displayName || node.value.id || null;
+            if (label && typeof label === 'string') {
+              valueDisplay = `${type} "${label}" (${itemCount})`;
+            } else {
+              valueDisplay = `${type} ${itemCount} items`;
+            }
           }
 
           return (
@@ -180,11 +187,11 @@ export const JsonTree = ({ data }: { data: any }) => {
           );
         })}
         {visibleNodes.length > viewportHeight && (
-            <Text color="gray">... {visibleNodes.length - endRow} more items ...</Text>
+          <Text color="gray">... {visibleNodes.length - endRow} more items ...</Text>
         )}
       </Box>
       <Text color="gray">
-          Selected Path: {visibleNodes[selectedIndex]?.id || 'none'}
+        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'}
       </Text>
     </Box>
   );
