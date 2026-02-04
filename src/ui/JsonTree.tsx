@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { spawn } from 'child_process';
 import { getHandler, type CopyResult } from './copy-behaviors/index.js';
 import { getNavigationTarget, type NavigationResult } from './navigation-behaviors/index.js';
 
@@ -205,7 +206,7 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
         // Open in browser using platform command
         const openCmd = process.platform === 'darwin' ? 'open' :
           process.platform === 'win32' ? 'start' : 'xdg-open';
-        Bun.spawn([openCmd, url]);
+        spawn(openCmd, [url], { stdio: 'ignore', detached: true }).unref();
 
         if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
         setFeedbackMessage(`🔗 Opened project in browser`);
