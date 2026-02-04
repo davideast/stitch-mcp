@@ -1,6 +1,5 @@
 import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
 import { ToolCommandHandler } from "../../../src/commands/tool/handler.js";
-import type { StitchMCPClient } from "../../../src/services/mcp-client/client.js";
 
 describe("ToolCommandHandler", () => {
   let mockClient: any;
@@ -32,7 +31,10 @@ describe("ToolCommandHandler", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data).toEqual(tools);
+    // Should now contain both server tools and virtual tools
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "tool1" }));
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "tool2" }));
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "get_screen_code" }));
     expect(mockGetCapabilities).toHaveBeenCalled();
   });
 
@@ -51,7 +53,10 @@ describe("ToolCommandHandler", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data).toEqual(tools);
+    // Should now contain both server tools and virtual tools
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "tool1" }));
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "tool2" }));
+    expect(result.data).toContainEqual(expect.objectContaining({ name: "get_screen_code" }));
     expect(mockGetCapabilities).toHaveBeenCalled();
   });
 
@@ -180,5 +185,43 @@ describe("ToolCommandHandler", () => {
     expect(result.success).toBe(true);
     expect(result.data).toEqual(mockResult);
     expect(mockCallTool).toHaveBeenCalledWith("get_screen", { projectId: "123", screenId: "abc" });
+    expect(mockCallTool).toHaveBeenCalledWith("get_screen", { projectId: "123", screenId: "abc" });
+  });
+
+  it("should list virtual tools alongside server tools", async () => {
+    const serverTools = [{ name: "server_tool", description: "desc" }];
+    mockGetCapabilities.mockResolvedValue({ tools: serverTools });
+
+    const handler = new ToolCommandHandler(mockClient);
+    const tools = await handler.listTools();
+
+    expect(tools).toContainEqual(expect.objectContaining({ name: "get_screen_code" }));
+    expect(tools).toContainEqual(expect.objectContaining({ name: "server_tool" }));
+  });
+
+  it("should execute virtual tool when name matches", async () => {
+    // Mock get_screen for the virtual tool to use
+    const mockScreen = {
+      name: "projects/123/screens/abc",
+      title: "Test Screen"
+    };
+    mockCallTool.mockResolvedValue(mockScreen);
+
+    // Also, we need to mock fetch to avoid network errors
+    global.fetch = mock(() => Promise.resolve(new Response(""))) as any;
+
+    const handler = new ToolCommandHandler(mockClient);
+    const result = await handler.execute({
+      toolName: "get_screen_code",
+      data: '{"projectId": "123", "screenId": "abc"}',
+      showSchema: false,
+      output: "pretty"
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockCallTool).toHaveBeenCalledWith("get_screen", { projectId: "123", screenId: "abc" });
+    // result.data should be the composite object
+    expect(result.data.name).toBe(mockScreen.name);
   });
 });
+

@@ -42,13 +42,23 @@ function spawnAndWait(command: string, args: string[]): Promise<void> {
  * Download an image from URL and copy to clipboard.
  * Uses platform-specific commands for image clipboard.
  */
-export async function downloadAndCopyImage(url: string): Promise<void> {
+/**
+ * Download an image from URL.
+ */
+export async function downloadImage(url: string): Promise<ArrayBuffer> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download image: ${response.status}`);
   }
+  return response.arrayBuffer();
+}
 
-  const buffer = await response.arrayBuffer();
+/**
+ * Download an image from URL and copy to clipboard.
+ * Uses platform-specific commands for image clipboard.
+ */
+export async function downloadAndCopyImage(url: string): Promise<void> {
+  const buffer = await downloadImage(url);
   const tempPath = `/tmp/stitch-clipboard-${Date.now()}.png`;
 
   // Write to temp file using Node.js fs
@@ -59,7 +69,7 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
 
   try {
     if (platform === 'darwin') {
-    // macOS: use osascript to copy image
+      // macOS: use osascript to copy image
       await spawnAndWait('osascript', ['-e', `set the clipboard to (read (POSIX file "${tempPath}") as TIFF picture)`]);
     } else if (platform === 'linux') {
       // Linux: use xclip
@@ -69,7 +79,7 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
       await spawnAndWait('powershell', ['-command', `Set-Clipboard -Path "${tempPath}"`]);
     }
   } finally {
-  // Cleanup temp file
+    // Cleanup temp file
     try {
       await unlink(tempPath);
     } catch {
@@ -81,12 +91,21 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
 /**
  * Download text content from URL and copy to clipboard.
  */
-export async function downloadAndCopyText(url: string): Promise<void> {
+/**
+ * Download text content from URL.
+ */
+export async function downloadText(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download: ${response.status}`);
   }
+  return response.text();
+}
 
-  const text = await response.text();
+/**
+ * Download text content from URL and copy to clipboard.
+ */
+export async function downloadAndCopyText(url: string): Promise<void> {
+  const text = await downloadText(url);
   await clipboard.write(text);
 }

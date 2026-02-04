@@ -1,5 +1,6 @@
 import { StitchMCPClient } from '../../services/mcp-client/client.js';
 import type { ToolCommandInput, ToolCommandResult, ToolInfo } from './spec.js';
+import { virtualTools } from './virtual-tools.js';
 
 export class ToolCommandHandler {
   private client: StitchMCPClient;
@@ -10,7 +11,8 @@ export class ToolCommandHandler {
 
   async listTools(): Promise<ToolInfo[]> {
     const result = await this.client.getCapabilities();
-    return result.tools || [];
+    const serverTools = result.tools || [];
+    return [...virtualTools, ...serverTools];
   }
 
   async getToolSchema(toolName: string): Promise<ToolInfo | null> {
@@ -41,6 +43,17 @@ export class ToolCommandHandler {
     } else if (input.dataFile) {
       const content = await Bun.file(input.dataFile.replace('@', '')).text();
       args = JSON.parse(content);
+    }
+
+    // Check if it's a virtual tool
+    const virtualTool = virtualTools.find(t => t.name === input.toolName);
+    if (virtualTool) {
+      try {
+        const result = await virtualTool.execute(this.client, args);
+        return { success: true, data: result };
+      } catch (e: any) {
+        return { success: false, error: `Virtual tool execution failed: ${e.message || String(e)}` };
+      }
     }
 
     const result = await this.client.callTool(input.toolName, args);
