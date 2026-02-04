@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { getHandler, type CopyResult } from './copy-behaviors/index.js';
 
 type TreeNode = {
   id: string; // Unique path identifier
@@ -59,6 +60,9 @@ function buildVisibleTree(
 export const JsonTree = ({ data }: { data: any }) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const lastCPressTime = useRef<number>(0);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initial expansion of root if needed?
   // Let's start collapsed or maybe expand top level?
@@ -75,6 +79,47 @@ export const JsonTree = ({ data }: { data: any }) => {
   useInput((input, key) => {
     if (input === 'q') {
       exit();
+    }
+
+    // Handle 'c' key for copy
+    if (input === 'c') {
+      const node = visibleNodes[selectedIndex];
+      if (!node) return;
+
+      const now = Date.now();
+      const timeSinceLastC = now - lastCPressTime.current;
+      lastCPressTime.current = now;
+
+      // Double-tap detection (within 300ms = 'cc')
+      const isDoubleTap = timeSinceLastC < 300;
+
+      const handler = getHandler(node.id);
+
+      // Progress callback for immediate feedback during async operations
+      const onProgress = (message: string) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(message);
+      };
+
+      const ctx = { key: node.key, value: node.value, path: node.id, onProgress };
+
+      const showFeedback = (result: CopyResult) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(result.message);
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 3000);
+      };
+
+      if (isDoubleTap) {
+        handler.copyExtended(ctx).then(showFeedback);
+      } else {
+        // Wait briefly to see if it's a double-tap
+        setTimeout(() => {
+          if (Date.now() - lastCPressTime.current >= 280) {
+            handler.copy(ctx).then(showFeedback);
+          }
+        }, 300);
+      }
+      return;
     }
 
     if (key.upArrow) {
@@ -104,20 +149,20 @@ export const JsonTree = ({ data }: { data: any }) => {
           newExpanded.delete(node.id);
           setExpandedIds(newExpanded);
         } else {
-            // Move to parent
-            // Find parent ID by removing last segment
-            const lastDot = node.id.lastIndexOf('.');
-            if (lastDot !== -1) {
-                const parentId = node.id.substring(0, lastDot);
-                const parentIndex = visibleNodes.findIndex(n => n.id === parentId);
-                if (parentIndex !== -1) {
-                    setSelectedIndex(parentIndex);
-                    // Optional: Collapse parent when moving back to it?
-                    // Usually Left arrow on a collapsed node moves to parent.
-                }
-            } else {
-                // Top level, do nothing?
+          // Move to parent
+          // Find parent ID by removing last segment
+          const lastDot = node.id.lastIndexOf('.');
+          if (lastDot !== -1) {
+            const parentId = node.id.substring(0, lastDot);
+            const parentIndex = visibleNodes.findIndex(n => n.id === parentId);
+            if (parentIndex !== -1) {
+              setSelectedIndex(parentIndex);
+              // Optional: Collapse parent when moving back to it?
+              // Usually Left arrow on a collapsed node moves to parent.
             }
+          } else {
+            // Top level, do nothing?
+          }
         }
       }
     }
@@ -137,11 +182,11 @@ export const JsonTree = ({ data }: { data: any }) => {
   const viewportNodes = visibleNodes.slice(startRow, endRow);
 
   if (!data || typeof data !== 'object') {
-      return <Text>Invalid data: {String(data)}</Text>;
+    return <Text>Invalid data: {String(data)}</Text>;
   }
 
   if (Object.keys(data).length === 0) {
-      return <Text>Empty object</Text>;
+    return <Text>Empty object</Text>;
   }
 
   return (
@@ -165,7 +210,14 @@ export const JsonTree = ({ data }: { data: any }) => {
             else valueDisplay = String(node.value);
           } else {
             const type = Array.isArray(node.value) ? '[]' : '{}';
-            valueDisplay = `${type} ${Object.keys(node.value).length} items`;
+            const itemCount = Object.keys(node.value).length;
+            // Try to show a meaningful label for objects (title, name, id, etc.)
+            const label = node.value.title || node.value.name || node.value.displayName || node.value.id || null;
+            if (label && typeof label === 'string') {
+              valueDisplay = `${type} "${label}" (${itemCount})`;
+            } else {
+              valueDisplay = `${type} ${itemCount} items`;
+            }
           }
 
           return (
@@ -180,12 +232,15 @@ export const JsonTree = ({ data }: { data: any }) => {
           );
         })}
         {visibleNodes.length > viewportHeight && (
-            <Text color="gray">... {visibleNodes.length - endRow} more items ...</Text>
+          <Text color="gray">... {visibleNodes.length - endRow} more items ...</Text>
         )}
       </Box>
       <Text color="gray">
-          Selected Path: {visibleNodes[selectedIndex]?.id || 'none'}
+        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'} | Press 'c' to copy, 'cc' for extended
       </Text>
+      {feedbackMessage && (
+        <Text color="cyan" bold>{feedbackMessage}</Text>
+      )}
     </Box>
   );
 };

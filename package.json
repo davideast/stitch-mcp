@@ -40,7 +40,7 @@
     "@modelcontextprotocol/sdk": "^1.25.2",
     "adm-zip": "^0.5.16",
     "chalk": "^5.6.2",
-    "clipboardy": "^5.0.2",
+    "clipboardy": "^5.2.1",
     "commander": "^12.1.0",
     "dotenv": "^17.2.3",
     "ink": "^6.6.0",
