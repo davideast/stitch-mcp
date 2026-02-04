@@ -58,7 +58,7 @@ program
       const { ViewHandler } = await import('./services/view/handler.js');
       const { render } = await import('ink');
       const React = await import('react');
-      const { JsonTree } = await import('./ui/JsonTree.js');
+      const { InteractiveViewer } = await import('./ui/InteractiveViewer.js');
 
       const handler = new ViewHandler();
       const result = await handler.execute({
@@ -84,7 +84,20 @@ program
         rootLabel = 'resource';
       }
 
-      const instance = render(createElement(JsonTree, { data: result.data, rootLabel }));
+      // Fetch function for navigation
+      const fetchResource = async (resourceName: string): Promise<any> => {
+        const navResult = await handler.execute({ projects: false, sourceScreen: resourceName });
+        if (!navResult.success) {
+          throw new Error(navResult.error.message);
+        }
+        return navResult.data;
+      };
+
+      const instance = render(createElement(InteractiveViewer, {
+        initialData: result.data,
+        initialRootLabel: rootLabel,
+        onFetch: fetchResource,
+      }));
       await instance.waitUntilExit();
 
       process.exit(0);
