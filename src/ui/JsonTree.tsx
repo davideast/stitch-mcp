@@ -3,6 +3,7 @@ import { Box, Text, useInput, useApp } from 'ink';
 import { spawn } from 'child_process';
 import { getHandler, type CopyResult } from './copy-behaviors/index.js';
 import { getNavigationTarget, type NavigationResult } from './navigation-behaviors/index.js';
+import { getServeHandler, type ServeResult } from './serve-behaviors/index.js';
 
 type TreeNode = {
   id: string; // Unique path identifier
@@ -154,6 +155,33 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
           }
         }, 300);
       }
+      return;
+    }
+
+    // Handle 's' key to serve/preview HTML
+    if (input === 's') {
+      const node = visibleNodes[selectedIndex];
+      if (!node) return;
+
+      const handler = getServeHandler(node.id);
+      if (!handler) {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage('⚠️ No preview available for this path');
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 3000);
+        return;
+      }
+
+      const onProgress = (message: string) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(message);
+      };
+
+      const ctx = { key: node.key, value: node.value, path: node.id, onProgress };
+      handler.serve(ctx).then((result: ServeResult) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(result.message);
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 10000);
+      });
       return;
     }
 
@@ -348,7 +376,7 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
         )}
       </Box>
       <Text color="gray">
-        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'} | Press 'c' to copy, 'cc' for extended
+        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'} | 'c' copy, 'cc' extended, 's' preview
       </Text>
       {feedbackMessage && (
         <Text color="cyan" bold>{feedbackMessage}</Text>
