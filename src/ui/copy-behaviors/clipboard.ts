@@ -2,6 +2,8 @@
  * Clipboard utilities using clipboardy for cross-platform support.
  */
 import clipboard from 'clipboardy';
+import { writeFile, unlink } from 'fs/promises';
+import { spawn } from 'child_process';
 
 /**
  * Copy text to clipboard
@@ -19,6 +21,24 @@ export async function copyJson(value: any): Promise<void> {
 }
 
 /**
+ * Spawn a process and wait for it to exit.
+ * Cross-runtime compatible replacement for Bun.spawn().
+ */
+function spawnAndWait(command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, { stdio: 'ignore' });
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Process exited with code ${code}`));
+      }
+    });
+    proc.on('error', reject);
+  });
+}
+
+/**
  * Download an image from URL and copy to clipboard.
  * Uses platform-specific commands for image clipboard.
  */
@@ -31,28 +51,31 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
   const buffer = await response.arrayBuffer();
   const tempPath = `/tmp/stitch-clipboard-${Date.now()}.png`;
 
-  // Write to temp file
-  await Bun.write(tempPath, buffer);
+  // Write to temp file using Node.js fs
+  await writeFile(tempPath, Buffer.from(buffer));
 
   // Copy image to clipboard using platform command
   const platform = process.platform;
 
-  if (platform === 'darwin') {
+  try {
+    if (platform === 'darwin') {
     // macOS: use osascript to copy image
-    const proc = Bun.spawn(['osascript', '-e', `set the clipboard to (read (POSIX file "${tempPath}") as TIFF picture)`]);
-    await proc.exited;
-  } else if (platform === 'linux') {
-    // Linux: use xclip
-    const proc = Bun.spawn(['xclip', '-selection', 'clipboard', '-t', 'image/png', '-i', tempPath]);
-    await proc.exited;
-  } else if (platform === 'win32') {
-    // Windows: PowerShell
-    const proc = Bun.spawn(['powershell', '-command', `Set-Clipboard -Path "${tempPath}"`]);
-    await proc.exited;
-  }
-
+      await spawnAndWait('osascript', ['-e', `set the clipboard to (read (POSIX file "${tempPath}") as TIFF picture)`]);
+    } else if (platform === 'linux') {
+      // Linux: use xclip
+      await spawnAndWait('xclip', ['-selection', 'clipboard', '-t', 'image/png', '-i', tempPath]);
+    } else if (platform === 'win32') {
+      // Windows: PowerShell
+      await spawnAndWait('powershell', ['-command', `Set-Clipboard -Path "${tempPath}"`]);
+    }
+  } finally {
   // Cleanup temp file
-  await Bun.file(tempPath).exists() && await Bun.$`rm ${tempPath}`.quiet();
+    try {
+      await unlink(tempPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 }
 
 /**
