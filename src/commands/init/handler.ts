@@ -643,17 +643,28 @@ export class InitHandler implements InitCommand {
       }
 
       if (transport === 'stdio') {
+        const env: Record<string, string> = {
+          PATH: process.env.PATH || '',
+        };
+
+        // Only include project ID for OAuth flows (not needed for API key auth)
+        if (apiKey) {
+          env.STITCH_API_KEY = apiKey;
+        } else {
+          env.STITCH_PROJECT_ID = projectId;
+        }
+
         config.mcpServers.stitch = {
           command: 'npx',
           args: ['@_davideast/stitch-mcp', 'proxy'],
-          env: {
-            STITCH_PROJECT_ID: projectId,
-            PATH: process.env.PATH || '',
-          },
+          env,
         };
 
         fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
-        spinner.succeed(`Stitch extension configured for STDIO: Project ID set to ${theme.blue(projectId)}`);
+        const successMsg = apiKey
+          ? 'Stitch extension configured for STDIO with API Key'
+          : `Stitch extension configured for STDIO: Project ID set to ${theme.blue(projectId)}`;
+        spinner.succeed(successMsg);
       } else {
         // HTTP
         const existingHeaders = config.mcpServers.stitch.headers || {};

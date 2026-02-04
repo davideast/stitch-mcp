@@ -166,11 +166,12 @@ export class McpConfigHandler implements McpConfigService {
       return null;
     }
 
-    const env: Record<string, string> = {
-      STITCH_PROJECT_ID: input.projectId,
-    };
+    const env: Record<string, string> = {};
 
-    if (input.apiKey) {
+    // Only include project ID for OAuth flows (not needed for API key auth)
+    if (!input.apiKey) {
+      env.STITCH_PROJECT_ID = input.projectId;
+    } else {
       env.STITCH_API_KEY = input.apiKey;
     }
 
@@ -349,16 +350,40 @@ export class McpConfigHandler implements McpConfigService {
 
       case 'codex': {
         const isHttp = transport === 'http';
-        const configBlock = isHttp
-          ? [
+        let configBlock: string;
+
+        if (isHttp) {
+          if (apiKey) {
+            configBlock = [
+              '[mcp_servers.stitch]',
+              'url = "https://stitch.googleapis.com/mcp"',
+              '',
+              '[mcp_servers.stitch.env_http_headers]',
+              `X-Goog-Api-Key = "${apiKey}"`,
+            ].join('\n');
+          } else {
+            configBlock = [
               '[mcp_servers.stitch]',
               'url = "https://stitch.googleapis.com/mcp"',
               'bearer_token_env_var = "STITCH_ACCESS_TOKEN"',
               '',
               '[mcp_servers.stitch.env_http_headers]',
               'X-Goog-User-Project = "GOOGLE_CLOUD_PROJECT"',
-            ].join('\n')
-          : [
+            ].join('\n');
+          }
+        } else {
+          // stdio transport
+          if (apiKey) {
+            configBlock = [
+              '[mcp_servers.stitch]',
+              'command = "npx"',
+              'args = ["@_davideast/stitch-mcp", "proxy"]',
+              '',
+              '[mcp_servers.stitch.env]',
+              `STITCH_API_KEY = "${apiKey}"`,
+            ].join('\n');
+          } else {
+            configBlock = [
               '[mcp_servers.stitch]',
               'command = "npx"',
               'args = ["@_davideast/stitch-mcp", "proxy"]',
@@ -366,8 +391,10 @@ export class McpConfigHandler implements McpConfigService {
               '[mcp_servers.stitch.env]',
               `STITCH_PROJECT_ID = "${projectId}"`,
             ].join('\n');
+          }
+        }
 
-        const note = isHttp
+        const note = isHttp && !apiKey
           ? `${theme.yellow('Note:')} Direct mode requires a valid access token in ${theme.blue('STITCH_ACCESS_TOKEN')} and a project id in ${theme.blue('GOOGLE_CLOUD_PROJECT')}.\n`
           : `${theme.yellow('Note:')} Proxy mode handles token refresh automatically.\n`;
 
