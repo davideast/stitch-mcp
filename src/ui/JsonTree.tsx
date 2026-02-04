@@ -22,10 +22,30 @@ function buildVisibleTree(
   data: any,
   expandedIds: Set<string>,
   prefix: string = '',
-  depth: number = 0
+  depth: number = 0,
+  rootLabel?: string
 ): TreeNode[] {
   const nodes: TreeNode[] = [];
   const type = getType(data);
+
+  // If rootLabel is provided and we're at the root level, add a root node
+  if (rootLabel && prefix === '' && depth === 0) {
+    const isExpanded = expandedIds.has(rootLabel);
+    nodes.push({
+      id: rootLabel,
+      key: rootLabel,
+      value: data,
+      depth: 0,
+      isLeaf: false,
+      isExpanded,
+      hasChildren: true,
+    });
+
+    if (isExpanded) {
+      nodes.push(...buildVisibleTree(data, expandedIds, rootLabel, 1));
+    }
+    return nodes;
+  }
 
   if (type === 'object' || type === 'array') {
     const keys = Object.keys(data);
@@ -57,7 +77,13 @@ function buildVisibleTree(
   return nodes;
 }
 
-export const JsonTree = ({ data }: { data: any }) => {
+interface JsonTreeProps {
+  data: any;
+  /** Optional label for root object - when set, root is selectable for copying */
+  rootLabel?: string;
+}
+
+export const JsonTree = ({ data, rootLabel }: JsonTreeProps) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
@@ -71,8 +97,8 @@ export const JsonTree = ({ data }: { data: any }) => {
   // If we want to see the root object's properties, they are the top level nodes.
 
   const visibleNodes = useMemo(() => {
-    return buildVisibleTree(data, expandedIds);
-  }, [data, expandedIds]);
+    return buildVisibleTree(data, expandedIds, '', 0, rootLabel);
+  }, [data, expandedIds, rootLabel]);
 
   const { exit } = useApp();
 

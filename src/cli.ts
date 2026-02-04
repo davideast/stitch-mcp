@@ -75,7 +75,16 @@ program
       }
 
       const createElement = React.createElement || (React.default as any).createElement;
-      const instance = render(createElement(JsonTree, { data: result.data }));
+
+      // Determine rootLabel based on what we're viewing
+      let rootLabel: string | undefined;
+      if (options.sourceScreen) {
+        rootLabel = 'screen';
+      } else if (options.name) {
+        rootLabel = 'resource';
+      }
+
+      const instance = render(createElement(JsonTree, { data: result.data, rootLabel }));
       await instance.waitUntilExit();
 
       process.exit(0);
