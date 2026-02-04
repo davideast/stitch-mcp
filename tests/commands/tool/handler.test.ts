@@ -36,6 +36,25 @@ describe("ToolCommandHandler", () => {
     expect(mockGetCapabilities).toHaveBeenCalled();
   });
 
+  it("should list tools when tool name is 'list'", async () => {
+    const tools = [
+      { name: "tool1", description: "desc1" },
+      { name: "tool2", description: "desc2" }
+    ];
+    mockGetCapabilities.mockResolvedValue({ tools });
+
+    const handler = new ToolCommandHandler(mockClient);
+    const result = await handler.execute({
+      toolName: "list",
+      showSchema: false,
+      output: "pretty"
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(tools);
+    expect(mockGetCapabilities).toHaveBeenCalled();
+  });
+
   it("should show schema when --schema is used", async () => {
     const tool = {
       name: "create_project",
@@ -119,5 +138,47 @@ describe("ToolCommandHandler", () => {
     expect(result.data).toEqual(mockResult);
     expect(mockCallTool).toHaveBeenCalledWith("create_project", { title: "My Project" });
     expect(Bun.file).toHaveBeenCalledWith("data.json");
+  });
+
+  it("should execute get_project tool correctly", async () => {
+    const mockResult = {
+      name: "projects/123",
+      title: "My Project",
+      thumbnailScreenshot: { downloadUrl: "http://example.com/img.png" }
+    };
+    mockCallTool.mockResolvedValue(mockResult);
+
+    const handler = new ToolCommandHandler(mockClient);
+    const result = await handler.execute({
+      toolName: "get_project",
+      data: '{"name": "projects/123"}',
+      showSchema: false,
+      output: "pretty"
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(mockResult);
+    expect(mockCallTool).toHaveBeenCalledWith("get_project", { name: "projects/123" });
+  });
+
+  it("should execute get_screen tool correctly", async () => {
+    const mockResult = {
+      name: "projects/123/screens/abc",
+      title: "Login Screen",
+      deviceType: "MOBILE"
+    };
+    mockCallTool.mockResolvedValue(mockResult);
+
+    const handler = new ToolCommandHandler(mockClient);
+    const result = await handler.execute({
+      toolName: "get_screen",
+      data: '{"projectId": "123", "screenId": "abc"}',
+      showSchema: false,
+      output: "pretty"
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(mockResult);
+    expect(mockCallTool).toHaveBeenCalledWith("get_screen", { projectId: "123", screenId: "abc" });
   });
 });
