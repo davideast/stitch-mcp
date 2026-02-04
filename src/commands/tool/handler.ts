@@ -19,8 +19,8 @@ export class ToolCommandHandler {
   }
 
   async execute(input: ToolCommandInput): Promise<ToolCommandResult> {
-    // No tool name = list all tools
-    if (!input.toolName) {
+    // No tool name or explicit 'list' command = list all tools
+    if (!input.toolName || input.toolName === 'list') {
       const tools = await this.listTools();
       return { success: true, data: tools };
     }
