@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { InitHandler } from './commands/init/handler.js';
 import { DoctorHandler } from './commands/doctor/handler.js';
 import { LogoutHandler } from './commands/logout/handler.js';
+import { ToolCommandHandler } from './commands/tool/handler.js';
 import { theme, icons } from './ui/theme.js';
 
 const program = new Command();
@@ -236,6 +237,44 @@ program
       process.exit(0);
     } catch (error) {
       console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('tool [toolName]')
+  .description('Invoke MCP tools directly')
+  .option('-s, --schema', 'Show tool arguments and schema')
+  .option('-d, --data <json>', 'JSON data (like curl -d)')
+  .option('-f, --data-file <path>', 'Read JSON from file (like curl -d @file)')
+  .option('-o, --output <format>', 'Output format: json, pretty, raw', 'pretty')
+  .action(async (toolName, options) => {
+    try {
+      const handler = new ToolCommandHandler();
+      const result = await handler.execute({
+        toolName,
+        showSchema: options.schema,
+        data: options.data,
+        dataFile: options.dataFile,
+        output: options.output,
+      });
+
+      if (!result.success) {
+        console.error(result.error);
+        process.exit(1);
+      }
+
+      if (options.output === 'json') {
+        console.log(JSON.stringify(result.data));
+      } else if (options.output === 'raw') {
+        console.log(result.data);
+      } else {
+        console.log(JSON.stringify(result.data, null, 2));
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error('Unexpected error:', error);
       process.exit(1);
     }
   });
