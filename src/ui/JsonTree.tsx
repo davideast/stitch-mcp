@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { getHandler, type CopyResult } from './copy-behaviors/index.js';
 
 type TreeNode = {
   id: string; // Unique path identifier
@@ -59,6 +60,9 @@ function buildVisibleTree(
 export const JsonTree = ({ data }: { data: any }) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const lastCPressTime = useRef<number>(0);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initial expansion of root if needed?
   // Let's start collapsed or maybe expand top level?
@@ -75,6 +79,47 @@ export const JsonTree = ({ data }: { data: any }) => {
   useInput((input, key) => {
     if (input === 'q') {
       exit();
+    }
+
+    // Handle 'c' key for copy
+    if (input === 'c') {
+      const node = visibleNodes[selectedIndex];
+      if (!node) return;
+
+      const now = Date.now();
+      const timeSinceLastC = now - lastCPressTime.current;
+      lastCPressTime.current = now;
+
+      // Double-tap detection (within 300ms = 'cc')
+      const isDoubleTap = timeSinceLastC < 300;
+
+      const handler = getHandler(node.id);
+
+      // Progress callback for immediate feedback during async operations
+      const onProgress = (message: string) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(message);
+      };
+
+      const ctx = { key: node.key, value: node.value, path: node.id, onProgress };
+
+      const showFeedback = (result: CopyResult) => {
+        if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+        setFeedbackMessage(result.message);
+        feedbackTimeout.current = setTimeout(() => setFeedbackMessage(null), 3000);
+      };
+
+      if (isDoubleTap) {
+        handler.copyExtended(ctx).then(showFeedback);
+      } else {
+        // Wait briefly to see if it's a double-tap
+        setTimeout(() => {
+          if (Date.now() - lastCPressTime.current >= 280) {
+            handler.copy(ctx).then(showFeedback);
+          }
+        }, 300);
+      }
+      return;
     }
 
     if (key.upArrow) {
@@ -191,8 +236,11 @@ export const JsonTree = ({ data }: { data: any }) => {
         )}
       </Box>
       <Text color="gray">
-        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'}
+        Selected Path: {visibleNodes[selectedIndex]?.id || 'none'} | Press 'c' to copy, 'cc' for extended
       </Text>
+      {feedbackMessage && (
+        <Text color="cyan" bold>{feedbackMessage}</Text>
+      )}
     </Box>
   );
 };
