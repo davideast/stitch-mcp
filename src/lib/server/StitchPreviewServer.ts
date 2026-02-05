@@ -89,7 +89,8 @@ export class StitchPreviewServer {
 
   async start(preferredPort = 3000): Promise<string> {
     this.port = await getPort({ port: preferredPort });
-    await this.app.listen({ port: this.port, host: '127.0.0.1' });
+    // Use 0.0.0.0 to ensure binding to all interfaces, avoiding connectivity issues in CI/containers
+    await this.app.listen({ port: this.port, host: '0.0.0.0' });
     return `http://127.0.0.1:${this.port}`;
   }
 

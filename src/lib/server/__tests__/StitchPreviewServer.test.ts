@@ -69,7 +69,19 @@ describe('StitchPreviewServer', () => {
       const html = '<html><body><img src="https://lh3.googleusercontent.com/xyz" /></body></html>';
       server.mount('/asset-test', html);
 
+      // Note: we must ensure that the fetch implementation used here creates a new response
+      // or we properly handle the response body.
       const res = await fetch(`${baseUrl}/asset-test`);
+
+      // If the response is 403 or error, text() might fail if body was consumed?
+      // But fetch returns a fresh response.
+      // The issue "Body already used" typically happens if we try to read the same response twice.
+      // Here we read it once.
+
+      if (res.status !== 200) {
+        console.error('Failed request status:', res.status);
+      }
+
       const text = await res.text();
 
       // Check rewrite
