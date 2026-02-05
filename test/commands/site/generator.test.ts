@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, mock, afterEach } from 'bun:test';
 import fs from 'fs-extra';
 import path from 'path';
 import { SiteService } from '../../../src/lib/services/site/SiteService';
@@ -23,11 +23,11 @@ describe('SiteService Generator', () => {
         htmlContent.set('s1', '<html><body><img src="http://img.png"/></body></html>');
 
         const mockAssetGateway = {
-            rewriteHtmlForBuild: vi.fn().mockResolvedValue({
+            rewriteHtmlForBuild: mock().mockResolvedValue({
                 html: '<html><body><img src="./assets/hash.png"/></body></html>',
                 assets: [{ url: 'http://img.png', filename: 'hash.png' }]
             }),
-            copyAssetTo: vi.fn().mockResolvedValue(undefined),
+            copyAssetTo: mock().mockResolvedValue(undefined),
         } as unknown as AssetGateway;
 
         await SiteService.generateSite(config, htmlContent, mockAssetGateway, outputDir);

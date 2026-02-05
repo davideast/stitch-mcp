@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { SiteConfigSchema } from '../../../../src/lib/services/site/schemas';
 
 describe('SiteConfigSchema', () => {
@@ -25,10 +25,6 @@ describe('SiteConfigSchema', () => {
   });
 
   it('should allow duplicate ignored routes', () => {
-      // Logic: Refinement only checks 'included' routes.
-      // If I have two ignored routes pointing to /about, it should be fine?
-      // My implementation: `const includedRoutes = data.routes.filter((r) => r.status === 'included');`
-      // So yes, ignored duplicates are allowed.
       const config = {
       projectId: 'p1',
       routes: [

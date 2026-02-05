@@ -1,8 +1,23 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll, afterAll, mock } from 'bun:test';
 import { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
 
 describe('StitchViteServer', () => {
   let server: StitchViteServer;
+  const originalFetch = global.fetch;
+
+  beforeAll(() => {
+    global.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
+       const url = input.toString();
+       if (url.includes('example.com')) {
+           return Promise.resolve(new Response('fake-image'));
+       }
+       return originalFetch(input, init);
+    }) as any;
+  });
+
+  afterAll(() => {
+      global.fetch = originalFetch;
+  });
 
   afterEach(async () => {
     if (server) await server.stop();

@@ -1,27 +1,30 @@
-// @vitest-environment jsdom
+import { describe, it, expect, mock, beforeEach, beforeAll, afterAll } from 'bun:test';
+import { GlobalRegistrator } from '@happy-dom/global-registrator';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useProjectHydration } from '../../../src/commands/site/hooks/useProjectHydration';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer'; // Type only
+import type { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
 import { ProjectSyncer } from '../../../src/commands/site/utils/ProjectSyncer';
 import { UIStack } from '../../../src/commands/site/ui/types';
-
-// Mock the module to avoid loading Vite/esbuild in jsdom
-vi.mock('../../../src/lib/server/vite/StitchViteServer', () => ({
-    StitchViteServer: class {}
-}));
 
 describe('useProjectHydration', () => {
     let mockServer: any;
     let mockSyncer: any;
 
+    beforeAll(() => {
+        GlobalRegistrator.register();
+    });
+
+    afterAll(() => {
+        GlobalRegistrator.unregister();
+    });
+
     beforeEach(() => {
         mockServer = {
-            mount: vi.fn(),
+            mount: mock(),
         } as unknown as StitchViteServer;
 
         mockSyncer = {
-            fetchContent: vi.fn().mockResolvedValue('<html></html>'),
+            fetchContent: mock().mockResolvedValue('<html></html>'),
         } as unknown as ProjectSyncer;
     });
 

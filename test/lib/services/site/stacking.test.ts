@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { SiteService } from '../../../../src/lib/services/site/SiteService';
 import { RemoteScreen } from '../../../../src/lib/services/site/types';
 
