@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
@@ -12,27 +12,11 @@ interface Screen {
   hasImage: boolean;
 }
 
-// Track running servers: screenId -> port
-const runningServers = new Map<string, number>();
-const usedPorts = new Set<number>();
-
-function getOrCreatePort(screenId: string): { port: number; isNew: boolean } {
-  // Check if this screen already has a server
-  const existingPort = runningServers.get(screenId);
-  if (existingPort) {
-    return { port: existingPort, isNew: false };
-  }
-
-  // Find a new available port
-  let port: number;
-  do {
-    port = 3000 + Math.floor(Math.random() * 6000);
-  } while (usedPorts.has(port));
-
-  usedPorts.add(port);
-  runningServers.set(screenId, port);
-  return { port, isNew: true };
-}
+// Single server state per project
+let serverState: {
+  port: number;
+  projectId: string;
+} | null = null;
 
 interface CodeViewProps {
   projectId: string;
@@ -47,6 +31,96 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
   const [status, setStatus] = useState('');
 
   const codeCount = screens.filter(s => s.hasCode).length;
+  const screensWithCode = screens.filter(s => s.hasCode);
+
+  // Start or get the single server for this project
+  async function ensureServer(): Promise<number> {
+    if (serverState && serverState.projectId === projectId) {
+      return serverState.port;
+    }
+
+    const fs = await import('fs/promises');
+    const fsSync = await import('fs');
+    const pathMod = await import('path');
+    const http = await import('http');
+
+    // Create temp directory for all screens
+    const tempDir = `/tmp/stitch-server/${projectId}`;
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Download and write all screens with code
+    for (const screen of screensWithCode) {
+      if (screen.codeUrl) {
+        try {
+          const code = await downloadText(screen.codeUrl);
+          await fs.writeFile(pathMod.join(tempDir, `${screen.screenId}.html`), code);
+        } catch (e) {
+          console.error(`Failed to download ${screen.screenId}:`, e);
+        }
+      }
+    }
+
+    // Generate index page
+    const indexHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${projectTitle}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+    h1 { color: #333; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 12px 0; }
+    a { color: #0066cc; text-decoration: none; font-size: 18px; }
+    a:hover { text-decoration: underline; }
+    .id { color: #999; font-size: 12px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>${projectTitle}</h1>
+  <p>${screensWithCode.length} screens with code</p>
+  <ul>
+    ${screensWithCode.map(s => `<li>
+      <a href="/${s.screenId}">${s.title}</a>
+      <div class="id">${s.screenId}</div>
+    </li>`).join('\n    ')}
+  </ul>
+</body>
+</html>`;
+    await fs.writeFile(pathMod.join(tempDir, 'index.html'), indexHtml);
+
+    // Pick a random port
+    const port = 3000 + Math.floor(Math.random() * 6000);
+
+    // Start server directly in this process
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url || '/', `http://localhost:${port}`);
+
+      // Skip favicon
+      if (url.pathname === '/favicon.ico') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      const filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1) + '.html';
+      const fullPath = pathMod.join(tempDir, filePath);
+
+      // Check if file exists
+      if (!fsSync.existsSync(fullPath)) {
+        res.writeHead(404);
+        res.end('Not found');
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      fsSync.createReadStream(fullPath).pipe(res);
+    });
+
+    server.listen(port);
+
+    serverState = { port, projectId };
+    return port;
+  }
 
   useInput((input, key) => {
     if (input === 'q') {
@@ -90,47 +164,26 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
 
     if (input === 's') {
       const screen = screens[selectedIndex];
-      if (screen?.hasCode && screen.codeUrl) {
+      if (screen?.hasCode) {
         setStatus('Starting server...');
-        // Download code, write to temp file, and serve
-        downloadText(screen.codeUrl)
-          .then(async (code) => {
-            const fs = await import('fs/promises');
-            const path = await import('path');
+        ensureServer()
+          .then(async (port) => {
             const { spawn } = await import('child_process');
-
-            // Write to temp HTML file
-            const tempDir = '/tmp/stitch-server';
-            await fs.mkdir(tempDir, { recursive: true });
-            const htmlPath = path.join(tempDir, `${screen.screenId}.html`);
-            await fs.writeFile(htmlPath, code);
-
-            // Get or reuse port for this screen
-            const { port, isNew } = getOrCreatePort(screen.screenId);
-
-            if (isNew) {
-              // Start Bun server only for new ports
-              spawn('bun', ['--hot', '-e', `
-                Bun.serve({
-                  port: ${port},
-                  fetch(req) {
-                    return new Response(Bun.file('${htmlPath}'), {
-                      headers: { 'Content-Type': 'text/html' }
-                    });
-                  }
-                });
-                console.log('Server running at http://localhost:${port}');
-              `], { stdio: 'inherit' });
-            }
-
-            // Open browser (always)
-            spawn('open', [`http://localhost:${port}`]);
-
-            setStatus(`Server running at http://localhost:${port}${isNew ? '' : ' (reused)'}`);
+            // Open browser to the specific screen route
+            spawn('open', [`http://localhost:${port}/${screen.screenId}`]);
+            setStatus(`http://localhost:${port}/${screen.screenId}`);
           })
-          .catch((e) => setStatus(`Failed to start server: ${e}`));
+          .catch((e) => setStatus(`Failed: ${e}`));
       } else {
         setStatus('No code available');
+      }
+    }
+
+    if (input === 'p') {
+      if (!serverState || serverState.projectId !== projectId) {
+        setStatus('Server not running. Press s to start.');
+      } else {
+        setStatus(`http://localhost:${serverState.port}/`);
       }
     }
   });
@@ -168,7 +221,7 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       })}
 
       {/* Footer */}
-      <Text dimColor>[c]opy  [i]mage  [s]erver  [q]uit</Text>
+      <Text dimColor>[c]opy  [i]mage  [s]erver  [p]orts  [q]uit</Text>
       {status && <Text color="yellow">{status}</Text>}
     </Box>
   );
