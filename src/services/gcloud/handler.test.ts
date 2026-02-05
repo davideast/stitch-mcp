@@ -7,12 +7,15 @@ import fs from 'node:fs';
 // Mock external dependencies
 mock.module('../../platform/shell.js', () => ({
   execCommand: mockExecCommand,
+  commandExists: mock(async () => false),
 }));
 
 // Mock node:fs
 mock.module('node:fs', () => ({
   default: {
     existsSync: mock(() => false),
+    mkdirSync: mock(),
+    unlinkSync: mock(),
     promises: {
       access: mock(() => Promise.reject(new Error('ENOENT'))),
       writeFile: mock(() => Promise.resolve()),
@@ -23,25 +26,131 @@ mock.module('node:fs', () => ({
   },
 }));
 
+// Mock adm-zip
+const mockExtractAllToAsync = mock((path: string, overwrite: boolean, cb: (err?: Error) => void) => {
+  cb(); // Call callback immediately
+});
+
+const mockAdmZip = mock(() => ({
+  extractAllTo: mock(),
+  extractAllToAsync: mockExtractAllToAsync,
+}));
+
+mock.module('adm-zip', () => ({
+  default: mockAdmZip
+}));
+
+// Mock platform detector
+let mockPlatform = {
+  os: 'linux',
+  arch: 'x86_64',
+  gcloudDownloadUrl: 'http://example.com/gcloud.tar.gz',
+  gcloudBinaryName: 'gcloud',
+  isWindows: false,
+};
+
+mock.module('../../platform/detector.js', () => ({
+  detectPlatform: () => mockPlatform,
+  getGcloudSdkPath: () => '/mock/stitch/google-cloud-sdk',
+  getGcloudConfigPath: () => '/mock/stitch/.stitch-mcp/config',
+  getStitchDir: () => '/mock/stitch/.stitch-mcp',
+  getHomeDir: () => '/mock/home',
+}));
+
 describe('GcloudHandler', () => {
   let handler: GcloudHandler;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    handler = new GcloudHandler();
-    mockExecCommand.mockClear();
+    // Reset platform to default
+    mockPlatform = {
+      os: 'linux',
+      arch: 'x86_64',
+      gcloudDownloadUrl: 'http://example.com/gcloud.tar.gz',
+      gcloudBinaryName: 'gcloud',
+      isWindows: false,
+    };
+
+    // IMPORTANT: mockReset clears history AND implementations (queued 'once' values)
+    mockExecCommand.mockReset();
+    mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'Unexpected exec call', exitCode: 1 });
+
+    mockAdmZip.mockClear();
+    mockExtractAllToAsync.mockClear();
+
     // Reset fs mocks
     (fs.existsSync as any).mockImplementation(() => false);
     (fs.promises.access as any).mockImplementation(() => Promise.reject(new Error('ENOENT')));
+
+    originalEnv = { ...process.env };
+    handler = new GcloudHandler();
+    // Pre-set gcloudPath to avoid internal resolution calls during unit tests for specific methods
+    // This assumes the handler has already "found" gcloud, preventing getGcloudCommand from triggering 'which' or 'access' checks.
+    // Tests that specifically test resolution (like ensureInstalled) should reset this to null.
+    (handler as any).gcloudPath = '/mock/gcloud';
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  describe('Zip Extraction (Windows)', () => {
+    test('should use async zip extraction on Windows', async () => {
+      // Simulate Windows
+      mockPlatform = {
+        os: 'windows',
+        arch: 'x86_64',
+        gcloudDownloadUrl: 'http://example.com/gcloud.zip',
+        gcloudBinaryName: 'gcloud.cmd',
+        isWindows: true,
+      };
+
+      // Re-instantiate handler to pick up new platform detection
+      handler = new GcloudHandler();
+      // Ensure we test the full install flow
+      (handler as any).gcloudPath = null;
+
+      // Mock global fetch
+      const originalFetch = global.fetch;
+      // @ts-ignore
+      global.fetch = mock(async () => ({
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(10),
+      }));
+
+      // Mock execCommand for version check after install
+      mockExecCommand.mockResolvedValue({
+        success: true,
+        stdout: 'Google Cloud SDK 1.0.0',
+        stderr: '',
+        exitCode: 0
+      });
+
+      try {
+        await handler.ensureInstalled({ forceLocal: true });
+
+        // Verify AdmZip was instantiated
+        expect(mockAdmZip).toHaveBeenCalled();
+
+        // Verify extractAllToAsync was called
+        expect(mockExtractAllToAsync).toHaveBeenCalled();
+
+        // Verify it was called with correct arguments
+        expect(mockExtractAllToAsync.mock.calls[0][0]).toContain('/mock/stitch');
+        expect(mockExtractAllToAsync.mock.calls[0][1]).toBe(true);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
   });
 
   describe('Async File Check Regression', () => {
     test('should uses fs.promises.access for checking local binary', async () => {
+      // Clear the pre-set path to force resolution
+      (handler as any).gcloudPath = null;
+
       // Setup successful access call to simulate local binary existing
       (fs.promises.access as any).mockResolvedValue(undefined);
-
-      // We need to trigger getGcloudCommand.
-      // getActiveAccount calls getGcloudCommand.
-      // We also need to ensure it doesn't use the cached path from ensureInstalled (which is not called here).
 
       // Mock exec command for the subsequent call in getActiveAccount
       mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
@@ -52,7 +161,10 @@ describe('GcloudHandler', () => {
     });
 
      test('should fallback to system command if access fails', async () => {
-      // Setup failed access call (default behavior of mock, but being explicit)
+      // Clear the pre-set path to force resolution
+      (handler as any).gcloudPath = null;
+
+      // Setup failed access call
       (fs.promises.access as any).mockRejectedValue(new Error('ENOENT'));
 
       mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
@@ -60,8 +172,7 @@ describe('GcloudHandler', () => {
       await handler.getActiveAccount();
 
       expect(fs.promises.access).toHaveBeenCalled();
-      // If it falls back, it uses 'gcloud' (system default)
-      // We can verify this by checking the command passed to execCommand
+
       const calls = mockExecCommand.mock.calls;
       expect(calls.length).toBeGreaterThan(0);
       expect(calls[0][0][0]).toBe('gcloud');
@@ -111,25 +222,14 @@ describe('GcloudHandler', () => {
   });
 
   describe('Environment Configuration', () => {
-    let originalEnv: NodeJS.ProcessEnv;
-
     beforeEach(() => {
-      originalEnv = { ...process.env };
-      mockExecCommand.mockReset(); // Use mockReset to clear implementations
       delete process.env.CLOUDSDK_CONFIG;
       delete process.env.STITCH_USE_SYSTEM_GCLOUD;
-    });
-
-    afterEach(() => {
-      process.env = originalEnv;
+      // We need to test installation/setup flow, so clear the pre-set path
+      (handler as any).gcloudPath = null;
     });
 
     test('should use isolated environment by default', async () => {
-      // Mock successful ensureInstalled to set defaults
-      // 1. commandExists (gcloud) - fail to find system
-      // 2. has local binary check (fs.existsSync) - mocked to true
-      // 3. getVersionFromPath (local)
-
       (fs.existsSync as any).mockReturnValue(true); // Pretend local binary exists
 
       mockExecCommand
@@ -145,7 +245,6 @@ describe('GcloudHandler', () => {
 
       await handler.ensureInstalled({ minVersion: '0.0.0' } as any);
 
-      // Call a method that uses getEnvironment, e.g., authenticate
       await handler.authenticate({ skipIfActive: false });
 
       const calls = mockExecCommand.mock.calls;
@@ -159,14 +258,6 @@ describe('GcloudHandler', () => {
 
     test('should use system environment when useSystemGcloud is true via ensureInstalled', async () => {
       (fs.existsSync as any).mockReturnValue(true);
-
-      // Sequence:
-      // 1. commandExists -> which gcloud
-      // 2. findGlobalGcloud -> which gcloud
-      // 3. getVersionFromPath -> gcloud version
-      // 4. authenticate -> gcloud auth login --no-launch-browser
-      // 5. authenticate -> gcloud auth login --quiet
-      // 6. authenticate -> gcloud auth list (getActiveAccount)
 
       mockExecCommand
         // commandExists
@@ -182,18 +273,15 @@ describe('GcloudHandler', () => {
         // authenticate (getActiveAccount)
         .mockResolvedValueOnce({ success: true, stdout: 'user@example.com', stderr: '', exitCode: 0 });
 
-      // Set useSystemGcloud: true
       await handler.ensureInstalled({ minVersion: '0.0.0', useSystemGcloud: true } as any);
 
       await handler.authenticate({ skipIfActive: false });
 
       const calls = mockExecCommand.mock.calls;
-      // Find the auth call (it should be the 4th call, or verify by arguments)
       const authCall = calls.find((call: any[]) => call[0].includes('auth') && call[0].includes('login'));
       if (!authCall) throw new Error('Auth call not found');
       const env = authCall[1].env;
 
-      // Should NOT have CLOUDSDK_CONFIG (or at least not our isolated one)
       expect(env.CLOUDSDK_CONFIG).toBeUndefined();
     });
 
@@ -210,7 +298,6 @@ describe('GcloudHandler', () => {
         .mockResolvedValueOnce({ success: true, stdout: 'Logged in', stderr: '', exitCode: 0 }) // auth login quiet
         .mockResolvedValueOnce({ success: true, stdout: 'user@example.com', stderr: '', exitCode: 0 }); // active account
 
-      // Even with useSystemGcloud: false (default), env var should trigger system check
       await handler.ensureInstalled({ minVersion: '0.0.0' } as any);
 
       await handler.authenticate({ skipIfActive: false });
