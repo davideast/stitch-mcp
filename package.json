@@ -41,6 +41,7 @@
     "clipboardy": "^5.2.1",
     "commander": "^12.1.0",
     "dotenv": "^17.2.3",
+    "fs-extra": "^11.3.3",
     "ink": "^6.6.0",
     "ink-spinner": "^5.0.0",
     "ora": "^8.1.1",
@@ -53,12 +54,14 @@
     "@types/bun": "latest",
     "@types/clipboardy": "^2.0.4",
     "@types/express": "^5.0.6",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.10",
     "np": "^10.2.0",
     "react-devtools-core": "^6.1.2",
     "signal-exit": "^4.1.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^7.3.1"
   },
   "engines": {
     "node": ">=18.0.0"
