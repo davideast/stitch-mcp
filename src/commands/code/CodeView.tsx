@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
@@ -12,12 +12,6 @@ interface Screen {
   hasImage: boolean;
 }
 
-// Single server state per project
-let serverState: {
-  port: number;
-  projectId: string;
-} | null = null;
-
 interface CodeViewProps {
   projectId: string;
   projectTitle: string;
@@ -28,17 +22,18 @@ interface CodeViewProps {
 export function CodeView({ projectId, projectTitle, screens, client }: CodeViewProps) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('Starting server...');
+  const [serverPort, setServerPort] = useState<number | null>(null);
 
   const codeCount = screens.filter(s => s.hasCode).length;
   const screensWithCode = screens.filter(s => s.hasCode);
 
-  // Start or get the single server for this project
-  async function ensureServer(): Promise<number> {
-    if (serverState && serverState.projectId === projectId) {
-      return serverState.port;
-    }
+  // Auto-start server on mount
+  useEffect(() => {
+    startServer();
+  }, []);
 
+  async function startServer() {
     const fs = await import('fs/promises');
     const fsSync = await import('fs');
     const pathMod = await import('path');
@@ -55,7 +50,7 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
           const code = await downloadText(screen.codeUrl);
           await fs.writeFile(pathMod.join(tempDir, `${screen.screenId}.html`), code);
         } catch (e) {
-          console.error(`Failed to download ${screen.screenId}:`, e);
+          // Silently skip failed downloads
         }
       }
     }
@@ -66,22 +61,23 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
 <head>
   <title>${projectTitle}</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-    h1 { color: #333; }
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #1a1a1a; color: #fff; }
+    h1 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 16px; }
+    .stats { color: #888; margin-bottom: 24px; }
     ul { list-style: none; padding: 0; }
-    li { margin: 12px 0; }
-    a { color: #0066cc; text-decoration: none; font-size: 18px; }
+    li { margin: 16px 0; padding: 16px; background: #252525; border-radius: 8px; }
+    a { color: #4fc3f7; text-decoration: none; font-size: 18px; }
     a:hover { text-decoration: underline; }
-    .id { color: #999; font-size: 12px; font-family: monospace; }
+    .id { color: #666; font-size: 12px; font-family: monospace; margin-top: 4px; }
   </style>
 </head>
 <body>
   <h1>${projectTitle}</h1>
-  <p>${screensWithCode.length} screens with code</p>
+  <p class="stats">${screensWithCode.length} screens with code</p>
   <ul>
     ${screensWithCode.map(s => `<li>
       <a href="/${s.screenId}">${s.title}</a>
-      <div class="id">${s.screenId}</div>
+      <div class="id">/${s.screenId}</div>
     </li>`).join('\n    ')}
   </ul>
 </body>
@@ -91,11 +87,10 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
     // Pick a random port
     const port = 3000 + Math.floor(Math.random() * 6000);
 
-    // Start server directly in this process
+    // Start server
     const server = http.createServer((req, res) => {
       const url = new URL(req.url || '/', `http://localhost:${port}`);
 
-      // Skip favicon
       if (url.pathname === '/favicon.ico') {
         res.writeHead(204);
         res.end();
@@ -105,7 +100,6 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       const filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1) + '.html';
       const fullPath = pathMod.join(tempDir, filePath);
 
-      // Check if file exists
       if (!fsSync.existsSync(fullPath)) {
         res.writeHead(404);
         res.end('Not found');
@@ -116,10 +110,10 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       fsSync.createReadStream(fullPath).pipe(res);
     });
 
-    server.listen(port);
-
-    serverState = { port, projectId };
-    return port;
+    server.listen(port, () => {
+      setServerPort(port);
+      setStatus(`Server ready`);
+    });
   }
 
   useInput((input, key) => {
@@ -138,6 +132,22 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       setStatus('');
     }
 
+    // Enter to open in browser
+    if (key.return) {
+      const screen = screens[selectedIndex];
+      if (screen?.hasCode && serverPort) {
+        import('child_process').then(({ spawn }) => {
+          spawn('open', [`http://localhost:${serverPort}/${screen.screenId}`]);
+          setStatus(`Opened /${screen.screenId.slice(0, 8)}...`);
+        });
+      } else if (!serverPort) {
+        setStatus('Server not ready');
+      } else {
+        setStatus('No code to preview');
+      }
+    }
+
+    // Copy code
     if (input === 'c') {
       const screen = screens[selectedIndex];
       if (screen?.hasCode && screen.codeUrl) {
@@ -153,6 +163,7 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       }
     }
 
+    // Copy image (placeholder)
     if (input === 'i') {
       const screen = screens[selectedIndex];
       if (screen?.hasImage) {
@@ -162,28 +173,44 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
       }
     }
 
-    if (input === 's') {
+    // Open in browser
+    if (input === 'o') {
       const screen = screens[selectedIndex];
-      if (screen?.hasCode) {
-        setStatus('Starting server...');
-        ensureServer()
-          .then(async (port) => {
-            const { spawn } = await import('child_process');
-            // Open browser to the specific screen route
-            spawn('open', [`http://localhost:${port}/${screen.screenId}`]);
-            setStatus(`http://localhost:${port}/${screen.screenId}`);
-          })
-          .catch((e) => setStatus(`Failed: ${e}`));
+      if (screen?.hasCode && serverPort) {
+        import('child_process').then(({ spawn }) => {
+          spawn('open', [`http://localhost:${serverPort}/${screen.screenId}`]);
+          setStatus(`Opened /${screen.screenId.slice(0, 8)}...`);
+        });
+      } else if (!serverPort) {
+        setStatus('Server not ready');
       } else {
-        setStatus('No code available');
+        setStatus('No code to preview');
       }
     }
 
-    if (input === 'p') {
-      if (!serverState || serverState.projectId !== projectId) {
-        setStatus('Server not running. Press s to start.');
+    // Open index page (shift+O)
+    if (input === 'O') {
+      if (serverPort) {
+        import('child_process').then(({ spawn }) => {
+          spawn('open', [`http://localhost:${serverPort}/`]);
+          setStatus('Opened index page');
+        });
       } else {
-        setStatus(`http://localhost:${serverState.port}/`);
+        setStatus('Server not ready');
+      }
+    }
+
+    // Copy route to clipboard
+    if (input === 'p') {
+      const screen = screens[selectedIndex];
+      if (screen?.hasCode && serverPort) {
+        const route = `http://localhost:${serverPort}/${screen.screenId}`;
+        clipboard.write(route);
+        setStatus('Route copied!');
+      } else if (!serverPort) {
+        setStatus('Server not ready');
+      } else {
+        setStatus('No route for this screen');
       }
     }
   });
@@ -192,36 +219,53 @@ export function CodeView({ projectId, projectTitle, screens, client }: CodeViewP
     <Box flexDirection="column" padding={1}>
       {/* Header */}
       <Text bold>{projectTitle} ({codeCount}/{screens.length} have code)</Text>
-      <Text dimColor>{projectId}</Text>
+      <Text dimColor>
+        Server: {serverPort ? <Text color="green">http://localhost:{serverPort}</Text> : <Text color="yellow">starting...</Text>}
+      </Text>
       <Text> </Text>
 
       {/* Screen List */}
-      {screens.map((screen, index) => {
-        const isSelected = index === selectedIndex;
-        const prefix = isSelected ? '▸' : ' ';
+      <Box flexDirection="column" borderStyle="single" borderColor="yellow" paddingX={1}>
+        {screens.map((screen, index) => {
+          const isSelected = index === selectedIndex;
+          const num = String(index + 1).padStart(2, ' ');
+          const selector = isSelected ? '▸' : ' ';
 
-        return (
-          <Box key={screen.screenId} flexDirection="column">
-            <Box>
-              <Text color={isSelected ? 'cyan' : undefined}>
-                {prefix} {screen.title.padEnd(25)}
-              </Text>
-              <Text color={screen.hasCode ? 'green' : 'gray'}>
-                {screen.hasCode ? 'code' : '    '}
-              </Text>
-              <Text>  </Text>
-              <Text color={screen.hasImage ? 'green' : 'gray'}>
-                {screen.hasImage ? 'image' : '     '}
-              </Text>
+          return (
+            <Box key={screen.screenId} flexDirection="column">
+              <Box>
+                <Text dimColor>{num}</Text>
+                <Text color={isSelected ? 'cyan' : undefined}> {selector} </Text>
+                <Text color={isSelected ? 'cyan' : undefined} bold={isSelected}>
+                  {screen.title.slice(0, 30).padEnd(30)}
+                </Text>
+                <Text>  </Text>
+                <Text dimColor>html</Text>
+                <Text color={screen.hasCode ? 'green' : 'gray'}>
+                  {screen.hasCode ? '[✓]' : '[ ]'}
+                </Text>
+                <Text>  </Text>
+                <Text dimColor>img</Text>
+                <Text color={screen.hasImage ? 'green' : 'gray'}>
+                  {screen.hasImage ? '[✓]' : '[ ]'}
+                </Text>
+              </Box>
+              <Box>
+                <Text dimColor>      </Text>
+                {screen.hasCode && serverPort ? (
+                  <Text dimColor>→ :{serverPort}/{screen.screenId.slice(0, 16)}...</Text>
+                ) : (
+                  <Text dimColor italic>(no route)</Text>
+                )}
+              </Box>
+              <Text> </Text>
             </Box>
-            <Text dimColor>  {screen.screenId}</Text>
-            <Text> </Text>
-          </Box>
-        );
-      })}
+          );
+        })}
+      </Box>
 
       {/* Footer */}
-      <Text dimColor>[c]opy  [i]mage  [s]erver  [p]orts  [q]uit</Text>
+      <Text dimColor>[c]opy  [i]mage  [o]pen  [O] index  [p]ath  [q]uit</Text>
       {status && <Text color="yellow">{status}</Text>}
     </Box>
   );
