@@ -2,6 +2,18 @@ import { describe, it, expect, afterEach, mock } from 'bun:test';
 import { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
 import { AssetGateway } from '../../../src/lib/server/AssetGateway';
 import { Readable } from 'stream';
+import http from 'http';
+
+// Helper to make requests using node:http to avoid global.fetch pollution
+const request = (url: string): Promise<{ statusCode: number; body: string }> => {
+    return new Promise((resolve, reject) => {
+        http.get(url, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));
+        }).on('error', reject);
+    });
+};
 
 describe('StitchViteServer', () => {
   let server: StitchViteServer;
@@ -16,10 +28,9 @@ describe('StitchViteServer', () => {
 
     server.mount('/test', '<h1>Hello World</h1>');
 
-    const res = await fetch(`${url}/test`);
-    expect(res.status).toBe(200);
-    const text = await res.text();
-    expect(text).toContain('Hello World');
+    const res = await request(`${url}/test`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Hello World');
   });
 
   it('should rewrite assets', async () => {
@@ -38,10 +49,8 @@ describe('StitchViteServer', () => {
       const html = '<img src="http://example.com/image.png" />';
       server.mount('/image-test', html);
 
-      const res = await fetch(`${url}/image-test`);
-      const text = await res.text();
-
-      expect(text).toContain('/_stitch/asset?url=');
-      expect(text).toContain(encodeURIComponent('http://example.com/image.png'));
+      const res = await request(`${url}/image-test`);
+      expect(res.body).toContain('/_stitch/asset?url=');
+      expect(res.body).toContain(encodeURIComponent('http://example.com/image.png'));
   });
 });
