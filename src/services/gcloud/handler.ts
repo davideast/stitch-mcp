@@ -159,7 +159,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       // Run gcloud auth login
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       console.log(theme.gray("  Opening browser for authentication..."));
 
       // CRITICAL: Always extract and print the URL before attempting browser launch
@@ -250,7 +250,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       // Run gcloud auth application-default login
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       console.log(theme.gray("  Opening browser for authentication..."));
 
       // CRITICAL: Always extract and print the URL before attempting browser launch
@@ -315,7 +315,7 @@ export class GcloudHandler implements GcloudService {
    */
   async listProjects(input: ListProjectsInput): Promise<ProjectListResult> {
     try {
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       const args = [gcloudCmd, 'projects', 'list', '--format=json'];
 
       if (input.limit) {
@@ -381,7 +381,7 @@ export class GcloudHandler implements GcloudService {
    */
   async setProject(input: SetProjectInput): Promise<ProjectSetResult> {
     try {
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       const result = await execCommand([gcloudCmd, 'config', 'set', 'project', input.projectId, '--quiet'], {
         env: this.getEnvironment(),
       });
@@ -421,7 +421,7 @@ export class GcloudHandler implements GcloudService {
    */
   async getAccessToken(): Promise<string | null> {
     try {
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       const result = await execCommand([gcloudCmd, 'auth', 'application-default', 'print-access-token'], {
         env: this.getEnvironment(),
       });
@@ -431,7 +431,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       // Build the correct login command with config prefix for bundled gcloud
-      const loginCmd = this.getLoginCommand();
+      const loginCmd = await this.getLoginCommand();
       console.error(`[Gcloud] Token fetch failed. Please run:\n\n  ${loginCmd}\n\nto obtain new credentials.`);
       return null;
     } catch (e) {
@@ -443,8 +443,8 @@ export class GcloudHandler implements GcloudService {
   /**
    * Get the correct login command with config prefix if using bundled gcloud
    */
-  private getLoginCommand(): string {
-    const gcloudCmd = this.getGcloudCommand();
+  private async getLoginCommand(): Promise<string> {
+    const gcloudCmd = await this.getGcloudCommand();
 
     // If using system gcloud, no config prefix needed
     if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
@@ -466,7 +466,7 @@ export class GcloudHandler implements GcloudService {
     }
 
     try {
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       const result = await execCommand([gcloudCmd, 'config', 'get-value', 'project'], {
         env: this.getEnvironment(),
       });
@@ -486,7 +486,7 @@ export class GcloudHandler implements GcloudService {
    */
   async installBetaComponents(): Promise<{ success: boolean; error?: { message: string } }> {
     try {
-      const gcloudCmd = this.getGcloudCommand();
+      const gcloudCmd = await this.getGcloudCommand();
       const result = await execCommand(
         [gcloudCmd, 'components', 'install', 'beta', '--quiet'],
         { env: this.getEnvironment() }
@@ -654,7 +654,7 @@ export class GcloudHandler implements GcloudService {
     return env;
   }
 
-  private getGcloudCommand(): string {
+  private async getGcloudCommand(): Promise<string> {
     if (this.gcloudPath) {
       return this.gcloudPath;
     }
@@ -668,18 +668,19 @@ export class GcloudHandler implements GcloudService {
     const localSdkPath = getGcloudSdkPath();
     const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
 
-    if (fs.existsSync(localBinaryPath)) {
+    try {
+      await fs.promises.access(localBinaryPath, fs.constants.F_OK);
       this.gcloudPath = localBinaryPath;
       this.setupEnvironment();
       return localBinaryPath;
+    } catch {
+      // Fallback to command in PATH
+      return this.platform.gcloudBinaryName;
     }
-
-    // Fallback to command in PATH
-    return this.platform.gcloudBinaryName;
   }
 
   async getActiveAccount(): Promise<string | null> {
-    const gcloudCmd = this.getGcloudCommand();
+    const gcloudCmd = await this.getGcloudCommand();
 
     // Only check bundled stitch config - we need credentials there
     const result = await execCommand(
@@ -697,7 +698,7 @@ export class GcloudHandler implements GcloudService {
   async hasADC(): Promise<boolean> {
     // Actually verify ADC credentials work by attempting to get an access token.
     // Just checking if the file exists is not enough - tokens can be expired or revoked.
-    const gcloudCmd = this.getGcloudCommand();
+    const gcloudCmd = await this.getGcloudCommand();
 
     // First, quick check if credential file exists
     let fileExists = false;
