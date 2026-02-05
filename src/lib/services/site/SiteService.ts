@@ -1,5 +1,5 @@
 import slugify from '@sindresorhus/slugify';
-import { RemoteScreen, ScreenStack, SiteConfig } from './schemas';
+import type { RemoteScreen, ScreenStack, SiteConfig } from './schemas';
 
 export class SiteService {
 
@@ -31,6 +31,9 @@ export class SiteService {
       // Best Candidate: Assume the last one in the list is latest
       const bestCandidate = versions[versions.length - 1];
 
+      // Safety check for TypeScript, though logical flow ensures versions is not empty
+      if (!bestCandidate) continue;
+
       stacks.push({
         id: bestCandidate.name,
         stackId: title,
@@ -49,15 +52,18 @@ export class SiteService {
       if (stack.isArtifact) continue;
 
       const match = stack.title.match(/ v(\d+)$/i);
-      if (match) {
+      if (match && typeof match.index === 'number' && match[1]) {
         const version = parseInt(match[1]);
         const baseTitle = stack.title.substring(0, match.index); // "Home"
 
         const hasNewer = stacks.some(s => {
           if (s === stack) return false;
+          // s.title is guaranteed to be string by Zod, but just to be safe with strict TS
+          if (!s.title) return false;
           const otherMatch = s.title.match(/ v(\d+)$/i);
           return s.title.startsWith(baseTitle) &&
                  otherMatch &&
+                 otherMatch[1] &&
                  parseInt(otherMatch[1]) > version;
         });
 
@@ -117,6 +123,6 @@ export class SiteService {
 
     // Note: We return a config that MIGHT fail strict validation if the user
     // manually messed it up later, but here we guarantee uniqueness via the registerRoute logic.
-    return { projectId, routes };
+    return { projectId, routes } as SiteConfig;
   }
 }
