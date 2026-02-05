@@ -8,7 +8,7 @@ interface Screen {
   hasImage: boolean;
 }
 
-type CodeHandlerResult = {
+type ScreensHandlerResult = {
   success: true;
   projectId: string;
   projectTitle: string;
@@ -18,10 +18,10 @@ type CodeHandlerResult = {
   error: string;
 };
 
-export class CodeHandler {
+export class ScreensHandler {
   constructor(private client: StitchMCPClient) { }
 
-  async execute(projectId: string): Promise<CodeHandlerResult> {
+  async execute(projectId: string): Promise<ScreensHandlerResult> {
     try {
       // Fetch project details
       const project = await this.client.callTool('get_project', {
@@ -44,6 +44,14 @@ export class CodeHandler {
           codeUrl: screen.htmlCode?.downloadUrl || null,
           hasImage: !!screen.screenshot?.downloadUrl,
         };
+      });
+
+      // Sort: screens with HTML first, then alphabetically by title
+      screens.sort((a, b) => {
+        if (a.hasCode !== b.hasCode) {
+          return a.hasCode ? -1 : 1;
+        }
+        return a.title.localeCompare(b.title);
       });
 
       return {

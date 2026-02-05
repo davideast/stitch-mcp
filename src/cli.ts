@@ -280,18 +280,58 @@ program
   });
 
 program
-  .command('code <projectId>')
-  .description('View project screens with code availability')
+  .command('serve <projectId>')
+  .description('Serve project HTML screens via local web server')
   .action(async (projectId) => {
     try {
-      const { CodeHandler } = await import('./commands/code/handler.js');
-      const { CodeView } = await import('./commands/code/CodeView.js');
+      const { ServeHandler } = await import('./commands/serve/handler.js');
+      const { ServeView } = await import('./commands/serve/ServeView.js');
       const { StitchMCPClient } = await import('./services/mcp-client/client.js');
       const { render } = await import('ink');
       const React = await import('react');
 
       const client = new StitchMCPClient();
-      const handler = new CodeHandler(client);
+      const handler = new ServeHandler(client);
+      const result = await handler.execute(projectId);
+
+      if (!result.success) {
+        console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));
+        process.exit(1);
+      }
+
+      if (result.screens.length === 0) {
+        console.log(theme.yellow(`\n${icons.warning} No screens with HTML code found in this project.`));
+        process.exit(0);
+      }
+
+      const createElement = React.createElement || (React.default as any).createElement;
+      const instance = render(createElement(ServeView, {
+        projectId: result.projectId,
+        projectTitle: result.projectTitle,
+        screens: result.screens,
+      }));
+      await instance.waitUntilExit();
+
+      process.exit(0);
+    } catch (error) {
+      console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('screens <projectId>')
+  .description('Explore all screens in a project')
+  .action(async (projectId) => {
+    try {
+      const { ScreensHandler } = await import('./commands/screens/handler.js');
+      const { ScreensView } = await import('./commands/screens/ScreensView.js');
+      const { StitchMCPClient } = await import('./services/mcp-client/client.js');
+      const { render } = await import('ink');
+      const React = await import('react');
+
+      const client = new StitchMCPClient();
+      const handler = new ScreensHandler(client);
       const result = await handler.execute(projectId);
 
       if (!result.success) {
@@ -300,7 +340,7 @@ program
       }
 
       const createElement = React.createElement || (React.default as any).createElement;
-      const instance = render(createElement(CodeView, {
+      const instance = render(createElement(ScreensView, {
         projectId: result.projectId,
         projectTitle: result.projectTitle,
         screens: result.screens,
@@ -316,3 +356,4 @@ program
   });
 
 program.parse();
+
