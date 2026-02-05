@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test';
 import { GcloudHandler } from './handler';
 import { mockExecCommand } from '../../../tests/mocks/shell.js';
 import type { ShellResult } from '../../platform/shell.js';
@@ -13,6 +13,13 @@ mock.module('../../platform/shell.js', () => ({
 mock.module('node:fs', () => ({
   default: {
     existsSync: mock(() => false),
+    promises: {
+      access: mock(() => Promise.reject(new Error('ENOENT'))),
+      writeFile: mock(() => Promise.resolve()),
+    },
+    constants: {
+      F_OK: 0,
+    }
   },
 }));
 
@@ -22,6 +29,43 @@ describe('GcloudHandler', () => {
   beforeEach(() => {
     handler = new GcloudHandler();
     mockExecCommand.mockClear();
+    // Reset fs mocks
+    (fs.existsSync as any).mockImplementation(() => false);
+    (fs.promises.access as any).mockImplementation(() => Promise.reject(new Error('ENOENT')));
+  });
+
+  describe('Async File Check Regression', () => {
+    test('should uses fs.promises.access for checking local binary', async () => {
+      // Setup successful access call to simulate local binary existing
+      (fs.promises.access as any).mockResolvedValue(undefined);
+
+      // We need to trigger getGcloudCommand.
+      // getActiveAccount calls getGcloudCommand.
+      // We also need to ensure it doesn't use the cached path from ensureInstalled (which is not called here).
+
+      // Mock exec command for the subsequent call in getActiveAccount
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
+
+      await handler.getActiveAccount();
+
+      expect(fs.promises.access).toHaveBeenCalled();
+    });
+
+     test('should fallback to system command if access fails', async () => {
+      // Setup failed access call (default behavior of mock, but being explicit)
+      (fs.promises.access as any).mockRejectedValue(new Error('ENOENT'));
+
+      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
+
+      await handler.getActiveAccount();
+
+      expect(fs.promises.access).toHaveBeenCalled();
+      // If it falls back, it uses 'gcloud' (system default)
+      // We can verify this by checking the command passed to execCommand
+      const calls = mockExecCommand.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      expect(calls[0][0][0]).toBe('gcloud');
+    });
   });
 
   describe('getActiveAccount', () => {
