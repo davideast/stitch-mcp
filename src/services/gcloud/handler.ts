@@ -609,7 +609,7 @@ export class GcloudHandler implements GcloudService {
       }
 
       // Clean up download
-      fs.unlinkSync(downloadPath);
+      await fs.promises.unlink(downloadPath);
 
       // Return path to gcloud binary
       return joinPath(sdkPath, 'bin', this.platform.gcloudBinaryName);
