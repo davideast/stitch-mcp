@@ -713,7 +713,12 @@ export class GcloudHandler implements GcloudService {
     if (!this.useSystemGcloud && !process.env.STITCH_USE_SYSTEM_GCLOUD) {
       const stitchConfigPath = getGcloudConfigPath();
       const stitchAdcPath = joinPath(stitchConfigPath, 'application_default_credentials.json');
-      fileExists = fs.existsSync(stitchAdcPath);
+      try {
+        await fs.promises.access(stitchAdcPath, fs.constants.F_OK);
+        fileExists = true;
+      } catch {
+        fileExists = false;
+      }
     } else {
       // For system gcloud, check via gcloud info
       try {
@@ -725,7 +730,12 @@ export class GcloudHandler implements GcloudService {
         if (result.success && result.stdout.trim()) {
           const configDir = result.stdout.trim();
           const adcPath = joinPath(configDir, 'application_default_credentials.json');
-          fileExists = fs.existsSync(adcPath);
+          try {
+            await fs.promises.access(adcPath, fs.constants.F_OK);
+            fileExists = true;
+          } catch {
+            fileExists = false;
+          }
         }
       } catch {
         // Fallback - file doesn't exist
