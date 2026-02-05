@@ -1,23 +1,10 @@
-import { describe, it, expect, afterEach, beforeAll, afterAll, mock } from 'bun:test';
+import { describe, it, expect, afterEach, mock } from 'bun:test';
 import { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
+import { AssetGateway } from '../../../src/lib/server/AssetGateway';
+import { Readable } from 'stream';
 
 describe('StitchViteServer', () => {
   let server: StitchViteServer;
-  const originalFetch = global.fetch;
-
-  beforeAll(() => {
-    global.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
-       const url = input.toString();
-       if (url.includes('example.com')) {
-           return Promise.resolve(new Response('fake-image'));
-       }
-       return originalFetch(input, init);
-    }) as any;
-  });
-
-  afterAll(() => {
-      global.fetch = originalFetch;
-  });
 
   afterEach(async () => {
     if (server) await server.stop();
@@ -36,7 +23,16 @@ describe('StitchViteServer', () => {
   });
 
   it('should rewrite assets', async () => {
-      server = new StitchViteServer();
+      // Mock AssetGateway to avoid real network calls
+      const mockAssetGateway = {
+          fetchAsset: mock().mockResolvedValue({
+              stream: Readable.from(['fake-image-content']),
+              contentType: 'image/png'
+          }),
+          rewriteHtmlForPreview: new AssetGateway().rewriteHtmlForPreview
+      } as unknown as AssetGateway;
+
+      server = new StitchViteServer(process.cwd(), mockAssetGateway);
       const url = await server.start(0);
 
       const html = '<img src="http://example.com/image.png" />';

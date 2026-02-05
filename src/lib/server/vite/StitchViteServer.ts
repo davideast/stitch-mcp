@@ -7,8 +7,8 @@ export class StitchViteServer {
   private htmlMap = new Map<string, string>();
   public assetGateway: AssetGateway;
 
-  constructor(projectRoot: string = process.cwd()) {
-    this.assetGateway = new AssetGateway(projectRoot);
+  constructor(projectRoot: string = process.cwd(), assetGateway?: AssetGateway) {
+    this.assetGateway = assetGateway || new AssetGateway(projectRoot);
   }
 
   async start(port: number = 3000): Promise<string> {
