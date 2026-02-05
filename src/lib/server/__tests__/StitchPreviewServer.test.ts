@@ -11,8 +11,16 @@ describe('StitchPreviewServer', () => {
   let baseUrl: string;
 
   beforeAll(async () => {
+    // Ensure no proxy is used for local requests
+    process.env.NO_PROXY = '*';
+    process.env.no_proxy = '*';
+
     await fs.ensureDir(TEMP_DIR);
     server = new StitchPreviewServer({ projectRoot: TEMP_DIR });
+
+    // Enable debug logging for troubleshooting CI
+    // server.app.log.level = 'debug';
+
     baseUrl = await server.start(0); // Random port
   });
 
@@ -25,6 +33,12 @@ describe('StitchPreviewServer', () => {
     server.mount('/hello', '<html><body><h1>Hello World</h1></body></html>');
 
     const res = await fetch(`${baseUrl}/hello`);
+    if (res.status !== 200) {
+      console.log(`Failed request to ${baseUrl}/hello: status ${res.status}`);
+      // Log headers to see if there's a proxy
+      console.log('Headers:', JSON.stringify(Object.fromEntries(res.headers)));
+    }
+
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).toContain('<h1>Hello World</h1>');
@@ -69,14 +83,7 @@ describe('StitchPreviewServer', () => {
       const html = '<html><body><img src="https://lh3.googleusercontent.com/xyz" /></body></html>';
       server.mount('/asset-test', html);
 
-      // Note: we must ensure that the fetch implementation used here creates a new response
-      // or we properly handle the response body.
       const res = await fetch(`${baseUrl}/asset-test`);
-
-      // If the response is 403 or error, text() might fail if body was consumed?
-      // But fetch returns a fresh response.
-      // The issue "Body already used" typically happens if we try to read the same response twice.
-      // Here we read it once.
 
       if (res.status !== 200) {
         console.error('Failed request status:', res.status);
