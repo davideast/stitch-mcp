@@ -279,4 +279,40 @@ program
     }
   });
 
+program
+  .command('code <projectId>')
+  .description('View project screens with code availability')
+  .action(async (projectId) => {
+    try {
+      const { CodeHandler } = await import('./commands/code/handler.js');
+      const { CodeView } = await import('./commands/code/CodeView.js');
+      const { StitchMCPClient } = await import('./services/mcp-client/client.js');
+      const { render } = await import('ink');
+      const React = await import('react');
+
+      const client = new StitchMCPClient();
+      const handler = new CodeHandler(client);
+      const result = await handler.execute(projectId);
+
+      if (!result.success) {
+        console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));
+        process.exit(1);
+      }
+
+      const createElement = React.createElement || (React.default as any).createElement;
+      const instance = render(createElement(CodeView, {
+        projectId: result.projectId,
+        projectTitle: result.projectTitle,
+        screens: result.screens,
+        client,
+      }));
+      await instance.waitUntilExit();
+
+      process.exit(0);
+    } catch (error) {
+      console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
 program.parse();
