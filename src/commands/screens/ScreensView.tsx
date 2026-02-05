@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
 import clipboard from 'clipboardy';
+import { StitchPreviewServer } from '../../lib/server/StitchPreviewServer.js';
 
 interface Screen {
   screenId: string;
@@ -26,8 +27,9 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
   const [status, setStatus] = useState('');
   const [serverPort, setServerPort] = useState<number | null>(null);
 
+  const serverRef = useRef<StitchPreviewServer | null>(null);
+
   const VIEW_HEIGHT = 10;
-  const codeCount = screens.filter(s => s.hasCode).length;
   const screensWithCode = screens.filter(s => s.hasCode);
 
   // Helper to sync window with selection
@@ -39,30 +41,19 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
     }
   }, [selectedIndex, windowStart, VIEW_HEIGHT]);
 
-  async function startServer() {
-    if (serverPort) return serverPort; // Already running
+  // Cleanup server on unmount
+  React.useEffect(() => {
+    return () => {
+      serverRef.current?.stop();
+    };
+  }, []);
 
-    const fs = await import('fs/promises');
-    const fsSync = await import('fs');
-    const pathMod = await import('path');
-    const http = await import('http');
+  async function getOrStartServer() {
+    if (serverRef.current) return serverRef.current;
 
-    const tempDir = `/tmp/stitch-screens/${projectId}`;
-    await fs.mkdir(tempDir, { recursive: true });
+    const server = new StitchPreviewServer({ projectRoot: process.cwd() });
 
-    // Download all code files
-    for (const screen of screensWithCode) {
-      if (screen.codeUrl) {
-        try {
-          const code = await downloadText(screen.codeUrl);
-          await fs.writeFile(pathMod.join(tempDir, `${screen.screenId}.html`), code);
-        } catch (e) {
-          // Skip failed downloads
-        }
-      }
-    }
-
-    // Generate index
+    // Mount index
     const indexHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -83,35 +74,13 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
   </ul>
 </body>
 </html>`;
-    await fs.writeFile(pathMod.join(tempDir, 'index.html'), indexHtml);
+    server.mount('/', indexHtml);
+    server.mount('/index.html', indexHtml);
 
-    const port = 3000 + Math.floor(Math.random() * 6000);
-
-    const server = http.createServer((req, res) => {
-      const url = new URL(req.url || '/', `http://localhost:${port}`);
-
-      if (url.pathname === '/favicon.ico') {
-        res.writeHead(204);
-        res.end();
-        return;
-      }
-
-      const filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1) + '.html';
-      const fullPath = pathMod.join(tempDir, filePath);
-
-      if (!fsSync.existsSync(fullPath)) {
-        res.writeHead(404);
-        res.end('Not found');
-        return;
-      }
-
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      fsSync.createReadStream(fullPath).pipe(res);
-    });
-
-    server.listen(port);
-    setServerPort(port);
-    return port;
+    await server.start();
+    serverRef.current = server;
+    setServerPort(server.port);
+    return server;
   }
 
   useInput((input, key) => {
@@ -159,13 +128,33 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
     // Start server and open (lazy serve)
     if (input === 's') {
       const screen = screens[selectedIndex];
-      if (screen?.hasCode) {
+      if (screen?.hasCode && screen.codeUrl) {
         setStatus('Starting server...');
-        startServer().then(port => {
-          import('child_process').then(({ spawn }) => {
-            spawn('open', [`http://localhost:${port}/${screen.screenId}`]);
-            setStatus(`Serving at :${port}`);
-          });
+        getOrStartServer().then(async server => {
+            // Check if we need to mount this screen
+            // We can re-download to ensure freshness, or check if mounted (not exposed in public API easily)
+            // Just re-mount for now
+            try {
+                const code = await downloadText(screen.codeUrl!);
+                server.mount(`/${screen.screenId}`, code);
+
+                // Also mount short version just in case
+                server.mount(`/${screen.screenId.slice(0, 8)}`, code);
+
+                const url = `http://localhost:${server.port}/${screen.screenId}`;
+
+                // Navigate existing clients
+                server.navigate(`/${screen.screenId}`);
+
+                // Open new browser window
+                import('open').then(({ default: open }) => {
+                    open(url);
+                    setStatus(`Serving at :${server.port}`);
+                });
+
+            } catch (e) {
+                setStatus('Failed to download/serve');
+            }
         });
       } else {
         setStatus('No HTML to serve');

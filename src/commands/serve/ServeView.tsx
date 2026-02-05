@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
+import { StitchPreviewServer } from '../../lib/server/StitchPreviewServer.js';
 
 interface CodeScreen {
   screenId: string;
@@ -20,6 +21,7 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
   const [windowStart, setWindowStart] = useState(0);
   const [status, setStatus] = useState('Starting server...');
   const [serverPort, setServerPort] = useState<number | null>(null);
+  const serverRef = useRef<StitchPreviewServer | null>(null);
 
   const VIEW_HEIGHT = 10;
 
@@ -41,31 +43,27 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
 
   // Auto-start server on mount
   useEffect(() => {
-    startServer();
-  }, []);
+    let mounted = true;
 
-  async function startServer() {
-    const fs = await import('fs/promises');
-    const fsSync = await import('fs');
-    const pathMod = await import('path');
-    const http = await import('http');
+    async function startServer() {
+      const server = new StitchPreviewServer({ projectRoot: process.cwd() });
+      serverRef.current = server;
 
-    // Create temp directory
-    const tempDir = `/tmp/stitch-serve/${projectId}`;
-    await fs.mkdir(tempDir, { recursive: true });
-
-    // Download all code files
-    for (const screen of screens) {
-      try {
-        const code = await downloadText(screen.codeUrl);
-        await fs.writeFile(pathMod.join(tempDir, `${screen.screenId}.html`), code);
-      } catch (e) {
-        // Skip failed downloads
+      // Download all code files
+      for (const screen of screens) {
+        try {
+          const code = await downloadText(screen.codeUrl);
+          // Mount exact path
+          server.mount(`/screens/${screen.screenId}`, code);
+          // Mount short path (legacy support)
+          server.mount(`/${screen.screenId.slice(0, 8)}`, code);
+        } catch (e) {
+          // Skip failed downloads
+        }
       }
-    }
 
-    // Generate index page
-    const indexHtml = `<!DOCTYPE html>
+      // Generate index page
+      const indexHtml = `<!DOCTYPE html>
 <html>
 <head>
   <title>${projectTitle}</title>
@@ -89,49 +87,27 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
   </ul>
 </body>
 </html>`;
-    await fs.writeFile(pathMod.join(tempDir, 'index.html'), indexHtml);
+      server.mount('/', indexHtml);
+      server.mount('/index.html', indexHtml);
 
-    // Pick a port
-    const port = 3000 + Math.floor(Math.random() * 6000);
+      const url = await server.start(3000); // Try 3000, fallback to random
 
-    // Start server
-    const server = http.createServer((req, res) => {
-      const url = new URL(req.url || '/', `http://localhost:${port}`);
-
-      if (url.pathname === '/favicon.ico') {
-        res.writeHead(204);
-        res.end();
-        return;
+      if (mounted) {
+        setServerPort(server.port);
+        setStatus('');
+        // Optional: Auto open index
+        // const open = (await import('open')).default;
+        // open(url);
       }
+    }
 
-      // Match short route to full screenId
-      const routeId = url.pathname.slice(1);
-      let filePath = 'index.html';
+    startServer();
 
-      if (routeId) {
-        const matchedScreen = screens.find(s => s.screenId.startsWith(routeId));
-        if (matchedScreen) {
-          filePath = `${matchedScreen.screenId}.html`;
-        }
-      }
-
-      const fullPath = pathMod.join(tempDir, filePath);
-
-      if (!fsSync.existsSync(fullPath)) {
-        res.writeHead(404);
-        res.end('Not found');
-        return;
-      }
-
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      fsSync.createReadStream(fullPath).pipe(res);
-    });
-
-    server.listen(port, () => {
-      setServerPort(port);
-      setStatus('');
-    });
-  }
+    return () => {
+      mounted = false;
+      serverRef.current?.stop();
+    };
+  }, [projectId, projectTitle, screens]);
 
   useInput((input, key) => {
     if (input === 'q') {
@@ -147,37 +123,37 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
       setSelectedIndex(prev => Math.min(displayScreens.length - 1, prev + 1));
     }
 
-    // Enter to open in browser
+    // Enter to open in browser / navigate
     if (key.return) {
       const screen = displayScreens[selectedIndex];
       if (!screen) return;
+      if (!serverRef.current || !serverPort) return;
 
-      // Index screen has empty ID, others have IDs
-      if (serverPort) {
-        import('child_process').then(({ spawn }) => {
-          let url = `http://localhost:${serverPort}/`;
-          let statusMsg = 'Opened index';
-
-          if (screen.screenId) {
-            const shortId = screen.screenId.slice(0, 8);
-            url += shortId;
-            statusMsg = `Opened /${shortId}`;
-          }
-
-          spawn('open', [url]);
-          setStatus(statusMsg);
-        });
+      let path = '/';
+      if (screen.screenId) {
+        // Use short ID
+        path = `/${screen.screenId.slice(0, 8)}`;
       }
+
+      // Try to navigate connected clients
+      serverRef.current.navigate(path);
+
+      // Also open in browser explicitly (in case no client connected)
+      import('open').then(({ default: open }) => {
+        open(`http://localhost:${serverPort}${path}`);
+      });
+
+      setStatus(`Opened ${path}`);
     }
 
     // Open index page
     if (input === 'i') {
-      if (serverPort) {
-        import('child_process').then(({ spawn }) => {
-          spawn('open', [`http://localhost:${serverPort}/`]);
-          setStatus('Opened index');
+        if (!serverRef.current || !serverPort) return;
+        serverRef.current.navigate('/');
+        import('open').then(({ default: open }) => {
+            open(`http://localhost:${serverPort}/`);
         });
-      }
+        setStatus('Opened index');
     }
   });
 

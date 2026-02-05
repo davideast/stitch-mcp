@@ -54,6 +54,7 @@ program
   .option('--sourceScreen <name>', 'Source screen resource name')
   .option('--project <id>', 'Project ID')
   .option('--screen <id>', 'Screen ID')
+  .option('--serve', 'Serve the screen via local web server', false)
   .action(async (options) => {
     try {
       const { ViewHandler } = await import('./services/view/handler.js');
@@ -73,6 +74,43 @@ program
       if (!result.success) {
         console.error(theme.red(`\n${icons.error} View failed: ${result.error.message}`));
         process.exit(1);
+      }
+
+      if (options.serve) {
+        const resource = result.data;
+        if (resource?.htmlCode?.downloadUrl) {
+          console.log(theme.blue('Starting preview server...'));
+          const { StitchPreviewServer } = await import('./lib/server/StitchPreviewServer.js');
+          const { downloadText } = await import('./ui/copy-behaviors/clipboard.js');
+          const open = (await import('open')).default;
+
+          const server = new StitchPreviewServer({ projectRoot: process.cwd() });
+          try {
+            const html = await downloadText(resource.htmlCode.downloadUrl);
+            server.mount('/', html);
+            const url = await server.start();
+            console.log(theme.green(`Server running at ${url}`));
+            await open(url);
+
+            // Keep process alive until signal
+            await new Promise<void>((resolve) => {
+              const cleanup = async () => {
+                console.log(theme.gray('\nStopping server...'));
+                await server.stop();
+                process.exit(0);
+              };
+              process.on('SIGINT', cleanup);
+              process.on('SIGTERM', cleanup);
+            });
+          } catch (e: any) {
+            console.error(theme.red(`\n${icons.error} Failed to serve: ${e.message || String(e)}`));
+            process.exit(1);
+          }
+          return;
+        } else {
+          console.error(theme.red(`\n${icons.error} The resource does not have HTML code to serve.`));
+          process.exit(1);
+        }
       }
 
       const createElement = React.createElement || (React.default as any).createElement;
