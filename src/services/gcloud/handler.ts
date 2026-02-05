@@ -594,7 +594,15 @@ export class GcloudHandler implements GcloudService {
       if (this.platform.isWindows) {
         // Extract ZIP
         const zip = new AdmZip(downloadPath);
-        zip.extractAllTo(stitchDir, true);
+        await new Promise<void>((resolve, reject) => {
+          zip.extractAllToAsync(stitchDir, true, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
       } else {
         // Extract tar.gz
         await execCommand(['tar', '-xzf', downloadPath, '-C', stitchDir]);
