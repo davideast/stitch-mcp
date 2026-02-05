@@ -1,4 +1,4 @@
-import { createServer, ViteDevServer } from 'vite';
+import { createServer, type ViteDevServer } from 'vite';
 import { AssetGateway } from '../AssetGateway';
 import { virtualContentPlugin } from './plugins/virtualContent';
 
