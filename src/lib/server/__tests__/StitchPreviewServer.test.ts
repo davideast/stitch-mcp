@@ -11,15 +11,20 @@ describe('StitchPreviewServer', () => {
   let baseUrl: string;
 
   beforeAll(async () => {
-    // Ensure no proxy is used for local requests
+    // Explicitly unset all proxy environment variables to prevent CI 403 errors
+    delete process.env.http_proxy;
+    delete process.env.https_proxy;
+    delete process.env.HTTP_PROXY;
+    delete process.env.HTTPS_PROXY;
+    delete process.env.all_proxy;
+    delete process.env.ALL_PROXY;
+
+    // Set NO_PROXY just in case
     process.env.NO_PROXY = '*';
     process.env.no_proxy = '*';
 
     await fs.ensureDir(TEMP_DIR);
     server = new StitchPreviewServer({ projectRoot: TEMP_DIR });
-
-    // Enable debug logging for troubleshooting CI
-    // server.app.log.level = 'debug';
 
     baseUrl = await server.start(0); // Random port
   });
@@ -35,8 +40,14 @@ describe('StitchPreviewServer', () => {
     const res = await fetch(`${baseUrl}/hello`);
     if (res.status !== 200) {
       console.log(`Failed request to ${baseUrl}/hello: status ${res.status}`);
-      // Log headers to see if there's a proxy
       console.log('Headers:', JSON.stringify(Object.fromEntries(res.headers)));
+      // Try to read body for error details, cloning to preserve for expect if possible
+      try {
+        const body = await res.clone().text();
+        console.log('Response Body:', body);
+      } catch (e) {
+        console.log('Could not read response body');
+      }
     }
 
     expect(res.status).toBe(200);
@@ -87,6 +98,10 @@ describe('StitchPreviewServer', () => {
 
       if (res.status !== 200) {
         console.error('Failed request status:', res.status);
+        try {
+            const body = await res.clone().text();
+            console.error('Response Body:', body);
+        } catch {}
       }
 
       const text = await res.text();
