@@ -17,8 +17,8 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
   const args = command.slice(1);
 
   return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
 
     const spawnOptions: SpawnOptions = {
       cwd: options?.cwd || process.cwd(),
@@ -32,21 +32,21 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
 
     if (child.stdout) {
       child.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString();
+        stdoutChunks.push(data);
       });
     }
 
     if (child.stderr) {
       child.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
+        stderrChunks.push(data);
       });
     }
 
     child.on('error', (err: Error) => {
       resolve({
         success: false,
-        stdout,
-        stderr,
+        stdout: Buffer.concat(stdoutChunks).toString(),
+        stderr: Buffer.concat(stderrChunks).toString(),
         exitCode: 1,
         error: err.message
       });
@@ -55,8 +55,8 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
     child.on('close', (code: number | null) => {
       resolve({
         success: (code === 0),
-        stdout,
-        stderr,
+        stdout: Buffer.concat(stdoutChunks).toString(),
+        stderr: Buffer.concat(stderrChunks).toString(),
         exitCode: code ?? 1
       });
     });
@@ -77,8 +77,8 @@ export async function execCommandStreaming(
   const args = command.slice(1);
 
   return new Promise((resolve) => {
-    let stdoutFull = '';
-    let stderrFull = '';
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
 
     const spawnOptions: SpawnOptions = {
       cwd: options?.cwd || process.cwd(),
@@ -91,17 +91,15 @@ export async function execCommandStreaming(
 
     if (child.stdout) {
       child.stdout.on('data', (buffer: Buffer) => {
-        const str = buffer.toString();
-        stdoutFull += str;
-        if (onStdout) onStdout(str);
+        stdoutChunks.push(buffer);
+        if (onStdout) onStdout(buffer.toString());
       });
     }
 
     if (child.stderr) {
       child.stderr.on('data', (buffer: Buffer) => {
-        const str = buffer.toString();
-        stderrFull += str;
-        if (onStderr) onStderr(str);
+        stderrChunks.push(buffer);
+        if (onStderr) onStderr(buffer.toString());
       });
     }
 
@@ -110,8 +108,8 @@ export async function execCommandStreaming(
       if (onStderr) onStderr(msg);
       resolve({
         success: false,
-        stdout: stdoutFull,
-        stderr: stderrFull,
+        stdout: Buffer.concat(stdoutChunks).toString(),
+        stderr: Buffer.concat(stderrChunks).toString(),
         exitCode: 1,
         error: msg
       });
@@ -120,8 +118,8 @@ export async function execCommandStreaming(
     child.on('close', (code: number | null) => {
       resolve({
         success: (code === 0),
-        stdout: stdoutFull,
-        stderr: stderrFull,
+        stdout: Buffer.concat(stdoutChunks).toString(),
+        stderr: Buffer.concat(stderrChunks).toString(),
         exitCode: code ?? 1
       });
     });
