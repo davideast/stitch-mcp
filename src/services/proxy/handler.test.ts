@@ -190,4 +190,46 @@ describe('ProxyHandler', () => {
     mockStdioTransport.onclose();
     await startPromise;
   });
+
+  test('should use new token after refresh', async () => {
+    const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+    // Start with initial token
+    mockGcloudHandler.getAccessToken.mockResolvedValue('token-1');
+    const startPromise = proxyHandler.start({ transport: 'stdio' });
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Send request 1
+    const message1: JSONRPCMessage = { jsonrpc: '2.0', id: 1, method: 'test1' };
+    mockStdioTransport.onmessage(message1);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect((global.fetch as any)).toHaveBeenCalledTimes(1);
+    const [url1, options1] = (global.fetch as any).mock.calls[0];
+    expect(options1.headers['Authorization']).toBe('Bearer token-1');
+
+    // Prepare for token update
+    mockGcloudHandler.getAccessToken.mockResolvedValue('token-2');
+
+    // Trigger refresh manually
+    const refreshCallback = setIntervalSpy.mock.calls[0]?.[0] as Function | undefined;
+    expect(refreshCallback).toBeDefined();
+    if (refreshCallback) {
+      await refreshCallback();
+    }
+
+    // Send request 2
+    const message2: JSONRPCMessage = { jsonrpc: '2.0', id: 2, method: 'test2' };
+    mockStdioTransport.onmessage(message2);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect((global.fetch as any)).toHaveBeenCalledTimes(2);
+    const [url2, options2] = (global.fetch as any).mock.calls[1];
+
+    // Expectation: Token should be token-2
+    expect(options2.headers['Authorization']).toBe('Bearer token-2');
+
+    mockStdioTransport.onclose();
+    await startPromise;
+  });
 });

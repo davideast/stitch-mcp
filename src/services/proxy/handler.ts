@@ -15,7 +15,7 @@ const LOG_FILE = '/tmp/stitch-proxy-debug.log';
 type Logger = (message: string) => void;
 
 type AuthConfig =
-  | { type: 'bearer'; token: string; projectId?: string }
+  | { type: 'bearer'; tokenProvider: () => string | null; projectId?: string }
   | { type: 'apiKey'; key: string };
 
 class HttpPostTransport {
@@ -46,7 +46,8 @@ class HttpPostTransport {
       };
 
       if (this.auth.type === 'bearer') {
-        headers['Authorization'] = `Bearer ${this.auth.token}`;
+        const token = this.auth.tokenProvider();
+        headers['Authorization'] = `Bearer ${token}`;
         if (this.auth.projectId) {
           headers['x-goog-user-project'] = this.auth.projectId;
         }
@@ -166,7 +167,7 @@ export class ProxyHandler implements ProxyService {
 
         authConfig = {
           type: 'bearer',
-          token: this.currentToken,
+          tokenProvider: () => this.currentToken,
           projectId: projectId ?? undefined
         };
       }
