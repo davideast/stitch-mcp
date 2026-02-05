@@ -36,6 +36,7 @@
   "dependencies": {
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
+    "@sindresorhus/slugify": "^3.0.0",
     "adm-zip": "^0.5.16",
     "chalk": "^5.6.2",
     "clipboardy": "^5.2.1",
