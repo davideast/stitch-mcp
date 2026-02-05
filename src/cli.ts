@@ -280,9 +280,10 @@ program
   });
 
 program
-  .command('serve <projectId>')
+  .command('serve')
   .description('Serve project HTML screens via local web server')
-  .action(async (projectId) => {
+  .requiredOption('-p, --project <id>', 'Project ID')
+  .action(async (options) => {
     try {
       const { ServeHandler } = await import('./commands/serve/handler.js');
       const { ServeView } = await import('./commands/serve/ServeView.js');
@@ -292,7 +293,7 @@ program
 
       const client = new StitchMCPClient();
       const handler = new ServeHandler(client);
-      const result = await handler.execute(projectId);
+      const result = await handler.execute(options.project);
 
       if (!result.success) {
         console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));
@@ -320,9 +321,10 @@ program
   });
 
 program
-  .command('screens <projectId>')
+  .command('screens')
   .description('Explore all screens in a project')
-  .action(async (projectId) => {
+  .requiredOption('-p, --project <id>', 'Project ID')
+  .action(async (options) => {
     try {
       const { ScreensHandler } = await import('./commands/screens/handler.js');
       const { ScreensView } = await import('./commands/screens/ScreensView.js');
@@ -332,7 +334,7 @@ program
 
       const client = new StitchMCPClient();
       const handler = new ScreensHandler(client);
-      const result = await handler.execute(projectId);
+      const result = await handler.execute(options.project);
 
       if (!result.success) {
         console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));
