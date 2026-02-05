@@ -48,7 +48,7 @@ async function benchmarkAsync() {
   const start = performance.now();
   const zip = new AdmZip(zipPath);
   await new Promise<void>((resolve, reject) => {
-    zip.extractAllToAsync(extractDirAsync, true, (err) => {
+    zip.extractAllToAsync(extractDirAsync, true, false, (err) => {
       if (err) reject(err);
       else resolve();
     });

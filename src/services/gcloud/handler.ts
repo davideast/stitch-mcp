@@ -595,7 +595,7 @@ export class GcloudHandler implements GcloudService {
         // Extract ZIP
         const zip = new AdmZip(downloadPath);
         await new Promise<void>((resolve, reject) => {
-          zip.extractAllToAsync(stitchDir, true, (err) => {
+          zip.extractAllToAsync(stitchDir, true, false, (err: Error | null | undefined) => {
             if (err) {
               reject(err);
             } else {

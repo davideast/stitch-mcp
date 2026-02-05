@@ -27,7 +27,7 @@ mock.module('node:fs', () => ({
 }));
 
 // Mock adm-zip
-const mockExtractAllToAsync = mock((path: string, overwrite: boolean, cb: (err?: Error) => void) => {
+const mockExtractAllToAsync = mock((path: string, overwrite: boolean, keepPerms: boolean, cb: (err?: Error) => void) => {
   cb(); // Call callback immediately
 });
 
@@ -138,6 +138,7 @@ describe('GcloudHandler', () => {
         // Verify it was called with correct arguments
         expect(mockExtractAllToAsync.mock.calls[0][0]).toContain('/mock/stitch');
         expect(mockExtractAllToAsync.mock.calls[0][1]).toBe(true);
+        expect(mockExtractAllToAsync.mock.calls[0][2]).toBe(false);
       } finally {
         global.fetch = originalFetch;
       }
