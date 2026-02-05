@@ -37,14 +37,14 @@ describe('GcloudHandler', () => {
   describe('Async File Check Regression', () => {
     test('should uses fs.promises.access for checking local binary', async () => {
       // Setup successful access call to simulate local binary existing
-      (fs.promises.access as any).mockResolvedValue(undefined);
+      (fs.promises.access as any).mockResolvedValueOnce(undefined);
 
       // We need to trigger getGcloudCommand.
       // getActiveAccount calls getGcloudCommand.
       // We also need to ensure it doesn't use the cached path from ensureInstalled (which is not called here).
 
       // Mock exec command for the subsequent call in getActiveAccount
-      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
 
       await handler.getActiveAccount();
 
@@ -55,7 +55,7 @@ describe('GcloudHandler', () => {
       // Setup failed access call (default behavior of mock, but being explicit)
       (fs.promises.access as any).mockRejectedValue(new Error('ENOENT'));
 
-      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
 
       await handler.getActiveAccount();
 
@@ -70,19 +70,19 @@ describe('GcloudHandler', () => {
 
   describe('getActiveAccount', () => {
     test('should return the active account on success', async () => {
-      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: 'test@example.com', stderr: '', exitCode: 0 });
       const account = await handler.getActiveAccount();
       expect(account).toBe('test@example.com');
     });
 
     test('should return null if no active account', async () => {
-      mockExecCommand.mockResolvedValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });
       const account = await handler.getActiveAccount();
       expect(account).toBeNull();
     });
 
     test('should return null on command failure', async () => {
-      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
+      mockExecCommand.mockResolvedValueOnce({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
       const account = await handler.getActiveAccount();
       expect(account).toBeNull();
     });
@@ -91,14 +91,14 @@ describe('GcloudHandler', () => {
   describe('hasADC', () => {
     test('should return true if ADC file exists and token is valid', async () => {
       (fs.existsSync as any).mockReturnValue(true);
-      mockExecCommand.mockResolvedValue({ success: true, stdout: 'ya29.token', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: 'ya29.token', stderr: '', exitCode: 0 });
       const result = await handler.hasADC();
       expect(result).toBe(true);
     });
 
     test('should return false if ADC file exists but token is expired', async () => {
       (fs.existsSync as any).mockReturnValue(true);
-      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'Token expired', exitCode: 1 });
+      mockExecCommand.mockResolvedValueOnce({ success: false, stdout: '', stderr: 'Token expired', exitCode: 1 });
       const result = await handler.hasADC();
       expect(result).toBe(false);
     });
@@ -251,19 +251,19 @@ describe('GcloudHandler', () => {
     });
 
     test('should return the project ID on success', async () => {
-      mockExecCommand.mockResolvedValue({ success: true, stdout: 'test-project', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: 'test-project', stderr: '', exitCode: 0 });
       const projectId = await handler.getProjectId();
       expect(projectId).toBe('test-project');
     });
 
     test('should return null if no project ID is set', async () => {
-      mockExecCommand.mockResolvedValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
+      mockExecCommand.mockResolvedValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });
       const projectId = await handler.getProjectId();
       expect(projectId).toBeNull();
     });
 
     test('should return null on command failure', async () => {
-      mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
+      mockExecCommand.mockResolvedValueOnce({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
       const projectId = await handler.getProjectId();
       expect(projectId).toBeNull();
     });
@@ -461,6 +461,13 @@ describe('GcloudHandler', () => {
           stdout: 'ADC configured successfully',
           stderr: '',
           exitCode: 0,
+        })
+        // Mock getActiveAccount
+        .mockResolvedValueOnce({
+          success: true,
+          stdout: 'adc@example.com',
+          stderr: '',
+          exitCode: 0,
         });
 
       (fs.existsSync as any).mockReturnValue(false);
@@ -492,6 +499,13 @@ describe('GcloudHandler', () => {
           stdout: 'ADC configured successfully',
           stderr: '',
           exitCode: 0,
+        })
+        // Mock getActiveAccount
+        .mockResolvedValueOnce({
+          success: true,
+          stdout: 'adc@example.com',
+          stderr: '',
+          exitCode: 0,
         });
 
       (fs.existsSync as any).mockReturnValue(false);
@@ -519,6 +533,13 @@ describe('GcloudHandler', () => {
         .mockResolvedValueOnce({
           success: true,
           stdout: 'ADC configured successfully',
+          stderr: '',
+          exitCode: 0,
+        })
+        // Mock getActiveAccount
+        .mockResolvedValueOnce({
+          success: true,
+          stdout: 'adc@example.com',
           stderr: '',
           exitCode: 0,
         });
