@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
 import clipboard from 'clipboardy';
+import { StitchViteServer } from '../../lib/server/vite/StitchViteServer.js';
+import { spawn } from 'child_process';
 
 interface Screen {
   screenId: string;
@@ -24,11 +26,11 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [windowStart, setWindowStart] = useState(0);
   const [status, setStatus] = useState('');
-  const [serverPort, setServerPort] = useState<number | null>(null);
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
+
+  const serverRef = useRef<StitchViteServer | null>(null);
 
   const VIEW_HEIGHT = 10;
-  const codeCount = screens.filter(s => s.hasCode).length;
-  const screensWithCode = screens.filter(s => s.hasCode);
 
   // Helper to sync window with selection
   React.useEffect(() => {
@@ -39,79 +41,54 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
     }
   }, [selectedIndex, windowStart, VIEW_HEIGHT]);
 
-  async function startServer() {
-    if (serverPort) return serverPort; // Already running
+  useEffect(() => {
+      return () => {
+          if (serverRef.current) serverRef.current.stop();
+      };
+  }, []);
 
-    const fs = await import('fs/promises');
-    const fsSync = await import('fs');
-    const pathMod = await import('path');
-    const http = await import('http');
-
-    const tempDir = `/tmp/stitch-screens/${projectId}`;
-    await fs.mkdir(tempDir, { recursive: true });
-
-    // Download all code files
-    for (const screen of screensWithCode) {
-      if (screen.codeUrl) {
-        try {
-          const code = await downloadText(screen.codeUrl);
-          await fs.writeFile(pathMod.join(tempDir, `${screen.screenId}.html`), code);
-        } catch (e) {
-          // Skip failed downloads
-        }
-      }
-    }
-
-    // Generate index
-    const indexHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <title>${projectTitle}</title>
-  <style>
-    body { font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 20px; background: #1a1a1a; color: #fff; }
-    h1 { border-bottom: 1px solid #333; padding-bottom: 16px; }
-    ul { list-style: none; padding: 0; }
-    li { margin: 12px 0; padding: 12px; background: #252525; border-radius: 6px; }
-    a { color: #4fc3f7; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <h1>${projectTitle}</h1>
-  <ul>
-    ${screensWithCode.map(s => `<li><a href="/${s.screenId}">${s.title}</a></li>`).join('\n    ')}
-  </ul>
-</body>
-</html>`;
-    await fs.writeFile(pathMod.join(tempDir, 'index.html'), indexHtml);
-
-    const port = 3000 + Math.floor(Math.random() * 6000);
-
-    const server = http.createServer((req, res) => {
-      const url = new URL(req.url || '/', `http://localhost:${port}`);
-
-      if (url.pathname === '/favicon.ico') {
-        res.writeHead(204);
-        res.end();
-        return;
+  async function serveScreen(screen: Screen) {
+      if (!screen.hasCode || !screen.codeUrl) {
+          setStatus('No HTML to serve');
+          return;
       }
 
-      const filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1) + '.html';
-      const fullPath = pathMod.join(tempDir, filePath);
+      setStatus('Preparing server...');
+      let srv = serverRef.current;
+      let url = serverUrl;
+      let justStarted = false;
 
-      if (!fsSync.existsSync(fullPath)) {
-        res.writeHead(404);
-        res.end('Not found');
-        return;
+      if (!srv) {
+          srv = new StitchViteServer();
+          url = await srv.start(0);
+          serverRef.current = srv;
+          setServerUrl(url);
+          justStarted = true;
       }
 
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      fsSync.createReadStream(fullPath).pipe(res);
-    });
+      if (!url) return; // Should not happen
 
-    server.listen(port);
-    setServerPort(port);
-    return port;
+      try {
+          const html = await downloadText(screen.codeUrl);
+          const route = `/screens/${screen.screenId}`;
+          srv.mount(route, html);
+
+          const fullUrl = `${url}${route}`;
+
+          if (justStarted) {
+               const start = (process.platform == 'darwin'? 'open': process.platform == 'win32'? 'start': 'xdg-open');
+               if (process.platform === 'win32') {
+                   spawn('cmd', ['/c', 'start', fullUrl], { detached: true, stdio: 'ignore' }).unref();
+               } else {
+                   spawn(start, [fullUrl], { detached: true, stdio: 'ignore' }).unref();
+               }
+          } else {
+              srv.navigate(fullUrl);
+          }
+          setStatus(`Serving at ${fullUrl}`);
+      } catch (e) {
+          setStatus('Error serving screen');
+      }
   }
 
   useInput((input, key) => {
@@ -156,20 +133,9 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
       }
     }
 
-    // Start server and open (lazy serve)
+    // Serve
     if (input === 's') {
-      const screen = screens[selectedIndex];
-      if (screen?.hasCode) {
-        setStatus('Starting server...');
-        startServer().then(port => {
-          import('child_process').then(({ spawn }) => {
-            spawn('open', [`http://localhost:${port}/${screen.screenId}`]);
-            setStatus(`Serving at :${port}`);
-          });
-        });
-      } else {
-        setStatus('No HTML to serve');
-      }
+      serveScreen(screens[selectedIndex]);
     }
   });
 
@@ -180,7 +146,7 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
       {/* Header */}
       <Text bold>{projectTitle} ({screens.length} screens)</Text>
       <Text dimColor>projectId: {projectId}</Text>
-      {serverPort && <Text dimColor>Server: <Text color="green">http://localhost:{serverPort}</Text></Text>}
+      {serverUrl && <Text dimColor>Server: <Text color="green">{serverUrl}</Text></Text>}
       <Text> </Text>
 
       {/* Screen List */}

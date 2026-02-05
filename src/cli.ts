@@ -54,9 +54,57 @@ program
   .option('--sourceScreen <name>', 'Source screen resource name')
   .option('--project <id>', 'Project ID')
   .option('--screen <id>', 'Screen ID')
+  .option('--serve', 'Serve the screen via local server', false)
   .action(async (options) => {
     try {
       const { ViewHandler } = await import('./services/view/handler.js');
+
+      if (options.serve) {
+          if (!options.screen && !options.sourceScreen && !options.name) {
+             console.error(theme.red('Error: --serve requires a screen to be specified via --screen, --sourceScreen, or --name'));
+             process.exit(1);
+          }
+
+          const handler = new ViewHandler();
+          let resource = null;
+
+          const execOptions: any = { projects: false };
+          if (options.project) execOptions.project = options.project;
+          if (options.screen) execOptions.screen = options.screen;
+          if (options.sourceScreen) execOptions.sourceScreen = options.sourceScreen;
+          if (options.name) execOptions.name = options.name;
+
+          const res = await handler.execute(execOptions);
+          if (res.success) resource = res.data;
+          else throw new Error(res.error.message);
+
+          if (!resource) {
+              throw new Error('Could not find resource');
+          }
+
+          if (!resource.htmlCode || !resource.htmlCode.downloadUrl) {
+              console.error(theme.red('Error: The specified resource is not a screen or has no HTML code.'));
+              process.exit(1);
+          }
+
+          const { StitchViteServer } = await import('./lib/server/vite/StitchViteServer.js');
+          const { downloadText } = await import('./ui/copy-behaviors/clipboard.js');
+
+          const server = new StitchViteServer();
+          const url = await server.start(0);
+          console.log(theme.green(`Starting server at ${url}`));
+
+          console.log('Downloading content...');
+          const html = await downloadText(resource.htmlCode.downloadUrl);
+          server.mount('/', html);
+
+          console.log(theme.green(`Serving screen "${resource.title || 'Screen'}" at ${url}/`));
+          console.log('Press Ctrl+C to stop.');
+
+          await new Promise(() => {});
+          return;
+      }
+
       const { render } = await import('ink');
       const React = await import('react');
       const { InteractiveViewer } = await import('./ui/InteractiveViewer.js');
@@ -350,6 +398,26 @@ program
       }));
       await instance.waitUntilExit();
 
+      process.exit(0);
+    } catch (error) {
+      console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('site')
+  .description('Build a structured site from Stitch screens')
+  .requiredOption('-p, --project <id>', 'Project ID')
+  .option('-o, --output <dir>', 'Output directory', '.')
+  .action(async (options) => {
+    try {
+      const { SiteCommandHandler } = await import('./commands/site/index.js');
+      const handler = new SiteCommandHandler();
+      await handler.execute({
+          projectId: options.project,
+          outputDir: options.output
+      });
       process.exit(0);
     } catch (error) {
       console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
