@@ -9,19 +9,8 @@ mock.module('../../platform/shell.js', () => ({
   commandExists: mock(() => Promise.resolve(false)),
 }));
 
-// Mock detectPlatform to force Windows
-mock.module('../../platform/detector.js', () => {
-    return {
-        detectPlatform: () => ({
-            isWindows: true, // Force Windows for Zip path
-            gcloudBinaryName: 'gcloud.exe',
-            gcloudDownloadUrl: 'http://example.com/gcloud.zip'
-        }),
-        getGcloudSdkPath: () => '/mock/sdk/path',
-        getGcloudConfigPath: () => '/mock/config/path',
-        getStitchDir: () => '/mock/stitch/dir',
-    };
-});
+// We do NOT mock platform/detector.js anymore to avoid pollution.
+// Instead we subclass GcloudHandler to inject our mock platform.
 
 // Mock AdmZip
 const mockExtractAllTo = mock();
@@ -59,6 +48,18 @@ mock.module('node:fs', () => ({
 
 const originalFetch = global.fetch;
 
+class TestableGcloudHandler extends GcloudHandler {
+    constructor() {
+        super();
+        // Override the private platform property
+        (this as any).platform = {
+            isWindows: true, // Force Windows for Zip path
+            gcloudBinaryName: 'gcloud.exe',
+            gcloudDownloadUrl: 'http://example.com/gcloud.zip'
+        };
+    }
+}
+
 describe('GcloudHandler Zip Extraction', () => {
   let handler: GcloudHandler;
 
@@ -76,7 +77,7 @@ describe('GcloudHandler Zip Extraction', () => {
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
     } as any));
 
-    handler = new GcloudHandler();
+    handler = new TestableGcloudHandler();
   });
 
   afterEach(() => {
