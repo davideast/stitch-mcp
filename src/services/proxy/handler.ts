@@ -1,6 +1,6 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { appendFileSync } from 'node:fs';
+import { createWriteStream, type WriteStream } from 'node:fs';
 import dotenv from 'dotenv';
 import {
   type ProxyService,
@@ -120,13 +120,21 @@ export class ProxyHandler implements ProxyService {
 
   async start(input: StartProxyInput): Promise<ProxyResult> {
     // Setup logger based on debug flag
-    const log: Logger = (message: string) => {
-      if (input.debug) {
-        try {
-          appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${message}\n`);
-        } catch (e) {
+    let logStream: WriteStream | null = null;
+    if (input.debug) {
+      try {
+        logStream = createWriteStream(LOG_FILE, { flags: 'a' });
+        logStream.on('error', () => {
           // ignore
-        }
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const log: Logger = (message: string) => {
+      if (logStream) {
+        logStream.write(`[${new Date().toISOString()}] ${message}\n`);
       }
     };
 
@@ -230,6 +238,10 @@ export class ProxyHandler implements ProxyService {
       this.stopRefreshTimer();
       log('Proxy stopped');
 
+      if (logStream) {
+        logStream.end();
+      }
+
       return {
         success: true,
         data: {
@@ -240,6 +252,9 @@ export class ProxyHandler implements ProxyService {
     } catch (error) {
       this.stopRefreshTimer();
       log(`Startup failed: ${error}`);
+      if (logStream) {
+        logStream.end();
+      }
       console.error('[Proxy] Startup failed:', error); // Keep console.error for critical startup failures
       return {
         success: false,
