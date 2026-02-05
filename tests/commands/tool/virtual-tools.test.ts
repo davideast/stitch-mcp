@@ -1,9 +1,10 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { virtualTools } from "../../../src/commands/tool/virtual-tools.js";
 
 describe("Virtual Tools", () => {
   let mockClient: any;
   let mockCallTool: any;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     mockCallTool = mock();
@@ -13,6 +14,10 @@ describe("Virtual Tools", () => {
 
     // Reset global fetch mock
     global.fetch = mock(() => Promise.resolve(new Response(""))) as any;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   describe("get_screen_code", () => {

@@ -1,10 +1,11 @@
-import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 import { ToolCommandHandler } from "../../../src/commands/tool/handler.js";
 
 describe("ToolCommandHandler", () => {
   let mockClient: any;
   let mockGetCapabilities: any;
   let mockCallTool: any;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     mockGetCapabilities = mock();
@@ -15,6 +16,10 @@ describe("ToolCommandHandler", () => {
       getCapabilities: mockGetCapabilities,
       callTool: mockCallTool,
     };
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it("should list tools when no tool name is provided", async () => {

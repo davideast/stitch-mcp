@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { StitchMCPClient } from "../../../src/services/mcp-client/client.js";
 import { execSync } from "child_process";
 
@@ -8,9 +8,15 @@ mock.module("child_process", () => ({
 }));
 
 describe("StitchMCPClient", () => {
+  const originalFetch = global.fetch;
+
   beforeEach(() => {
      // Reset mocks
      (execSync as any).mockReset();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it("should skip OAuth validation when API key is present", async () => {
