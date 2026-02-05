@@ -636,30 +636,20 @@ export class GcloudHandler implements GcloudService {
   }
 
   private getEnvironment(useSystem?: boolean): Record<string, string> {
-    const env: Record<string, string> = {};
-
-    // Copy existing env vars, filtering out undefined
-    for (const [key, value] of Object.entries(process.env)) {
-      if (value !== undefined) {
-        env[key] = value;
-      }
-    }
-
     // CHECK: If system mode is requested via flag or env var
     if (useSystem || this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      // Return clean env (let gcloud find its own global config)
-      // We might still want to forward standard vars, but we DO NOT set CLOUDSDK_CONFIG
-      return env;
+      // Return empty object to use default process.env in execCommand
+      return {};
     }
 
     const configPath = getGcloudConfigPath();
-    // Override with our config
-    env.CLOUDSDK_CONFIG = configPath;
-    env.CLOUDSDK_CORE_DISABLE_PROMPTS = '1';
-    env.CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK = '1';
-    env.CLOUDSDK_CORE_DISABLE_USAGE_REPORTING = 'true';
-
-    return env;
+    // Return only overrides
+    return {
+      CLOUDSDK_CONFIG: configPath,
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1',
+      CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK: '1',
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true',
+    };
   }
 
   private async getGcloudCommand(): Promise<string> {
