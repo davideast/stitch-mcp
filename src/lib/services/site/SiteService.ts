@@ -49,14 +49,17 @@ export class SiteService {
 
     for (const stack of stacks) {
       const match = stack.title.match(versionRegex);
-      if (match) {
+      if (match && match[1]) {
         const version = parseInt(match[1], 10);
         const baseName = stack.title.replace(versionRegex, '').trim();
 
         if (!versionedStacks.has(baseName)) {
           versionedStacks.set(baseName, []);
         }
-        versionedStacks.get(baseName)!.push({ version, stack });
+        const entries = versionedStacks.get(baseName);
+        if (entries) {
+            entries.push({ version, stack });
+        }
       }
     }
 
@@ -69,7 +72,10 @@ export class SiteService {
         // The first one is the latest (keep isObsolete=false)
         // All others are obsolete
         for (let i = 1; i < entries.length; i++) {
-          entries[i].stack.isObsolete = true;
+          const entry = entries[i];
+          if (entry) {
+              entry.stack.isObsolete = true;
+          }
         }
       }
     }
