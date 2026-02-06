@@ -23,9 +23,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm --external lightningcss && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
-    "dev": "bun run src/cli.ts",
-    "test": "bun test --preload ./tests/setup.ts",
+    "generate-registry": "bun scripts/generate-registry.ts",
+    "build": "bun run generate-registry && bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm --external lightningcss && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
+    "dev": "bun run generate-registry && bun run src/cli.ts",
+    "test": "bun run generate-registry && bun test --preload ./tests/setup.ts",
     "prepublishOnly": "bun run build",
     "verify-pack": "bun scripts/verify-pack.ts",
     "release": "np"
