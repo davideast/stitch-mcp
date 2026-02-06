@@ -205,6 +205,12 @@ export class AssetGateway {
     // Use AST-based escaping for curly braces
     // This escapes {...} only in text nodes that are NOT inside <script> or <style> elements
     // Making the output compatible with Astro, React, and other JSX-like frameworks
+
+    // Remove DOCTYPE declaration using Cheerio's DOM API (more robust than regex)
+    // Astro adds DOCTYPE during build, and the Astro compiler's serialize function
+    // incorrectly outputs just "html" for DOCTYPE nodes
+    $.root().contents().filter((_, el) => el.type === 'directive' && el.name === '!doctype').remove();
+
     let outputHtml = $.html();
 
     // Add Astro frontmatter fences first to make it parseable
