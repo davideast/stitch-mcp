@@ -317,6 +317,24 @@ describe('AssetGateway', () => {
         globalThis.fetch = originalFetch;
       }
     });
+
+    test('includes Astro frontmatter fences', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async () => new Response('ok', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' }
+      })) as any;
+
+      try {
+        const html = '<html><body><p>Hello</p></body></html>';
+        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
+
+        // Should start with Astro frontmatter fences
+        expect(rewritten.startsWith('---\n---\n')).toBe(true);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 
   describe('copyAssetTo', () => {

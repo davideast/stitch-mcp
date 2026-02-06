@@ -208,7 +208,12 @@ export class AssetGateway {
       return match === '{' ? "{'{'}" : "{'}'}";
     });
 
-    return { html: outputHtml, assets };
+    // Add Astro frontmatter fences to make this a valid .astro file
+    const astroOutput = `---
+---
+${outputHtml}`;
+
+    return { html: astroOutput, assets };
   }
 
   async copyAssetTo(url: string, destPath: string): Promise<boolean> {
