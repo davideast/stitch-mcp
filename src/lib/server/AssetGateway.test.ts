@@ -194,6 +194,25 @@ describe('AssetGateway', () => {
         globalThis.fetch = originalFetch;
       }
     });
+
+    test('adds is:inline attribute to script tags for Astro compatibility', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async () => new Response('console.log("test")', {
+        status: 200,
+        headers: { 'Content-Type': 'application/javascript' }
+      })) as any;
+
+      try {
+        const html = '<html><head><script src="https://example.com/app.js"></script></head></html>';
+        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
+
+        // Should have is:inline attribute for Astro compatibility
+        expect(rewritten).toContain('is:inline');
+        expect(rewritten).toMatch(/<script[^>]+is:inline[^>]*>/);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 
   describe('copyAssetTo', () => {

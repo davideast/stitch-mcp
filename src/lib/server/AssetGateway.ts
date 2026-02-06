@@ -192,7 +192,13 @@ export class AssetGateway {
 
     $('img').each((_, el) => rewriteUrl(el, 'src', '.png'));
     $('link[rel="stylesheet"]').each((_, el) => rewriteUrl(el, 'href', '.css'));
-    $('script').each((_, el) => rewriteUrl(el, 'src', '.js'));
+    $('script').each((_, el) => {
+      rewriteUrl(el, 'src', '.js');
+      // Add is:inline for Astro compatibility - prevents bundling of public/ assets
+      if ($(el).attr('src')?.startsWith('/assets/')) {
+        $(el).attr('is:inline', '');
+      }
+    });
 
     return { html: $.html(), assets };
   }
