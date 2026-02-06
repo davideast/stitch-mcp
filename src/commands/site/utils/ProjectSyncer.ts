@@ -10,8 +10,7 @@ export class ProjectSyncer {
 
   async fetchManifest(projectId: string): Promise<RemoteScreen[]> {
       const response = await this.client.callTool<{ screens: RemoteScreen[] }>('list_screens', {
-          projectId,
-          pageSize: 1000
+        projectId
       });
       return response.screens || [];
   }

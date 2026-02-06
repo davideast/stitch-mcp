@@ -8,7 +8,8 @@ google-cloud-sdk
 bun.lockb
 gen
 bin
-
-bin
 .npmrc
 .jules/cache
+src/commands/registry.ts
+.stitch-mcp
+test-site

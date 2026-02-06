@@ -3,6 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import { Readable } from 'stream';
+import { parse } from '@astrojs/compiler';
+import { is, serialize } from '@astrojs/compiler/utils';
 
 export class AssetGateway {
   private cacheDir: string;
@@ -200,18 +202,68 @@ export class AssetGateway {
       }
     });
 
-    // Escape curly braces for Astro compatibility
-    // Astro interprets {...} as template expressions, so we need to escape them
-    // Replace { with {'{'} and } with {'}'}
-    let outputHtml = $.html();
-    outputHtml = outputHtml.replace(/[{}]/g, (match) => {
-      return match === '{' ? "{'{'}" : "{'}'}";
-    });
+    // Use AST-based escaping for curly braces
+    // This escapes {...} only in text nodes that are NOT inside <script> or <style> elements
+    // Making the output compatible with Astro, React, and other JSX-like frameworks
 
-    // Add Astro frontmatter fences to make this a valid .astro file
-    const astroOutput = `---
----
-${outputHtml}`;
+    // Remove DOCTYPE declaration using Cheerio's DOM API (more robust than regex)
+    // Astro adds DOCTYPE during build, and the Astro compiler's serialize function
+    // incorrectly outputs just "html" for DOCTYPE nodes
+    $.root().contents().filter((_, el) => el.type === 'directive' && el.name === '!doctype').remove();
+
+    let outputHtml = $.html();
+
+    // Add Astro frontmatter fences first to make it parseable
+    const astroContent = `---\n---\n${outputHtml}`;
+
+    // Parse with Astro compiler to get AST
+    const parseResult = await parse(astroContent, { position: false });
+
+    // Elements whose content should not be escaped
+    const skipElements = new Set(['script', 'style']);
+
+    // Recursive function to walk and escape expression nodes
+    // The Astro parser converts {foo} into expression nodes, so we need to
+    // convert them back to escaped text like {'{'}foo{'}'}
+    const escapeExpressions = (node: any, insideSkipElement: boolean): void => {
+      // Check if this is a skip element
+      const isSkipElement = is.element(node) && skipElements.has(node.name.toLowerCase());
+      const shouldSkip = insideSkipElement || isSkipElement;
+
+      // Process children and convert expression nodes to escaped text
+      if (is.parent(node) && !shouldSkip) {
+        const newChildren: any[] = [];
+        for (const child of node.children) {
+          // Convert expression nodes to escaped text
+          if (child.type === 'expression') {
+            // Get the expression content
+            const exprContent = child.children
+              ?.filter((c: any) => is.text(c))
+              .map((c: any) => c.value)
+              .join('') || '';
+            // Replace with escaped text: {'{'}content{'}'}
+            newChildren.push({
+              type: 'text',
+              value: `{'{'}${exprContent}{'}'}`
+            });
+          } else {
+            newChildren.push(child);
+            escapeExpressions(child, shouldSkip);
+          }
+        }
+        node.children = newChildren;
+      } else if (is.parent(node)) {
+        // Inside skip element, just recurse without escaping
+        for (const child of node.children) {
+          escapeExpressions(child, shouldSkip);
+        }
+      }
+    };
+
+    // Start walking from the root
+    escapeExpressions(parseResult.ast, false);
+
+    const astroOutput = serialize(parseResult.ast);
 
     return { html: astroOutput, assets };
   }
