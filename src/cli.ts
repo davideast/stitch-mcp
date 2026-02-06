@@ -1,13 +1,17 @@
 import { Command } from 'commander';
 import { commands } from './commands/registry.js';
 import { theme } from './ui/theme.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json');
 
 const program = new Command();
 
 program
   .name('stitch-mcp')
   .description('Stitch MCP OAuth setup assistant')
-  .version('0.1.0');
+  .version(pkg.version);
 
 function registerCommands() {
   for (const def of commands) {
