@@ -22,8 +22,8 @@ export class StitchViteServer {
       appType: 'custom',
       plugins: [
         virtualContent({
-            assetGateway: this.assetGateway,
-            htmlMap: this.htmlMap
+          assetGateway: this.assetGateway,
+          htmlMap: this.htmlMap
         })
       ],
       logLevel: 'silent'
@@ -52,13 +52,13 @@ export class StitchViteServer {
   mount(route: string, html: string) {
     this.htmlMap.set(route, html);
     if (this.server) {
-        this.server.ws.send({ type: 'full-reload', path: route });
+      this.server.ws.send({ type: 'full-reload', path: route });
     }
   }
 
   navigate(url: string) {
     if (this.server) {
-        this.server.ws.send('stitch:navigate', { url });
+      this.server.ws.send('stitch:navigate', { url });
     }
   }
 }

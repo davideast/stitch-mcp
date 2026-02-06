@@ -12,39 +12,39 @@ interface SiteCommandOptions {
 }
 
 export class SiteCommandHandler {
-    async execute(options: SiteCommandOptions) {
-        const client = new StitchMCPClient();
+  async execute(options: SiteCommandOptions) {
+    const client = new StitchMCPClient();
 
-        let resultConfig: SiteConfig | null = null;
-        let resultHtml: Map<string, string> | undefined;
+    let resultConfig: SiteConfig | null = null;
+    let resultHtml: Map<string, string> | undefined;
 
-        const { waitUntilExit } = render(
-            <SiteBuilder
-                projectId={options.projectId}
-                client={client}
-                onExit={(config, html) => {
-                    resultConfig = config;
-                    resultHtml = html;
-                }}
-            />
-        );
+    const { waitUntilExit } = render(
+      <SiteBuilder
+        projectId={options.projectId}
+        client={client}
+        onExit={(config, html) => {
+          resultConfig = config;
+          resultHtml = html;
+        }}
+      />
+    );
 
-        await waitUntilExit();
+    await waitUntilExit();
 
-        if (resultConfig && resultHtml) {
-            console.log('Generating site...');
-            const assetGateway = new AssetGateway();
-            const outputDir = options.outputDir || '.';
+    if (resultConfig && resultHtml) {
+      console.log('Generating site...');
+      const assetGateway = new AssetGateway();
+      const outputDir = options.outputDir || '.';
 
-            await SiteService.generateSite(
-                resultConfig,
-                resultHtml,
-                assetGateway,
-                outputDir
-            );
-            console.log('Site generated successfully!');
-        } else {
-            // console.log('Cancelled.');
-        }
+      await SiteService.generateSite(
+        resultConfig,
+        resultHtml,
+        assetGateway,
+        outputDir
+      );
+      console.log('Site generated successfully!');
+    } else {
+      // console.log('Cancelled.');
     }
+  }
 }

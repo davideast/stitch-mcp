@@ -58,7 +58,7 @@ export class SiteService {
         }
         const entries = versionedStacks.get(baseName);
         if (entries) {
-            entries.push({ version, stack });
+          entries.push({ version, stack });
         }
       }
     }
@@ -74,7 +74,7 @@ export class SiteService {
         for (let i = 1; i < entries.length; i++) {
           const entry = entries[i];
           if (entry) {
-              entry.stack.isObsolete = true;
+            entry.stack.isObsolete = true;
           }
         }
       }
@@ -91,93 +91,93 @@ export class SiteService {
     const sortedStacks = [...stacks].sort((a, b) => a.title.localeCompare(b.title));
 
     for (const stack of sortedStacks) {
-        const status = (stack.isArtifact || stack.isObsolete) ? 'ignored' : 'included';
+      const status = (stack.isArtifact || stack.isObsolete) ? 'ignored' : 'included';
 
-        let preferredRoute = '/';
-        const titleLower = stack.title.trim().toLowerCase();
+      let preferredRoute = '/';
+      const titleLower = stack.title.trim().toLowerCase();
 
-        if (['home', 'index', 'landing'].includes(titleLower)) {
-            preferredRoute = '/';
-        } else {
-            preferredRoute = '/' + this.slugify(stack.title);
+      if (['home', 'index', 'landing'].includes(titleLower)) {
+        preferredRoute = '/';
+      } else {
+        preferredRoute = '/' + this.slugify(stack.title);
+      }
+
+      let finalRoute = preferredRoute;
+      let warning: string | undefined;
+
+      // Collision detection logic
+      if (usedRoutes.has(finalRoute)) {
+        if (preferredRoute === '/') {
+          finalRoute = '/' + this.slugify(stack.title);
         }
 
-        let finalRoute = preferredRoute;
-        let warning: string | undefined;
-
-        // Collision detection logic
         if (usedRoutes.has(finalRoute)) {
-             if (preferredRoute === '/') {
-                 finalRoute = '/' + this.slugify(stack.title);
-             }
+          let counter = 1;
+          // Determine base route for incrementing
+          let baseRoute = finalRoute;
+          if (baseRoute === '/') baseRoute = '/home';
 
-             if (usedRoutes.has(finalRoute)) {
-                 let counter = 1;
-                 // Determine base route for incrementing
-                 let baseRoute = finalRoute;
-                 if (baseRoute === '/') baseRoute = '/home';
-
-                 while (usedRoutes.has(`${baseRoute}-${counter}`)) {
-                     counter++;
-                 }
-                 finalRoute = `${baseRoute}-${counter}`;
-             }
-
-             warning = 'Potential collision detected. Route was modified.';
+          while (usedRoutes.has(`${baseRoute}-${counter}`)) {
+            counter++;
+          }
+          finalRoute = `${baseRoute}-${counter}`;
         }
 
-        usedRoutes.set(finalRoute, stack.id);
+        warning = 'Potential collision detected. Route was modified.';
+      }
 
-        routes.push({
-            screenId: stack.id,
-            route: finalRoute,
-            status,
-            warning
-        });
+      usedRoutes.set(finalRoute, stack.id);
+
+      routes.push({
+        screenId: stack.id,
+        route: finalRoute,
+        status,
+        warning
+      });
     }
 
     return {
-        projectId,
-        routes
+      projectId,
+      routes
     };
   }
 
   static async generateSite(
-      config: SiteConfig,
-      htmlContent: Map<string, string>,
-      assetGateway: IAssetGateway,
-      outputDir: string = '.'
+    config: SiteConfig,
+    htmlContent: Map<string, string>,
+    assetGateway: IAssetGateway,
+    outputDir: string = '.'
   ): Promise<void> {
-      // Scaffold
-      await fs.ensureDir(path.join(outputDir, 'src/pages'));
-      await fs.ensureDir(path.join(outputDir, 'src/layouts'));
-      await fs.ensureDir(path.join(outputDir, 'public/assets'));
+    // Scaffold
+    await fs.ensureDir(path.join(outputDir, 'src/pages'));
+    await fs.ensureDir(path.join(outputDir, 'src/layouts'));
+    await fs.ensureDir(path.join(outputDir, 'public/assets'));
 
-      // package.json
-      const pkgJson = {
-          name: "stitch-site",
-          type: "module",
-          version: "0.0.1",
-          scripts: {
-              "dev": "astro dev",
-              "start": "astro dev",
-              "build": "astro build",
-              "preview": "astro preview",
-              "astro": "astro"
-          },
-          dependencies: {
-              "astro": "^4.0.0"
-          }
-      };
-      await fs.writeJson(path.join(outputDir, 'package.json'), pkgJson, { spaces: 2 });
+    // package.json
+    const pkgJson = {
+      name: "stitch-site",
+      type: "module",
+      version: "0.0.1",
+      scripts: {
+        "dev": "astro dev",
+        "start": "astro dev",
+        "build": "astro build",
+        "preview": "astro preview",
+        "astro": "astro"
+      },
+      dependencies: {
+        "astro": "^5.0.0"
+      }
+    };
+    await fs.writeJson(path.join(outputDir, 'package.json'), pkgJson, { spaces: 2 });
 
-      // astro.config.mjs
-      const astroConfig = `import { defineConfig } from 'astro/config';
+    // astro.config.mjs
+    const astroConfig = `import { defineConfig } from 'astro/config';
 export default defineConfig({});`;
-      await fs.writeFile(path.join(outputDir, 'astro.config.mjs'), astroConfig);
+    await fs.writeFile(path.join(outputDir, 'astro.config.mjs'), astroConfig);
 
-      // src/layouts/Layout.astro
-      const layout = `---
+    // src/layouts/Layout.astro
+    const layout = `---
 interface Props {
 	title: string;
 }
@@ -200,47 +200,47 @@ const { title } = Astro.props;
 	</body>
 </html>
 `;
-      await fs.writeFile(path.join(outputDir, 'src/layouts/Layout.astro'), layout);
+    await fs.writeFile(path.join(outputDir, 'src/layouts/Layout.astro'), layout);
 
-      // Process routes
-      for (const route of config.routes) {
-          if (route.status !== 'included') continue;
+    // Process routes
+    for (const route of config.routes) {
+      if (route.status !== 'included') continue;
 
-          const html = htmlContent.get(route.screenId);
-          if (!html) {
-              console.warn(`No HTML content found for screen ${route.screenId}`);
-              continue;
-          }
-
-          // Rewrite
-          const { html: rewrittenHtml, assets } = await assetGateway.rewriteHtmlForBuild(html);
-
-          // Copy assets
-          const assetsDir = path.join(outputDir, 'public/assets');
-          for (const asset of assets) {
-              await assetGateway.copyAssetTo(asset.url, path.join(assetsDir, asset.filename));
-          }
-
-          let filePath = route.route;
-          if (filePath === '/') {
-              filePath = 'index';
-          } else {
-              // Remove leading slash
-              if (filePath.startsWith('/')) filePath = filePath.substring(1);
-          }
-
-          const fullPath = path.join(outputDir, 'src/pages', `${filePath}.astro`);
-          await fs.ensureDir(path.dirname(fullPath));
-          await fs.writeFile(fullPath, rewrittenHtml);
+      const html = htmlContent.get(route.screenId);
+      if (!html) {
+        console.warn(`No HTML content found for screen ${route.screenId}`);
+        continue;
       }
+
+      // Rewrite
+      const { html: rewrittenHtml, assets } = await assetGateway.rewriteHtmlForBuild(html);
+
+      // Copy assets
+      const assetsDir = path.join(outputDir, 'public/assets');
+      for (const asset of assets) {
+        await assetGateway.copyAssetTo(asset.url, path.join(assetsDir, asset.filename));
+      }
+
+      let filePath = route.route;
+      if (filePath === '/') {
+        filePath = 'index';
+      } else {
+        // Remove leading slash
+        if (filePath.startsWith('/')) filePath = filePath.substring(1);
+      }
+
+      const fullPath = path.join(outputDir, 'src/pages', `${filePath}.astro`);
+      await fs.ensureDir(path.dirname(fullPath));
+      await fs.writeFile(fullPath, rewrittenHtml);
+    }
   }
 
   static slugify(text: string): string {
-      return text.toString().toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w\-]+/g, '')
-        .replace(/\-\-+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
+    return text.toString().toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
   }
 }

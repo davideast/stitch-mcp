@@ -14,6 +14,8 @@ export function virtualContent({ assetGateway, htmlMap }: VirtualContentOptions)
       server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
         if (!req.url) return next();
 
+        // TODO: Consider a better configuration to support hosted URLs
+        // such as GitHub Codespaces and other cloud IDEs
         const url = new URL(req.url, 'http://localhost');
 
         // Asset Proxy
