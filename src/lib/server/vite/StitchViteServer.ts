@@ -33,8 +33,12 @@ export class StitchViteServer {
 
     const address = this.server.httpServer?.address();
     if (address && typeof address === 'object') {
-        return `http://localhost:${address.port}`;
+      // TODO: Consider a better configuration to support hosted URLs
+      // such as GitHub Codespaces and other cloud IDEs
+      return `http://localhost:${address.port}`;
     }
+    // TODO: Consider a better configuration to support hosted URLs
+    // such as GitHub Codespaces and other cloud IDEs
     return `http://localhost:${port}`;
   }
 
