@@ -84,12 +84,13 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const { hydrationStatus, progress, htmlContent } = useProjectHydration(stacks, server, syncer);
 
   // Navigate effect (Follow Mode)
+    // Only navigate when hydration is ready to prevent race condition
   useEffect(() => {
-      if (server && followMode && stacks[activeIndex]) {
+      if (server && followMode && hydrationStatus === 'ready' && stacks[activeIndex]) {
           const stack = stacks[activeIndex];
           server.navigate(`/_preview/${stack.id}`);
       }
-  }, [activeIndex, followMode, server, stacks]);
+  }, [activeIndex, followMode, server, stacks, hydrationStatus]);
 
   useInput((input, key) => {
       if (loading || error) return;
