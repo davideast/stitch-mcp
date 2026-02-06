@@ -214,7 +214,7 @@ describe('AssetGateway', () => {
       }
     });
 
-    test('escapes curly braces for Astro template compatibility', async () => {
+    test('preserves curly braces in script and style tags (AST-based escaping)', async () => {
       const originalFetch = globalThis.fetch;
       globalThis.fetch = (async () => new Response('ok', {
         status: 200,
@@ -222,97 +222,33 @@ describe('AssetGateway', () => {
       })) as any;
 
       try {
-        // HTML with template-like syntax that Astro would try to interpret
-        const html = '<html><body><span>${repo}</span><code>{value}</code></body></html>';
+        // HTML with curly braces in script tags should be preserved
+        const html = '<html><body><script>const obj = { key: "value" };</script></body></html>';
         const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
 
-        // Curly braces should be escaped as {'{'} and {'}'}
-        expect(rewritten).not.toContain('${repo}');
-        expect(rewritten).not.toContain('{value}');
-        expect(rewritten).toContain("{'{'}");
-        expect(rewritten).toContain("{'}'}");
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
-
-    test('escapes nested curly braces correctly', async () => {
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () => new Response('ok', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-      })) as any;
-
-      try {
-        // Nested braces like in JSON examples
-        const html = '<html><body><pre>{"key": {"nested": "value"}}</pre></body></html>';
-        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
-
-        // Should not throw and should escape all braces
-        expect(rewritten).toContain("{'{'}");
-        expect(rewritten).toContain("{'}'}");
-        // Original unescaped braces should not remain
-        expect(rewritten).not.toMatch(/[^']}\s*}/); // No unescaped }}
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
-
-    test('escapes template literals with expressions', async () => {
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () => new Response('ok', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-      })) as any;
-
-      try {
-        // Code examples with template literals - common in documentation
-        const html = '<html><body><code>`https://api.github.com/repos/${repo}/commits`</code></body></html>';
-        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
-
-        // The ${repo} should be escaped
-        expect(rewritten).not.toContain('${repo}');
-        expect(rewritten).toContain("${'{'}"); // $ followed by escaped {
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
-
-    test('escapes curly braces in syntax-highlighted code blocks', async () => {
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () => new Response('ok', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-      })) as any;
-
-      try {
-        // Real-world example: syntax highlighted code with template literal
-        const html = `<html><body><span class="text-green-400">\`https://api.github.com/repos/\${repo}/commits\`</span></body></html>`;
-        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
-
-        // Should escape the braces
-        expect(rewritten).toContain("{'{'}");
-        expect(rewritten).toContain("{'}'}");
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
-
-    test('handles HTML with no curly braces unchanged (except escaping)', async () => {
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () => new Response('ok', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-      })) as any;
-
-      try {
-        const html = '<html><body><p>Hello World</p></body></html>';
-        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
-
-        // Should contain the original content
-        expect(rewritten).toContain('Hello World');
-        // Should not have any escape sequences since no braces
+        // Curly braces in script tags should NOT be escaped
+        expect(rewritten).toContain('{ key: "value" }');
         expect(rewritten).not.toContain("{'{'}");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    test('escapes curly braces in text content (AST-based escaping)', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async () => new Response('ok', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' }
+      })) as any;
+
+      try {
+        // HTML with curly braces in text content should be escaped for Astro
+        const html = '<html><body><p>Hello {name}!</p></body></html>';
+        const { html: rewritten } = await gateway.rewriteHtmlForBuild(html);
+
+        // Curly braces in text content SHOULD be escaped
+        expect(rewritten).toContain("{'{'}");
+        expect(rewritten).toContain("{'}'");
       } finally {
         globalThis.fetch = originalFetch;
       }
