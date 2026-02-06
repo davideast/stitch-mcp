@@ -12,3 +12,5 @@ bin
 bin
 .npmrc
 .jules/cache
+test-site
+.stitch-mcp
