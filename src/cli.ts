@@ -1,8 +1,4 @@
 import { Command } from 'commander';
-import { InitHandler } from './commands/init/handler.js';
-import { DoctorHandler } from './commands/doctor/handler.js';
-import { LogoutHandler } from './commands/logout/handler.js';
-import { ToolCommandHandler } from './commands/tool/handler.js';
 import { theme, icons } from './ui/theme.js';
 
 const program = new Command();
@@ -22,6 +18,7 @@ program
   .option('-t, --transport <transport>', 'Transport type (http or stdio)')
   .action(async (options) => {
     try {
+      const { InitHandler } = await import('./commands/init/handler.js');
       const handler = new InitHandler();
       const result = await handler.execute({
         local: options.local,
@@ -212,6 +209,7 @@ program
   .option('--verbose', 'Show detailed error information', false)
   .action(async (options) => {
     try {
+      const { DoctorHandler } = await import('./commands/doctor/handler.js');
       const handler = new DoctorHandler();
       const result = await handler.execute({
         verbose: options.verbose,
@@ -241,6 +239,7 @@ program
   .option('--clear-config', 'Delete entire gcloud config directory', false)
   .action(async (options) => {
     try {
+      const { LogoutHandler } = await import('./commands/logout/handler.js');
       const handler = new LogoutHandler();
       const result = await handler.execute({
         force: options.force,
@@ -298,6 +297,7 @@ program
   .option('-o, --output <format>', 'Output format: json, pretty, raw', 'pretty')
   .action(async (toolName, options) => {
     try {
+      const { ToolCommandHandler } = await import('./commands/tool/handler.js');
       const handler = new ToolCommandHandler();
       const result = await handler.execute({
         toolName,
