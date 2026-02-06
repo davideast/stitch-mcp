@@ -38,7 +38,10 @@ export class AuthStep implements CommandStep<InitContext> {
       };
     }
 
-    const gcloudInfo = await context.gcloudService.ensureInstalled({ minVersion: '400.0.0' });
+    const gcloudInfo = await context.gcloudService.ensureInstalled({
+      minVersion: '400.0.0',
+      forceLocal: context.input.local
+    });
     if (!gcloudInfo.success) return { success: false, error: new Error('Gcloud not found') };
 
     const isBundled = gcloudInfo.data.location === 'bundled';
