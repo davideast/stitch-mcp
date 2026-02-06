@@ -19,7 +19,7 @@ export class AssetGateway {
     return crypto.createHash('md5').update(url).digest('hex');
   }
 
-  async fetchAsset(url: string): Promise<{ stream: Readable; contentType?: string }> {
+  async fetchAsset(url: string): Promise<{ stream: Readable; contentType?: string } | null> {
     await this.init();
     const hash = this.getHash(url);
     const cachePath = path.join(this.cacheDir, hash);
@@ -36,22 +36,33 @@ export class AssetGateway {
       return { stream: fs.createReadStream(cachePath), contentType };
     }
 
-    // Miss
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch asset: ${url} (${response.status})`);
+    // Miss - fetch with User-Agent for Google Fonts compatibility
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch asset: ${url} (${response.status})`);
+        return null;
+      }
+
+      const contentType = response.headers.get('content-type') || undefined;
+
+      const buffer = await response.arrayBuffer();
+      await fs.writeFile(cachePath, Buffer.from(buffer));
+
+      if (contentType) {
+        await fs.writeJson(metadataPath, { contentType });
+      }
+
+      return { stream: fs.createReadStream(cachePath), contentType };
+    } catch (e) {
+      console.warn(`Failed to fetch asset: ${url}`, e);
+      return null;
     }
-
-    const contentType = response.headers.get('content-type') || undefined;
-
-    const buffer = await response.arrayBuffer();
-    await fs.writeFile(cachePath, Buffer.from(buffer));
-
-    if (contentType) {
-      await fs.writeJson(metadataPath, { contentType });
-    }
-
-    return { stream: fs.createReadStream(cachePath), contentType };
   }
 
   async rewriteHtmlForPreview(html: string): Promise<string> {
@@ -78,54 +89,131 @@ export class AssetGateway {
     return $.html();
   }
 
+  /**
+   * Maps common MIME types to file extensions.
+   */
+  private getExtensionFromContentType(contentType: string | undefined): string {
+    if (!contentType) return '';
+
+    // Extract the base MIME type (ignore charset and other params)
+    const mimeType = contentType.split(';')[0]?.trim().toLowerCase();
+
+    const mimeToExt: Record<string, string> = {
+      // Stylesheets
+      'text/css': '.css',
+      // JavaScript
+      'text/javascript': '.js',
+      'application/javascript': '.js',
+      'application/x-javascript': '.js',
+      // Images
+      'image/png': '.png',
+      'image/jpeg': '.jpg',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+      'image/svg+xml': '.svg',
+      'image/x-icon': '.ico',
+      'image/vnd.microsoft.icon': '.ico',
+      // Fonts
+      'font/woff': '.woff',
+      'font/woff2': '.woff2',
+      'font/ttf': '.ttf',
+      'font/otf': '.otf',
+      'application/font-woff': '.woff',
+      'application/font-woff2': '.woff2',
+      // Other
+      'application/json': '.json',
+      'text/html': '.html',
+      'text/plain': '.txt',
+    };
+
+    return mimeToExt[mimeType || ''] || '';
+  }
+
   async rewriteHtmlForBuild(html: string): Promise<{ html: string; assets: { url: string; filename: string }[] }> {
     const $ = cheerio.load(html);
-    const assets: { url: string; filename: string }[] = [];
+    const assetUrls: string[] = [];
 
-    const processElement = (el: any, attr: string) => {
+    // Collect all asset URLs
+    const collectUrl = (el: any, attr: string) => {
       const url = $(el).attr(attr);
       if (url && url.startsWith('http')) {
-        try {
-          console.log('----------------');
-          console.log(url);
-          const urlObj = new URL(url);
-          console.log(urlObj);
-          let ext = path.extname(urlObj.pathname);
-          console.log(ext);
-          console.log('----------------');
-          if (!ext) ext = '.bin'; // Default
-          const hash = this.getHash(url);
-          const filename = `${hash}${ext}`;
-
-          $(el).attr(attr, `/assets/${filename}`);
-          assets.push({ url, filename });
-        } catch (e) {
-          // Skip invalid URLs
-        }
+        assetUrls.push(url);
       }
     };
 
-    $('img').each((_, el) => processElement(el, 'src'));
-    $('link[rel="stylesheet"]').each((_, el) => processElement(el, 'href'));
-    $('script').each((_, el) => processElement(el, 'src'));
+    $('img').each((_, el) => collectUrl(el, 'src'));
+    $('link[rel="stylesheet"]').each((_, el) => collectUrl(el, 'href'));
+    $('script').each((_, el) => collectUrl(el, 'src'));
 
-    // Ensure they are fetched
-    await Promise.all(assets.map(a => this.fetchAsset(a.url)));
+    // Fetch all assets to get Content-Type headers
+    const urlToFilename = new Map<string, string>();
+
+    await Promise.all(assetUrls.map(async (url) => {
+      try {
+        const result = await this.fetchAsset(url);
+        if (!result) return; // Skip failed assets
+
+        const { contentType } = result;
+        const hash = this.getHash(url);
+
+        // Try URL extension first, fall back to Content-Type
+        const urlObj = new URL(url);
+        let ext = path.extname(urlObj.pathname);
+
+        if (!ext) {
+          ext = this.getExtensionFromContentType(contentType);
+        }
+
+        // If still no extension, use a sensible default based on element type
+        // (handled below when rewriting)
+        const filename = `${hash}${ext}`;
+        urlToFilename.set(url, filename);
+      } catch (e) {
+        // Skip failed assets
+      }
+    }));
+
+    // Rewrite URLs in HTML
+    const assets: { url: string; filename: string }[] = [];
+
+    const rewriteUrl = (el: any, attr: string, defaultExt: string) => {
+      const url = $(el).attr(attr);
+      if (url && url.startsWith('http')) {
+        let filename = urlToFilename.get(url);
+        if (!filename) {
+          // Fallback if fetch failed
+          const hash = this.getHash(url);
+          filename = `${hash}${defaultExt}`;
+        }
+        $(el).attr(attr, `/assets/${filename}`);
+        assets.push({ url, filename });
+      }
+    };
+
+    $('img').each((_, el) => rewriteUrl(el, 'src', '.png'));
+    $('link[rel="stylesheet"]').each((_, el) => rewriteUrl(el, 'href', '.css'));
+    $('script').each((_, el) => rewriteUrl(el, 'src', '.js'));
 
     return { html: $.html(), assets };
   }
 
-  async copyAssetTo(url: string, destPath: string): Promise<void> {
+  async copyAssetTo(url: string, destPath: string): Promise<boolean> {
     await this.init();
     const hash = this.getHash(url);
     const cachePath = path.join(this.cacheDir, hash);
 
     if (await fs.pathExists(cachePath)) {
       await fs.copy(cachePath, destPath);
+      return true;
     } else {
-      // Should not happen if fetchAsset was called before, but safe to retry
-      await this.fetchAsset(url);
+      // Try to fetch if not cached
+      const result = await this.fetchAsset(url);
+      if (!result) {
+        console.warn(`Skipping asset copy, fetch failed: ${url}`);
+        return false;
+      }
       await fs.copy(cachePath, destPath);
+      return true;
     }
   }
 }

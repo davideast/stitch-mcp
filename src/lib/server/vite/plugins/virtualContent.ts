@@ -28,7 +28,14 @@ export function virtualContent({ assetGateway, htmlMap }: VirtualContentOptions)
           }
 
           try {
-            const { stream, contentType } = await assetGateway.fetchAsset(assetUrl);
+            const result = await assetGateway.fetchAsset(assetUrl);
+            if (!result) {
+              res.statusCode = 404;
+              res.end('Asset not found');
+              return;
+            }
+
+            const { stream, contentType } = result;
             if (contentType) {
               res.setHeader('Content-Type', contentType);
             }

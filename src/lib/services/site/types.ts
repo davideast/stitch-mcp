@@ -8,5 +8,5 @@ export type SiteConfig = z.infer<typeof SiteConfigSchema>;
 
 export interface IAssetGateway {
   rewriteHtmlForBuild(html: string): Promise<{ html: string; assets: { url: string; filename: string }[] }>;
-  copyAssetTo(url: string, destPath: string): Promise<void>;
+  copyAssetTo(url: string, destPath: string): Promise<boolean>;
 }
