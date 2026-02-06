@@ -200,7 +200,15 @@ export class AssetGateway {
       }
     });
 
-    return { html: $.html(), assets };
+    // Escape curly braces for Astro compatibility
+    // Astro interprets {...} as template expressions, so we need to escape them
+    // Replace { with {'{'} and } with {'}'}
+    let outputHtml = $.html();
+    outputHtml = outputHtml.replace(/[{}]/g, (match) => {
+      return match === '{' ? "{'{'}" : "{'}'}";
+    });
+
+    return { html: outputHtml, assets };
   }
 
   async copyAssetTo(url: string, destPath: string): Promise<boolean> {
