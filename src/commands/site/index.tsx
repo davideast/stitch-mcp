@@ -4,7 +4,7 @@ import { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { SiteBuilder } from './ui/SiteBuilder.js';
 import { SiteService } from '../../lib/services/site/SiteService.js';
 import { AssetGateway } from '../../lib/server/AssetGateway.js';
-import { SiteConfig } from '../../lib/services/site/types.js';
+import type { SiteConfig } from '../../lib/services/site/types.js';
 
 interface SiteCommandOptions {
   projectId: string;

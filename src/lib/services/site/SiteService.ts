@@ -1,4 +1,4 @@
-import { RemoteScreen, ScreenStack, SiteConfig, SiteRoute, IAssetGateway } from './types.js';
+import type { RemoteScreen, ScreenStack, SiteConfig, SiteRoute, IAssetGateway } from './types.js';
 import fs from 'fs-extra';
 import path from 'path';
 
@@ -26,6 +26,7 @@ export class SiteService {
     for (const [title, versions] of groups) {
       // "Select: Pick the last item in the version list as the bestCandidate."
       const bestCandidate = versions[versions.length - 1];
+      if (!bestCandidate) continue;
 
       // Classify: Artifacts
       const isArtifact = /\.(png|jpg|jpeg)$/i.test(title) || title.startsWith('localhost_');

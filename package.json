@@ -23,7 +23,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
+    "build": "bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm --external lightningcss && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
     "dev": "bun run src/cli.ts",
     "test": "bun test --preload ./tests/setup.ts",
     "prepublishOnly": "bun run build",

@@ -1,5 +1,5 @@
 import { StitchMCPClient } from '../../../services/mcp-client/client.js';
-import { RemoteScreen } from '../../../lib/services/site/types.js';
+import type { RemoteScreen } from '../../../lib/services/site/types.js';
 
 export class ProjectSyncer {
   private client: StitchMCPClient;

@@ -99,7 +99,9 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
           let target = serverUrl;
           if (selectedIndex > 0) {
               const screen = screens[selectedIndex - 1];
-              target = `${serverUrl}/screens/${screen.screenId}`;
+              if (screen) {
+                  target = `${serverUrl}/screens/${screen.screenId}`;
+              }
           }
           if (process.platform === 'win32') {
              spawn('cmd', ['/c', 'start', target], { detached: true, stdio: 'ignore' }).unref();
@@ -124,7 +126,9 @@ export function ServeView({ projectId, projectTitle, screens }: ServeViewProps) 
                 </Text>
             ))}
         </Box>
-        <Text dimColor marginTop={1}>[Enter] Open | [q] Quit</Text>
+        <Box marginTop={1}>
+            <Text dimColor>[Enter] Open | [q] Quit</Text>
+        </Box>
     </Box>
   );
 }

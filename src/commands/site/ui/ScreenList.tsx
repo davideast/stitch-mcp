@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { UIStack } from '../types.js';
+import type { UIStack } from './types.js';
 import { StatusIcon } from './components/StatusIcon.js';
 
 interface ScreenListProps {

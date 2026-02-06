@@ -1,4 +1,4 @@
-import { Plugin, ViteDevServer } from 'vite';
+import { type Plugin, type ViteDevServer } from 'vite';
 import { AssetGateway } from '../../AssetGateway.js';
 import { IncomingMessage, ServerResponse } from 'http';
 

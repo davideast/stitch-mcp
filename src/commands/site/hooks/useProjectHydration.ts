@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { ProjectSyncer } from '../utils/ProjectSyncer.js';
-import { UIStack } from '../ui/types.js';
+import type { UIStack } from '../ui/types.js';
 import pLimit from 'p-limit';
 
 export type HydrationStatus = 'idle' | 'downloading' | 'ready' | 'error';

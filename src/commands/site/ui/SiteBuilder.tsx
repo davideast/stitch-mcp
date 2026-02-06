@@ -8,8 +8,8 @@ import { ProjectSyncer } from '../utils/ProjectSyncer.js';
 import { ScreenList } from './ScreenList.js';
 import { DetailPane } from './DetailPane.js';
 import { useProjectHydration } from '../hooks/useProjectHydration.js';
-import { UIStack } from './types.js';
-import { SiteConfig } from '../../../lib/services/site/types.js';
+import type { UIStack } from './types.js';
+import type { SiteConfig } from '../../../lib/services/site/types.js';
 import { spawn } from 'child_process';
 
 interface SiteBuilderProps {
@@ -111,7 +111,9 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
           setStacks(prev => {
               const next = [...prev];
               const current = next[activeIndex];
-              current.status = current.status === 'included' ? 'ignored' : 'included';
+              if (current) {
+                  current.status = current.status === 'included' ? 'ignored' : 'included';
+              }
               return next;
           });
       }
@@ -124,16 +126,18 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
       if (input === 'o') {
           if (serverUrl) {
               const stack = stacks[activeIndex];
-              // const target = `/_preview/${stack.id}`;
-              // Open root so user can navigate? Or target?
-              // The directive just says 'o': Open browser.
-              // Assuming opening the server root or preview.
-              const start = (process.platform == 'darwin'? 'open': process.platform == 'win32'? 'start': 'xdg-open');
-              const target = `${serverUrl}/_preview/${stack.id}`;
-              if (process.platform === 'win32') {
-                 spawn('cmd', ['/c', 'start', target], { detached: true, stdio: 'ignore' }).unref();
-              } else {
-                 spawn(start, [target], { detached: true, stdio: 'ignore' }).unref();
+              if (stack) {
+                  // const target = `/_preview/${stack.id}`;
+                  // Open root so user can navigate? Or target?
+                  // The directive just says 'o': Open browser.
+                  // Assuming opening the server root or preview.
+                  const start = (process.platform == 'darwin'? 'open': process.platform == 'win32'? 'start': 'xdg-open');
+                  const target = `${serverUrl}/_preview/${stack.id}`;
+                  if (process.platform === 'win32') {
+                     spawn('cmd', ['/c', 'start', target], { detached: true, stdio: 'ignore' }).unref();
+                  } else {
+                     spawn(start, [target], { detached: true, stdio: 'ignore' }).unref();
+                  }
               }
           }
       }
@@ -160,7 +164,10 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const handleRouteUpdate = (val: string) => {
       setStacks(prev => {
           const next = [...prev];
-          next[activeIndex].route = val;
+          const current = next[activeIndex];
+          if (current) {
+              current.route = val;
+          }
           return next;
       });
   };

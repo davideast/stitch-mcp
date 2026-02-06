@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { UIStack } from '../types.js';
+import type { UIStack } from './types.js';
 
 interface DetailPaneProps {
   stack: UIStack | undefined;

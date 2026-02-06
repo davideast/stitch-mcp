@@ -135,7 +135,10 @@ export function ScreensView({ projectId, projectTitle, screens, client }: Screen
 
     // Serve
     if (input === 's') {
-      serveScreen(screens[selectedIndex]);
+      const screen = screens[selectedIndex];
+      if (screen) {
+          serveScreen(screen);
+      }
     }
   });
 
