@@ -1,18 +1,12 @@
-import { expect, test, describe, mock } from 'bun:test';
+import { expect, test, describe, spyOn, mock, afterEach } from 'bun:test';
 import { SnapshotHandler } from './handler.js';
 import path from 'path';
+import fs from 'fs-extra';
 
-// Mock fs-extra
-mock.module('fs-extra', () => ({
-  default: {
-    pathExists: async () => true,
-    readJson: async () => ({
-        mcpClient: 'vscode',
-        authMode: 'oauth',
-        inputArgs: {}
-    }),
-  }
-}));
+// Spy on fs-extra methods instead of using mock.module
+// This avoids polluting the global module registry which affects other tests
+const pathExistsSpy = spyOn(fs, 'pathExists');
+const readJsonSpy = spyOn(fs, 'readJson');
 
 const mockExecute = mock(async () => ({ success: true }));
 
@@ -35,9 +29,22 @@ mock.module(initHandlerPathTs, () => ({
   }
 }));
 
-
 describe('SnapshotHandler', () => {
+  afterEach(() => {
+    // Restore spies to avoid side effects
+    pathExistsSpy.mockRestore();
+    readJsonSpy.mockRestore();
+  });
+
   test('should execute init command with data', async () => {
+    // Setup spies
+    pathExistsSpy.mockResolvedValue(true);
+    readJsonSpy.mockResolvedValue({
+        mcpClient: 'vscode',
+        authMode: 'oauth',
+        inputArgs: {}
+    });
+
     const handler = new SnapshotHandler();
     const result = await handler.execute({ command: 'init', data: 'test.json' });
     expect(result.success).toBe(true);
