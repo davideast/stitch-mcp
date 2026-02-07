@@ -8,11 +8,14 @@ import { createSpinner } from '../../ui/spinner.js';
 import { ConsoleUI } from '../../framework/ConsoleUI.js';
 import { type DoctorContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
+import dotenv from 'dotenv';
 
+import { ApiKeyDetectedStep } from './steps/ApiKeyDetectedStep.js';
 import { GcloudCheckStep } from './steps/GcloudCheckStep.js';
 import { AuthCheckStep } from './steps/AuthCheckStep.js';
 import { AdcCheckStep } from './steps/AdcCheckStep.js';
 import { ProjectCheckStep } from './steps/ProjectCheckStep.js';
+import { ApiKeyConnectionStep } from './steps/ApiKeyConnectionStep.js';
 import { ApiCheckStep } from './steps/ApiCheckStep.js';
 
 export class DoctorHandler implements DoctorCommand {
@@ -23,20 +26,27 @@ export class DoctorHandler implements DoctorCommand {
     private readonly stitchService: StitchService = new StitchHandler()
   ) {
     this.steps = [
+      new ApiKeyDetectedStep(),
       new GcloudCheckStep(),
       new AuthCheckStep(),
       new AdcCheckStep(),
       new ProjectCheckStep(),
+      new ApiKeyConnectionStep(),
       new ApiCheckStep(),
     ];
   }
 
   async execute(input: DoctorInput): Promise<DoctorResult> {
+    dotenv.config();
+    const apiKey = process.env.STITCH_API_KEY;
+
     const context: DoctorContext = {
       input,
       ui: new ConsoleUI(),
       gcloudService: this.gcloudService,
       stitchService: this.stitchService,
+      authMode: apiKey ? 'apiKey' : 'oauth',
+      apiKey: apiKey || undefined,
       checks: []
     };
 

@@ -6,7 +6,7 @@ export class ProjectCheckStep implements CommandStep<DoctorContext> {
   name = 'Checking active project...';
 
   async shouldRun(context: DoctorContext): Promise<boolean> {
-    return true;
+    return context.authMode === 'oauth';
   }
 
   async run(context: DoctorContext): Promise<StepResult> {

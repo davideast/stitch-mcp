@@ -6,7 +6,7 @@ export class GcloudCheckStep implements CommandStep<DoctorContext> {
   name = 'Checking Google Cloud CLI...';
 
   async shouldRun(context: DoctorContext): Promise<boolean> {
-    return true;
+    return context.authMode === 'oauth';
   }
 
   async run(context: DoctorContext): Promise<StepResult> {

@@ -6,6 +6,7 @@ export class ApiCheckStep implements CommandStep<DoctorContext> {
   name = 'Testing Stitch API...';
 
   async shouldRun(context: DoctorContext): Promise<boolean> {
+    if (context.authMode !== 'oauth') return false;
     // Only run if we have a project
     const projectCheck = context.checks.find(c => c.name === 'Active Project');
     return !!projectCheck && projectCheck.passed;

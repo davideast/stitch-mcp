@@ -12,6 +12,10 @@ export interface DoctorContext {
   gcloudService: GcloudService;
   stitchService: StitchService;
 
+  // Auth mode
+  authMode: 'apiKey' | 'oauth';
+  apiKey?: string;
+
   // State
   checks: Array<{
     name: string;

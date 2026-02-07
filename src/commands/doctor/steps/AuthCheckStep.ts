@@ -6,7 +6,7 @@ export class AuthCheckStep implements CommandStep<DoctorContext> {
   name = 'Checking user authentication...';
 
   async shouldRun(context: DoctorContext): Promise<boolean> {
-    return true;
+    return context.authMode === 'oauth';
   }
 
   async run(context: DoctorContext): Promise<StepResult> {

@@ -189,6 +189,62 @@ describe('StitchHandler', () => {
     });
   });
 
+  describe('testConnectionWithApiKey', () => {
+    const validInput = { apiKey: 'AIzaSyTestKey123' };
+
+    test('should return success on a successful connection', async () => {
+      const mockResponse = { ok: true, status: 200, json: async () => ({ result: 'ok' }) };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await handler.testConnectionWithApiKey(validInput);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.connected).toBe(true);
+        expect(result.data.statusCode).toBe(200);
+        expect(result.data.url).toBe('https://stitch.googleapis.com/mcp');
+      }
+
+      // Verify correct headers were used
+      const fetchCall = (global.fetch as any).mock.calls[0];
+      const headers = fetchCall[1].headers;
+      expect(headers['X-Goog-Api-Key']).toBe('AIzaSyTestKey123');
+      expect(headers['Authorization']).toBeUndefined();
+      expect(headers['X-Goog-User-Project']).toBeUndefined();
+    });
+
+    test('should return permission denied on 403 status', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 403,
+        json: async () => ({ error: { message: 'Permission denied' } }),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await handler.testConnectionWithApiKey(validInput);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('PERMISSION_DENIED');
+        expect(result.error.suggestion).toContain('API key');
+      }
+    });
+
+    test('should handle fetch exceptions', async () => {
+      const error = new Error('Network error');
+      (global.fetch as any).mockRejectedValue(error);
+
+      const result = await handler.testConnectionWithApiKey(validInput);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('CONNECTION_TEST_FAILED');
+        expect(result.error.message).toBe('Network error');
+        expect(result.error.recoverable).toBe(false);
+      }
+    });
+  });
+
   describe('checkIAMRole', () => {
     const validInput = { projectId: 'test-project', userEmail: 'user@example.com' };
 
