@@ -6,6 +6,7 @@ import { StitchMCPClient } from '../../../services/mcp-client/client.js';
 import { SiteService } from '../../../lib/services/site/SiteService.js';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { ProjectSyncer } from '../utils/ProjectSyncer.js';
+import { SiteManifest } from '../utils/SiteManifest.js';
 import { ScreenList } from './ScreenList.js';
 import { useProjectHydration } from '../hooks/useProjectHydration.js';
 import type { UIScreen, SiteConfig } from '../../../lib/services/site/types.js';
@@ -26,6 +27,9 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const [screens, setScreens] = useState<UIScreen[]>([]);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'default' | 'discarded'>('default');
+
+  const siteManifest = useMemo(() => new SiteManifest(projectId), [projectId]);
 
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeValue, setRouteValue] = useState('');
@@ -54,6 +58,14 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
         // Convert to UIScreen
         const uiScreens = SiteService.toUIScreens(remoteScreens);
 
+        // Load saved screen state (status + routes)
+        const saved = await siteManifest.load();
+        for (const screen of uiScreens) {
+          const state = saved.get(screen.id);
+          if (state?.status) screen.status = state.status;
+          if (state?.route) screen.route = state.route;
+        }
+
         if (mounted) {
           setScreens(uiScreens);
           setLoading(false);
@@ -73,10 +85,21 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
 
   // Derived display list
   const displayList = useMemo(() => {
-    const list = screens.map((s, i) => ({ screen: s, sourceIndex: i }));
-    if (!showSelectedOnly) return list;
-    return list.filter(item => item.screen.status === 'included');
-  }, [screens, showSelectedOnly]);
+    let list = screens.map((s, i) => ({ screen: s, sourceIndex: i }));
+
+    if (viewMode === 'discarded') {
+      return list.filter(item => item.screen.status === 'discarded');
+    }
+
+    // Default: hide discarded
+    list = list.filter(item => item.screen.status !== 'discarded');
+
+    if (showSelectedOnly) {
+      list = list.filter(item => item.screen.status === 'included');
+    }
+
+    return list;
+  }, [screens, viewMode, showSelectedOnly]);
 
   // Clamp activeIndex when list changes
   useEffect(() => {
@@ -133,6 +156,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
                 if (s) {
                    s.status = s.status === 'included' ? 'ignored' : 'included';
                 }
+                siteManifest.save(next);
                 return next;
             });
         }
@@ -151,6 +175,36 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
 
     if (input === 'f') {
         setFollowMode(prev => !prev);
+    }
+
+    if (input === 'x') {
+        const item = displayList[activeIndex];
+        if (!item) return;
+
+        if (viewMode === 'discarded') {
+            // Undiscard → set to 'ignored'
+            const idx = item.sourceIndex;
+            setScreens(prev => {
+                const next = [...prev];
+                if (next[idx]) next[idx]!.status = 'ignored';
+                siteManifest.save(next);
+                return next;
+            });
+        } else {
+            // Discard
+            const idx = item.sourceIndex;
+            setScreens(prev => {
+                const next = [...prev];
+                if (next[idx]) next[idx]!.status = 'discarded';
+                siteManifest.save(next);
+                return next;
+            });
+        }
+    }
+
+    if (input === 'd') {
+        setViewMode(prev => prev === 'default' ? 'discarded' : 'default');
+        setActiveIndex(0);
     }
 
     if (input === 'o') {
@@ -189,7 +243,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
             routes: included.map(s => ({
                 screenId: s.id,
                 route: s.route,
-                status: s.status
+                status: s.status as 'included' | 'ignored'
             }))
         };
         onExit(finalConfig, htmlContent);
@@ -209,10 +263,8 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
               const next = [...prev];
               if (next[originalIndex]) {
                   next[originalIndex]!.route = val;
-                  // Also auto-include if route is set?
-                  // Plan: "user manually selects which to include".
-                  // So we don't auto-include.
               }
+              siteManifest.save(next);
               return next;
           });
           setIsEditingRoute(false);
@@ -242,8 +294,17 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
             <Text color="gray">{serverUrl}</Text>
         </Box>
         <Box marginLeft={2}>
-            <Text>Filter: {showSelectedOnly ? 'Selected' : 'All'} ({displayList.length})</Text>
+            {viewMode === 'discarded' ? (
+                <Text color="red">Viewing Discarded ({displayList.length})</Text>
+            ) : (
+                <Text>Filter: {showSelectedOnly ? 'Selected' : 'All'} ({displayList.length})</Text>
+            )}
         </Box>
+        {viewMode === 'default' && screens.filter(s => s.status === 'discarded').length > 0 && (
+            <Box marginLeft={2}>
+                <Text dimColor>{screens.filter(s => s.status === 'discarded').length} discarded (press d to view)</Text>
+            </Box>
+        )}
         <Box marginLeft={2}>
             {hydrationStatus === 'downloading' && (
                 <Text color="yellow">
@@ -288,7 +349,10 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
       {/* Keymap */}
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text dimColor>
-            [↑↓] Navigate [Space] Toggle [Enter] Edit Route [t] Filter [f] Follow: {followMode ? 'ON' : 'OFF'} [g] Generate [Esc] Quit
+            {viewMode === 'discarded'
+                ? '[↑↓] Navigate [x] Undiscard [d] Back to All [Esc] Quit'
+                : `[↑↓] Navigate [Space] Toggle [Enter] Edit Route [x] Discard [d] View Discarded [t] Filter [f] Follow: ${followMode ? 'ON' : 'OFF'} [g] Generate [Esc] Quit`
+            }
         </Text>
       </Box>
     </Box>
