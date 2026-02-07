@@ -3,6 +3,7 @@ import {
   type ConfigureIAMInput,
   type EnableAPIInput,
   type TestConnectionInput,
+  type TestConnectionWithApiKeyInput,
   type IAMConfigResult,
   type APIEnableResult,
   type ConnectionTestResult,
@@ -180,6 +181,87 @@ export class StitchHandler implements StitchService {
       return result.success && result.stdout.trim().includes('stitch.googleapis.com');
     } catch {
       return false;
+    }
+  }
+
+  async testConnectionWithApiKey(input: TestConnectionWithApiKeyInput): Promise<ConnectionTestResult> {
+    try {
+      const url = process.env.STITCH_HOST || 'https://stitch.googleapis.com/mcp';
+
+      const payload = {
+        method: 'tools/call',
+        jsonrpc: '2.0',
+        params: {
+          name: 'list_projects',
+          arguments: {},
+        },
+        id: 1,
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-Goog-Api-Key': input.apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let errorDetails = '';
+        let errorMessage = `API request failed with status ${response.status}`;
+
+        try {
+          const errorBody = await response.json() as any;
+          errorDetails = JSON.stringify(errorBody, null, 2);
+
+          if (errorBody?.error?.message) {
+            errorMessage = errorBody.error.message;
+          }
+        } catch {
+          try {
+            errorDetails = await response.text();
+          } catch {
+            errorDetails = `Status ${response.status}: ${response.statusText}`;
+          }
+        }
+
+        return {
+          success: false,
+          error: {
+            code: response.status === 403 ? 'PERMISSION_DENIED' : 'CONNECTION_TEST_FAILED',
+            message: errorMessage,
+            suggestion:
+              response.status === 403
+                ? 'Check that your API key is valid and has access to the Stitch API'
+                : 'Verify API key configuration and try again',
+            recoverable: true,
+            details: errorDetails,
+          },
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data: {
+          connected: true,
+          statusCode: response.status,
+          url,
+          response: data,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: 'CONNECTION_TEST_FAILED',
+          message: error instanceof Error ? error.message : String(error),
+          recoverable: false,
+        },
+      };
     }
   }
 

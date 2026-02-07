@@ -21,6 +21,11 @@ export const TestConnectionInputSchema = z.object({
 });
 export type TestConnectionInput = z.infer<typeof TestConnectionInputSchema>;
 
+export const TestConnectionWithApiKeyInputSchema = z.object({
+  apiKey: z.string().min(1),
+});
+export type TestConnectionWithApiKeyInput = z.infer<typeof TestConnectionWithApiKeyInputSchema>;
+
 // ============================================================================
 // ERROR CODES
 // ============================================================================
@@ -121,6 +126,11 @@ export interface StitchService {
   * Test the connection to the Stitch API
    */
   testConnection(input: TestConnectionInput): Promise<ConnectionTestResult>;
+
+  /**
+   * Test the connection to the Stitch API using an API key
+   */
+  testConnectionWithApiKey(input: TestConnectionWithApiKeyInput): Promise<ConnectionTestResult>;
 
   /**
    * Check if a user has a specific IAM role on a project
