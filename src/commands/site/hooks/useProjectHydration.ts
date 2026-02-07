@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { ProjectSyncer } from '../utils/ProjectSyncer.js';
-import type { UIStack } from '../ui/types.js';
+import type { UIScreen } from '../../../lib/services/site/types.js';
 import pLimit from 'p-limit';
 
 export type HydrationStatus = 'idle' | 'downloading' | 'ready' | 'error';
 
 export function useProjectHydration(
-  stacks: UIStack[],
+  screens: UIScreen[],
   server: StitchViteServer | null,
-  syncer: ProjectSyncer
+  syncer: ProjectSyncer,
+  activeScreenId?: string
 ) {
   const [hydrationStatus, setHydrationStatus] = useState<HydrationStatus>('idle');
   const [progress, setProgress] = useState(0);
@@ -17,31 +18,38 @@ export function useProjectHydration(
   const [htmlContent, setHtmlContent] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!server || stacks.length === 0) return;
+    if (!server || screens.length === 0) return;
 
     let mounted = true;
 
     const hydrate = async () => {
-      const toDownload = stacks.filter(s =>
-        s.status === 'included' && !contentCache.current.has(s.id)
-      );
+      // Determine what needs to be downloaded
+      // 1. All included screens
+      // 2. The active screen (for preview), even if ignored
+      const toDownload = screens.filter(s => {
+        if (contentCache.current.has(s.id)) return false;
+        return s.status === 'included' || s.id === activeScreenId;
+      });
 
       if (toDownload.length === 0) {
-        // Ensure we update state if we have content but status was idle
-        if (hydrationStatus === 'idle' && stacks.some(s => s.status === 'included')) {
-          setHydrationStatus('ready');
-          setHtmlContent(new Map(contentCache.current));
+        // If nothing to download, ensure server has everything mounted
+        // (Just in case activeScreenId changed to something already cached but not mounted?
+        //  Actually server mount is persistent as long as server is running.
+        //  But if we have cached content, we should ensure it is mounted.)
+
+        // Also check if we should update status to ready
+        if (hydrationStatus === 'idle' || hydrationStatus === 'downloading') {
+             setHydrationStatus('ready');
+             setHtmlContent(new Map(contentCache.current));
         }
-        // If we have content in cache, make sure it is mounted?
-        // If the server was just initialized, cache might be empty or server maps empty.
-        // We should probably re-mount everything in cache to server if server changed?
-        // But server is in dependency array.
-        // If server changed, we should re-mount all cached content.
-        // But we don't track if server is "fresh".
-        // We can iterate cache and mount?
-        for (const [id, html] of contentCache.current) {
-          server.mount(`/_preview/${id}`, html);
+
+        // Mount cached content to server if not already?
+        // It's safer to re-mount or check.
+        // For now, let's just mount the active one to be sure if it's cached.
+        if (activeScreenId && contentCache.current.has(activeScreenId)) {
+            server.mount(`/_preview/${activeScreenId}`, contentCache.current.get(activeScreenId)!);
         }
+
         return;
       }
 
@@ -51,20 +59,19 @@ export function useProjectHydration(
       const total = toDownload.length;
 
       try {
-        await Promise.all(toDownload.map(stack => limit(async () => {
+        await Promise.all(toDownload.map(screen => limit(async () => {
           if (!mounted) return;
 
-          const latest = stack.versions[stack.versions.length - 1];
-          if (!latest?.htmlCode?.downloadUrl) return;
+          if (!screen.downloadUrl) return;
 
           try {
-            const html = await syncer.fetchContent(latest.htmlCode.downloadUrl);
+            const html = await syncer.fetchContent(screen.downloadUrl);
             if (mounted) {
-              contentCache.current.set(stack.id, html);
-              server.mount(`/_preview/${stack.id}`, html);
+              contentCache.current.set(screen.id, html);
+              server.mount(`/_preview/${screen.id}`, html);
             }
           } catch (e) {
-            console.error(`Failed to hydrate ${stack.id}`, e);
+            console.error(`Failed to hydrate ${screen.id}`, e);
           }
 
           if (mounted) {
@@ -85,7 +92,7 @@ export function useProjectHydration(
     hydrate();
 
     return () => { mounted = false; };
-  }, [stacks, server, syncer]);
+  }, [screens, server, syncer, activeScreenId]);
 
   return { hydrationStatus, progress, htmlContent };
 }

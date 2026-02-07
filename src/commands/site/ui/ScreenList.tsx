@@ -1,59 +1,67 @@
 import React from 'react';
-import { Box, Text } from 'ink';
-import type { UIStack } from './types.js';
+import { Box, Text, useStdout } from 'ink';
+import type { UIScreen } from './types.js';
 import { StatusIcon } from './components/StatusIcon.js';
 
 interface ScreenListProps {
-  stacks: UIStack[];
+  items: { screen: UIScreen; sourceIndex: number }[];
   activeIndex: number;
 }
 
-export const ScreenList: React.FC<ScreenListProps> = ({ stacks, activeIndex }) => {
-  const VISIBLE_ITEMS = 20;
+export const ScreenList: React.FC<ScreenListProps> = ({ items, activeIndex }) => {
+  const { stdout } = useStdout();
+  const height = stdout ? stdout.rows : 20; // Default to 20 if unavailable
+  const LIST_HEIGHT = Math.max(5, height - 10); // Reserve space for header/footer
+
   // Adjust start to keep active item in view
   let start = 0;
-  if (activeIndex >= VISIBLE_ITEMS) {
-      start = activeIndex - VISIBLE_ITEMS + 1;
+  if (activeIndex >= LIST_HEIGHT) {
+    start = activeIndex - LIST_HEIGHT + 1;
   }
-  // Ideally center it:
-  // start = Math.max(0, activeIndex - Math.floor(VISIBLE_ITEMS / 2));
-  // But strictly keeping it in view is also fine.
-  // Using the centered approach from thought process:
-  start = Math.max(0, activeIndex - Math.floor(VISIBLE_ITEMS / 2));
-  const end = Math.min(stacks.length, start + VISIBLE_ITEMS);
+  start = Math.max(0, activeIndex - Math.floor(LIST_HEIGHT / 2));
+  const end = Math.min(items.length, start + LIST_HEIGHT);
 
   // Correction if near end
-  if (end - start < VISIBLE_ITEMS && stacks.length > VISIBLE_ITEMS) {
-      start = Math.max(0, stacks.length - VISIBLE_ITEMS);
+  if (end - start < LIST_HEIGHT && items.length > LIST_HEIGHT) {
+    start = Math.max(0, items.length - LIST_HEIGHT);
   }
 
-  const visibleStacks = stacks.slice(start, end);
+  const visibleItems = items.slice(start, end);
 
   return (
-    <Box flexDirection="column" borderStyle="single" borderColor="blue" width="30%" minWidth={30}>
-      <Box paddingBottom={1} paddingLeft={1}>
-        <Text bold>Screens ({stacks.length})</Text>
-      </Box>
-      {visibleStacks.map((stack, i) => {
+    <Box flexDirection="column" flexGrow={1} borderStyle="single" borderColor="blue">
+      {start > 0 && (
+        <Box paddingLeft={1}>
+          <Text color="gray">... {start} more above ...</Text>
+        </Box>
+      )}
+
+      {visibleItems.map((item, i) => {
         const index = start + i;
         const isActive = index === activeIndex;
+        const { screen } = item;
+
         return (
-          <Box key={stack.id}>
+          <Box key={screen.id}>
             <Text color={isActive ? 'cyan' : undefined}>
               {isActive ? '> ' : '  '}
             </Text>
-            <StatusIcon
-                status={stack.status}
-                warning={stack.warning}
-                isArtifact={stack.isArtifact}
-                isObsolete={stack.isObsolete}
-            />
+            <StatusIcon status={screen.status} />
             <Text color={isActive ? 'cyan' : undefined} wrap="truncate">
-              {stack.title}
+              {screen.title}
             </Text>
+            {screen.route && (
+              <Text color="gray">{' -> '}{screen.route}</Text>
+            )}
           </Box>
         );
       })}
+
+      {end < items.length && (
+        <Box paddingLeft={1}>
+          <Text color="gray">... {items.length - end} more below ...</Text>
+        </Box>
+      )}
     </Box>
   );
 };
