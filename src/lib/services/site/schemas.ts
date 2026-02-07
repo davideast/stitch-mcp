@@ -8,14 +8,6 @@ export const RemoteScreenSchema = z.object({
   }).optional(), // Making optional to handle screens without htmlCode, though filtering should happen later
 });
 
-export const ScreenStackSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  versions: z.array(RemoteScreenSchema),
-  isArtifact: z.boolean(),
-  isObsolete: z.boolean(),
-});
-
 export const SiteRouteSchema = z.object({
   screenId: z.string(),
   route: z.string(),
