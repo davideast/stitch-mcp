@@ -2,6 +2,17 @@ import fs from 'fs-extra';
 import { type SnapshotCommand, type SnapshotInput, type SnapshotResult } from './spec.js';
 import { MockUI } from '../../framework/MockUI.js';
 import { theme } from '../../ui/theme.js';
+import { type GcloudService } from '../../services/gcloud/spec.js';
+import { type StitchService } from '../../services/stitch/spec.js';
+import { type McpConfigService } from '../../services/mcp-config/spec.js';
+import { type ProjectService } from '../../services/project/spec.js';
+
+interface SnapshotServices {
+  gcloud?: GcloudService;
+  stitch?: StitchService;
+  mcpConfig?: McpConfigService;
+  project?: ProjectService;
+}
 
 // Schemas for the commands to be printed with -s
 const SCHEMAS: Record<string, any> = {
@@ -72,6 +83,8 @@ const SCHEMAS: Record<string, any> = {
 };
 
 export class SnapshotHandler implements SnapshotCommand {
+  constructor(private readonly services?: SnapshotServices) {}
+
   async execute(input: SnapshotInput): Promise<SnapshotResult> {
     if (input.schema) {
       if (input.command) {
@@ -119,7 +132,13 @@ export class SnapshotHandler implements SnapshotCommand {
       switch (input.command) {
         case 'init': {
           const { InitHandler } = await import('../init/handler.js');
-          const handler = new InitHandler(undefined, undefined, undefined, undefined, mockUI);
+          const handler = new InitHandler(
+            this.services?.gcloud,
+            this.services?.mcpConfig,
+            this.services?.project,
+            this.services?.stitch,
+            mockUI
+          );
           const initInput = {
              local: false,
              defaults: false,
@@ -131,7 +150,11 @@ export class SnapshotHandler implements SnapshotCommand {
         }
         case 'doctor': {
           const { DoctorHandler } = await import('../doctor/handler.js');
-          const handler = new DoctorHandler(undefined, undefined, mockUI);
+          const handler = new DoctorHandler(
+            this.services?.gcloud,
+            this.services?.stitch,
+            mockUI
+          );
           const doctorInput = {
              verbose: false,
              ...data.inputArgs
