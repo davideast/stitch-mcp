@@ -1,4 +1,15 @@
 import { expect, test, mock, beforeEach, describe, jest } from 'bun:test';
+
+// Mock MCP SDK before importing anything that uses it
+mock.module('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+  StdioServerTransport: class {
+    start = mock(async () => { });
+    send = mock(async () => { });
+  },
+}));
+
+mock.module('@modelcontextprotocol/sdk/types.js', () => ({}));
+
 import { ProxyHandler } from './handler.js';
 import { type WriteStream } from 'node:fs';
 
@@ -30,6 +41,13 @@ const mockWriteStream = {
 mock.module('node:fs', () => ({
   createWriteStream: mock(() => mockWriteStream),
   appendFileSync: mock(() => { }),
+  existsSync: mock(() => true),
+  mkdirSync: mock(() => { }),
+}));
+
+// Mock detector
+mock.module('../../platform/detector.js', () => ({
+  getStitchDir: () => '/mock/stitch',
 }));
 
 // Mock dotenv
@@ -38,6 +56,14 @@ mock.module('dotenv', () => ({
     config: mock(() => ({})),
   },
   config: mock(() => ({})),
+}));
+
+// Mock GcloudHandler to avoid loading its dependencies
+mock.module('../gcloud/handler.js', () => ({
+  GcloudHandler: class {
+    getAccessToken = mock(async () => 'test-token');
+    getProjectId = mock(async () => 'test-project');
+  },
 }));
 
 describe('ProxyHandler Logging', () => {
@@ -65,7 +91,7 @@ describe('ProxyHandler Logging', () => {
     await new Promise(resolve => setTimeout(resolve, 50));
 
     expect(fs.createWriteStream).toHaveBeenCalledTimes(1);
-    expect(fs.createWriteStream).toHaveBeenCalledWith('/tmp/stitch-proxy-debug.log', { flags: 'a' });
+    expect(fs.createWriteStream).toHaveBeenCalledWith('/mock/stitch/proxy-debug.log', { flags: 'a', mode: 0o600 });
 
     // Stop proxy to cleanup
     mockStdioTransport.onclose();

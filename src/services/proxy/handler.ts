@@ -1,6 +1,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { createWriteStream, type WriteStream } from 'node:fs';
+import { createWriteStream, type WriteStream, existsSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import {
   type ProxyService,
@@ -8,9 +9,9 @@ import {
   type ProxyResult,
 } from './spec.js';
 import { GcloudHandler } from '../gcloud/handler.js';
+import { getStitchDir } from '../../platform/detector.js';
 
 const REFRESH_INTERVAL_MS = 55 * 60 * 1000; // 55 minutes
-const LOG_FILE = '/tmp/stitch-proxy-debug.log';
 
 type Logger = (message: string) => void;
 
@@ -121,9 +122,16 @@ export class ProxyHandler implements ProxyService {
   async start(input: StartProxyInput): Promise<ProxyResult> {
     // Setup logger based on debug flag
     let logStream: WriteStream | null = null;
+    let logFile: string | null = null;
+
     if (input.debug) {
       try {
-        logStream = createWriteStream(LOG_FILE, { flags: 'a' });
+        const stitchDir = getStitchDir();
+        if (!existsSync(stitchDir)) {
+          mkdirSync(stitchDir, { recursive: true, mode: 0o700 });
+        }
+        logFile = path.join(stitchDir, 'proxy-debug.log');
+        logStream = createWriteStream(logFile, { flags: 'a', mode: 0o600 });
         logStream.on('error', () => {
           // ignore
         });
@@ -138,8 +146,8 @@ export class ProxyHandler implements ProxyService {
       }
     };
 
-    if (input.debug) {
-      log(`Starting ProxyHandler with debug logging enabled (File: ${LOG_FILE})`);
+    if (input.debug && logFile) {
+      log(`Starting ProxyHandler with debug logging enabled (File: ${logFile})`);
     }
 
     try {
