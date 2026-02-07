@@ -35,7 +35,15 @@ export class AssetGateway {
           contentType = meta.contentType;
         } catch (e) { }
       }
-      return { stream: fs.createReadStream(cachePath), contentType };
+      try {
+        const stream = fs.createReadStream(cachePath);
+        // Suppress unhandled errors (e.g. file deletion race conditions)
+        stream.on('error', () => {});
+        return { stream, contentType };
+      } catch (e) {
+        // Fallback to fetch if opening stream fails (e.g. race condition/deletion)
+        console.warn(`Failed to open cached asset: ${url}`, e);
+      }
     }
 
     // Miss - fetch with User-Agent for Google Fonts compatibility
@@ -60,7 +68,10 @@ export class AssetGateway {
         await fs.writeJson(metadataPath, { contentType });
       }
 
-      return { stream: fs.createReadStream(cachePath), contentType };
+      const stream = fs.createReadStream(cachePath);
+      // Suppress unhandled errors
+      stream.on('error', () => {});
+      return { stream, contentType };
     } catch (e) {
       console.warn(`Failed to fetch asset: ${url}`, e);
       return null;
@@ -155,7 +166,9 @@ export class AssetGateway {
         const result = await this.fetchAsset(url);
         if (!result) return; // Skip failed assets
 
-        const { contentType } = result;
+        const { stream, contentType } = result;
+        stream.destroy(); // Close the stream as we only need the content type here
+
         const hash = this.getHash(url);
 
         // Try URL extension first, fall back to Content-Type

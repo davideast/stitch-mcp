@@ -109,11 +109,13 @@ describe('AssetGateway', () => {
         // First fetch
         const result1 = await gateway.fetchAsset('https://example.com/test.txt');
         expect(result1).not.toBeNull();
+        result1?.stream.destroy();
         expect(fetchCount).toBe(1);
 
         // Second fetch should use cache
         const result2 = await gateway.fetchAsset('https://example.com/test.txt');
         expect(result2).not.toBeNull();
+        result2?.stream.destroy();
         expect(fetchCount).toBe(1); // Still 1, used cache
       } finally {
         globalThis.fetch = originalFetch;
@@ -130,7 +132,8 @@ describe('AssetGateway', () => {
       }) as any;
 
       try {
-        await gateway.fetchAsset('https://fonts.googleapis.com/css2?family=Roboto');
+        const result = await gateway.fetchAsset('https://fonts.googleapis.com/css2?family=Roboto');
+        result?.stream.destroy();
         expect(capturedHeaders?.get('User-Agent')).toContain('Mozilla');
       } finally {
         globalThis.fetch = originalFetch;
