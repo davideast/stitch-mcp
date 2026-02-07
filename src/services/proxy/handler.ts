@@ -11,6 +11,16 @@ import {
 import { GcloudHandler } from '../gcloud/handler.js';
 import { getStitchDir } from '../../platform/detector.js';
 
+/**
+ * Internal dependencies for testing
+ */
+export const deps = {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  getStitchDir
+};
+
 const REFRESH_INTERVAL_MS = 55 * 60 * 1000; // 55 minutes
 
 type Logger = (message: string) => void;
@@ -126,12 +136,12 @@ export class ProxyHandler implements ProxyService {
 
     if (input.debug) {
       try {
-        const stitchDir = getStitchDir();
-        if (!existsSync(stitchDir)) {
-          mkdirSync(stitchDir, { recursive: true, mode: 0o700 });
+        const stitchDir = deps.getStitchDir();
+        if (!deps.existsSync(stitchDir)) {
+          deps.mkdirSync(stitchDir, { recursive: true, mode: 0o700 });
         }
         logFile = path.join(stitchDir, 'proxy-debug.log');
-        logStream = createWriteStream(logFile, { flags: 'a', mode: 0o600 });
+        logStream = deps.createWriteStream(logFile, { flags: 'a', mode: 0o600 });
         logStream.on('error', () => {
           // ignore
         });
