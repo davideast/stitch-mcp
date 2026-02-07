@@ -9,7 +9,7 @@ export interface UIScreen {
   id: string;          // RemoteScreen.name
   title: string;       // RemoteScreen.title
   downloadUrl: string; // RemoteScreen.htmlCode.downloadUrl
-  status: 'included' | 'ignored';
+  status: 'included' | 'ignored' | 'discarded';
   route: string;       // empty by default
 }
 
