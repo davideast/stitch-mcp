@@ -71,13 +71,51 @@ export function virtualContent({ assetGateway, htmlMap }: VirtualContentOptions)
             }
 
             const { stream, contentType } = result;
-            if (contentType) {
-              res.setHeader('Content-Type', contentType);
-            }
-            // Add cache headers
-            res.setHeader('Cache-Control', 'public, max-age=31536000');
 
-            stream.pipe(res);
+            // Infer correct Content-Type from URL extension when cached as octet-stream
+            let effectiveContentType = contentType;
+            if (!contentType || contentType.includes('application/octet-stream')) {
+              const fontExtMap: Record<string, string> = {
+                '.woff2': 'font/woff2',
+                '.woff': 'font/woff',
+                '.ttf': 'font/ttf',
+                '.otf': 'font/otf',
+                '.eot': 'application/vnd.ms-fontobject',
+              };
+              try {
+                const ext = new URL(assetUrl).pathname.match(/\.[^.]+$/)?.[0]?.toLowerCase();
+                if (ext && fontExtMap[ext]) {
+                  effectiveContentType = fontExtMap[ext];
+                }
+              } catch { /* leave as-is */ }
+            }
+
+            if (effectiveContentType) {
+              res.setHeader('Content-Type', effectiveContentType);
+            }
+
+            const isCss = effectiveContentType?.includes('text/css');
+            // CSS is transformed (url rewriting), so use no-cache to force
+            // revalidation. Other assets (fonts, images, JS) are static.
+            res.setHeader('Cache-Control', isCss ? 'no-cache' : 'public, max-age=31536000');
+
+            if (isCss) {
+              // Buffer CSS to rewrite url() references for sub-resources (fonts, images)
+              const chunks: Buffer[] = [];
+              stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+              stream.on('end', () => {
+                const css = Buffer.concat(chunks).toString('utf-8');
+                const rewritten = assetGateway.rewriteCssUrls(css, assetUrl);
+                res.end(rewritten);
+              });
+              stream.on('error', (err) => {
+                console.error('CSS stream error:', err);
+                res.statusCode = 500;
+                res.end('Internal Server Error');
+              });
+            } else {
+              stream.pipe(res);
+            }
           } catch (error) {
             console.error('Asset proxy error:', error);
             res.statusCode = 500;

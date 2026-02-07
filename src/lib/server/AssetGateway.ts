@@ -67,6 +67,88 @@ export class AssetGateway {
     }
   }
 
+  rewriteCssUrls(css: string, baseUrl: string): string {
+    const discovered: string[] = [];
+
+    // First pass: rewrite bare-string @import (not @import url() which is handled below)
+    // Matches: @import '../reset.css'; and @import "https://fonts.googleapis.com/...";
+    const importRewritten = css.replace(
+      /@import\s+(['"])([^'"]+)\1\s*;/g,
+      (match, quote, rawUrl) => {
+        const trimmed = rawUrl.trim();
+
+        if (
+          !trimmed ||
+          trimmed.startsWith('data:') ||
+          trimmed.startsWith('/_stitch/')
+        ) {
+          return match;
+        }
+
+        let resolved: string;
+        try {
+          if (trimmed.startsWith('//')) {
+            resolved = new URL(trimmed, baseUrl).href;
+          } else if (/^https?:\/\//.test(trimmed)) {
+            resolved = trimmed;
+          } else {
+            resolved = new URL(trimmed, baseUrl).href;
+          }
+        } catch {
+          return match;
+        }
+
+        discovered.push(resolved);
+        return `@import ${quote}/_stitch/asset?url=${encodeURIComponent(resolved)}${quote};`;
+      },
+    );
+
+    // Second pass: rewrite url() references (covers @import url(), font src, background, etc.)
+    const rewritten = importRewritten.replace(
+      /url\(\s*(['"]?)([^)]*?)\1\s*\)/g,
+      (match, quote, rawUrl) => {
+        const trimmed = rawUrl.trim();
+
+        // Skip empty, data URIs, fragment-only refs, and already-proxied URLs
+        if (
+          !trimmed ||
+          trimmed.startsWith('data:') ||
+          (trimmed.startsWith('#') && !trimmed.startsWith('#/')) ||
+          trimmed.startsWith('/_stitch/')
+        ) {
+          return match;
+        }
+
+        let resolved: string;
+        try {
+          if (trimmed.startsWith('//')) {
+            // Protocol-relative URL — resolve against base to get full URL
+            resolved = new URL(trimmed, baseUrl).href;
+          } else if (/^https?:\/\//.test(trimmed)) {
+            // Already absolute HTTP URL
+            resolved = trimmed;
+          } else {
+            // Relative URL — resolve against baseUrl
+            resolved = new URL(trimmed, baseUrl).href;
+          }
+        } catch {
+          // Malformed URL — leave unchanged
+          return match;
+        }
+
+        discovered.push(resolved);
+        return `url(${quote}/_stitch/asset?url=${encodeURIComponent(resolved)}${quote})`;
+      },
+    );
+
+    // Optimistic prefetch for discovered URLs
+    for (const url of discovered) {
+      this.fetchAsset(url).catch(() => {});
+    }
+
+    return rewritten;
+  }
+
   async rewriteHtmlForPreview(html: string): Promise<string> {
     const $ = cheerio.load(html);
     const assets = new Set<string>();
