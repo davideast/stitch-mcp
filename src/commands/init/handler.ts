@@ -10,6 +10,7 @@ import { type McpConfigService } from '../../services/mcp-config/spec.js';
 import { ChecklistUIHandler } from '../../ui/checklist/handler.js';
 import { theme } from '../../ui/theme.js';
 import { ConsoleUI } from '../../framework/ConsoleUI.js';
+import { type UserInterface } from '../../framework/UserInterface.js';
 import { type InitContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
 import { type ChecklistItemStateType } from '../../ui/checklist/spec.js';
@@ -30,6 +31,7 @@ export class InitHandler implements InitCommand {
   private readonly mcpConfigService: McpConfigService;
   private readonly projectService: ProjectService;
   private readonly stitchService: StitchService;
+  private readonly ui: UserInterface;
   private checklist: ChecklistUIHandler;
   private steps: CommandStep<InitContext>[];
 
@@ -37,13 +39,15 @@ export class InitHandler implements InitCommand {
     gcloudService?: GcloudService,
     mcpConfigService?: McpConfigService,
     projectService?: ProjectService,
-    stitchService?: StitchService
+    stitchService?: StitchService,
+    ui?: UserInterface
   ) {
     this.gcloudService = gcloudService || new GcloudHandler();
     this.mcpConfigService = mcpConfigService || new McpConfigHandler();
     this.projectService = projectService || new ProjectHandler(this.gcloudService);
     this.stitchService = stitchService || new StitchHandler();
     this.checklist = new ChecklistUIHandler();
+    this.ui = ui || new ConsoleUI();
 
     this.steps = [
       new ClientSelectionStep(),
@@ -71,7 +75,7 @@ export class InitHandler implements InitCommand {
 
     const context: InitContext = {
       input,
-      ui: new ConsoleUI(),
+      ui: this.ui,
       gcloudService: this.gcloudService,
       mcpConfigService: this.mcpConfigService,
       projectService: this.projectService,

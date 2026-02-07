@@ -9,6 +9,7 @@ import { command as init } from './init/command.js';
 import { command as doctor } from './doctor/command.js';
 import { command as tool } from './tool/command.js';
 import { command as proxy } from './proxy/command.js';
+import { command as snapshot } from './snapshot/command.js';
 
 export const commands: CommandDefinition[] = [
   view,
@@ -19,5 +20,6 @@ export const commands: CommandDefinition[] = [
   init,
   doctor,
   tool,
-  proxy
+  proxy,
+  snapshot
 ];

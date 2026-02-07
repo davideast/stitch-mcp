@@ -6,6 +6,7 @@ import { type StitchService } from '../../services/stitch/spec.js';
 import { theme, icons } from '../../ui/theme.js';
 import { createSpinner } from '../../ui/spinner.js';
 import { ConsoleUI } from '../../framework/ConsoleUI.js';
+import { type UserInterface } from '../../framework/UserInterface.js';
 import { type DoctorContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
 import { runSteps } from '../../framework/StepRunner.js';
@@ -21,11 +22,14 @@ import { ApiCheckStep } from './steps/ApiCheckStep.js';
 
 export class DoctorHandler implements DoctorCommand {
   private steps: CommandStep<DoctorContext>[];
+  private readonly ui: UserInterface;
 
   constructor(
     private readonly gcloudService: GcloudService = new GcloudHandler(),
-    private readonly stitchService: StitchService = new StitchHandler()
+    private readonly stitchService: StitchService = new StitchHandler(),
+    ui?: UserInterface
   ) {
+    this.ui = ui || new ConsoleUI();
     this.steps = [
       new ApiKeyDetectedStep(),
       new GcloudCheckStep(),
@@ -43,7 +47,7 @@ export class DoctorHandler implements DoctorCommand {
 
     const context: DoctorContext = {
       input,
-      ui: new ConsoleUI(),
+      ui: this.ui,
       gcloudService: this.gcloudService,
       stitchService: this.stitchService,
       authMode: apiKey ? 'apiKey' : 'oauth',

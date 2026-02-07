@@ -1,0 +1,22 @@
+{
+  "screens": [
+    {
+      "id": "screen1",
+      "title": "Home",
+      "description": "Home screen",
+      "type": "screen",
+      "content": "<h1>Welcome</h1>"
+    },
+    {
+      "id": "screen2",
+      "title": "About",
+      "description": "About screen",
+      "type": "screen",
+      "content": "<h1>About Us</h1>"
+    }
+  ],
+  "inputArgs": {
+    "projectId": "demo-project",
+    "outputDir": "dist"
+  }
+}
