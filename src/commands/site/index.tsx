@@ -12,8 +12,10 @@ interface SiteCommandOptions {
 }
 
 export class SiteCommandHandler {
+  constructor(private client?: StitchMCPClient) {}
+
   async execute(options: SiteCommandOptions) {
-    const client = new StitchMCPClient();
+    const client = this.client || new StitchMCPClient();
 
     let resultConfig: SiteConfig | null = null;
     let resultHtml: Map<string, string> | undefined;
