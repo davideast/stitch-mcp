@@ -21,15 +21,27 @@ export class StitchHandler implements StitchService {
     } as Record<string, string>;
   }
 
-  private getGcloudBinary(): string {
-    const platform = detectPlatform();
-    const localSdkPath = getGcloudSdkPath();
-    const localBinaryPath = joinPath(localSdkPath, 'bin', platform.gcloudBinaryName);
+  private gcloudBinaryPromise: Promise<string> | null = null;
 
-    if (fs.existsSync(localBinaryPath)) {
-      return localBinaryPath;
+  private async getGcloudBinary(): Promise<string> {
+    if (this.gcloudBinaryPromise) {
+      return this.gcloudBinaryPromise;
     }
-    return 'gcloud';
+
+    this.gcloudBinaryPromise = (async () => {
+      const platform = detectPlatform();
+      const localSdkPath = getGcloudSdkPath();
+      const localBinaryPath = joinPath(localSdkPath, 'bin', platform.gcloudBinaryName);
+
+      try {
+        await fs.promises.access(localBinaryPath, fs.constants.F_OK);
+        return localBinaryPath;
+      } catch {
+        return 'gcloud';
+      }
+    })();
+
+    return this.gcloudBinaryPromise;
   }
 
   async configureIAM(input: ConfigureIAMInput): Promise<IAMConfigResult> {
@@ -39,7 +51,7 @@ export class StitchHandler implements StitchService {
 
       const result = await execCommand(
         [
-          this.getGcloudBinary(),
+          await this.getGcloudBinary(),
           'projects',
           'add-iam-policy-binding',
           input.projectId,
@@ -92,7 +104,7 @@ export class StitchHandler implements StitchService {
       env.CLOUDSDK_CORE_PROJECT = input.projectId;
 
       const result = await execCommand(
-        [this.getGcloudBinary(), 'beta', 'services', 'mcp', 'enable', api, `--project=${input.projectId}`, '--quiet'],
+        [await this.getGcloudBinary(), 'beta', 'services', 'mcp', 'enable', api, `--project=${input.projectId}`, '--quiet'],
         { env }
       );
 
@@ -135,7 +147,7 @@ export class StitchHandler implements StitchService {
       const member = `user:${input.userEmail}`;
       const result = await execCommand(
         [
-          this.getGcloudBinary(),
+          await this.getGcloudBinary(),
           'projects',
           'get-iam-policy',
           input.projectId,
@@ -155,7 +167,7 @@ export class StitchHandler implements StitchService {
     try {
       const result = await execCommand(
         [
-          this.getGcloudBinary(),
+          await this.getGcloudBinary(),
           'services',
           'list',
           `--project=${input.projectId}`,

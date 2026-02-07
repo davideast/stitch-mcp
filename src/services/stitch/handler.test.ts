@@ -12,6 +12,14 @@ mock.module('../../platform/shell.js', () => ({
 mock.module('node:fs', () => ({
   default: {
     existsSync: mock(() => false),
+    promises: {
+      access: mock(async () => {
+        throw new Error('File not found');
+      }),
+    },
+    constants: {
+      F_OK: 0,
+    },
   },
 }));
 
