@@ -9,11 +9,11 @@ export class MockStitchMCPClient extends StitchMCPClient {
     this.mockScreens = mockScreens;
   }
 
-  async connect() {
+  override async connect() {
     // No-op for mock
   }
 
-  async callTool<T>(name: string, args: Record<string, any>): Promise<T> {
+  override async callTool<T>(name: string, args: Record<string, any>): Promise<T> {
     if (name === 'list_screens') {
       return { screens: this.mockScreens } as unknown as T;
     }
