@@ -5,6 +5,7 @@ import { theme } from '../../ui/theme.js';
 import { ConsoleUI } from '../../framework/ConsoleUI.js';
 import { type LogoutContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
+import { runSteps } from '../../framework/StepRunner.js';
 
 import { PrepareStep } from './steps/PrepareStep.js';
 import { RevokeUserStep } from './steps/RevokeUserStep.js';
@@ -36,34 +37,34 @@ export class LogoutHandler implements LogoutCommand {
     console.log(`\n${theme.blue('Logout from Google Cloud')}\n`);
 
     try {
-      for (const step of this.steps) {
-        if (await step.shouldRun(context)) {
-          const result = await step.run(context);
+      const { stoppedAt } = await runSteps(this.steps, context, {
+        onAfterStep: (_step, result) => {
+          if (!result.success && result.errorCode === 'GCLOUD_NOT_FOUND') return true;
+          if (result.shouldExit) return true;
+          return false;
+        },
+      });
 
-          if (!result.success) {
-            if (result.errorCode === 'GCLOUD_NOT_FOUND') {
-                return {
-                    success: false,
-                    error: {
-                        code: 'GCLOUD_NOT_FOUND',
-                        message: result.error?.message || 'Gcloud not found',
-                        recoverable: true
-                    }
-                };
-            }
-          }
-
-          if (result.shouldExit) {
-              return {
-                  success: true,
-                  data: {
-                      userRevoked: context.userRevoked,
-                      adcRevoked: context.adcRevoked,
-                      configCleared: context.configCleared,
-                  }
-              };
-          }
+      if (stoppedAt) {
+        if (stoppedAt.result.errorCode === 'GCLOUD_NOT_FOUND') {
+          return {
+            success: false,
+            error: {
+              code: 'GCLOUD_NOT_FOUND',
+              message: stoppedAt.result.error?.message || 'Gcloud not found',
+              recoverable: true,
+            },
+          };
         }
+        // shouldExit case — successful early exit
+        return {
+          success: true,
+          data: {
+            userRevoked: context.userRevoked,
+            adcRevoked: context.adcRevoked,
+            configCleared: context.configCleared,
+          },
+        };
       }
 
       console.log(`\n${theme.green('Successfully logged out!')}\n`);

@@ -13,6 +13,7 @@ import { ConsoleUI } from '../../framework/ConsoleUI.js';
 import { type InitContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
 import { type ChecklistItemStateType } from '../../ui/checklist/spec.js';
+import { runSteps } from '../../framework/StepRunner.js';
 
 import { ClientSelectionStep } from './steps/ClientSelectionStep.js';
 import { AuthModeStep } from './steps/AuthModeStep.js';
@@ -78,31 +79,31 @@ export class InitHandler implements InitCommand {
     };
 
     try {
-      for (const step of this.steps) {
-        if (await step.shouldRun(context)) {
-          this.updateStep(step.id, 'IN_PROGRESS');
-
-          const result = await step.run(context);
-
+      const { stoppedAt } = await runSteps(this.steps, context, {
+        onBeforeStep: (step) => this.updateStep(step.id, 'IN_PROGRESS'),
+        onAfterStep: (step, result) => {
           if (!result.success) {
             const message = result.error?.message || result.detail || 'Failed';
             this.updateStep(step.id, 'FAILED', message);
-            return {
-              success: false,
-              error: {
-                code: (result.errorCode as any) || 'UNKNOWN_ERROR',
-                message,
-                recoverable: true
-              }
-            };
+            return true; // stop on failure
           }
-
           const status = (result.status as ChecklistItemStateType) || 'COMPLETE';
           this.updateStep(step.id, status, result.detail, result.reason);
+          return false;
+        },
+        onSkippedStep: (step) => this.updateStep(step.id, 'SKIPPED', 'Not required'),
+      });
 
-        } else {
-          this.updateStep(step.id, 'SKIPPED', 'Not required');
-        }
+      if (stoppedAt) {
+        const message = stoppedAt.result.error?.message || stoppedAt.result.detail || 'Failed';
+        return {
+          success: false,
+          error: {
+            code: (stoppedAt.result.errorCode as any) || 'UNKNOWN_ERROR',
+            message,
+            recoverable: true,
+          },
+        };
       }
 
       // Final Summary

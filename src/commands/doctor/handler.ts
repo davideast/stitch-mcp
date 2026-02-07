@@ -8,6 +8,7 @@ import { createSpinner } from '../../ui/spinner.js';
 import { ConsoleUI } from '../../framework/ConsoleUI.js';
 import { type DoctorContext } from './context.js';
 import { type CommandStep } from '../../framework/CommandStep.js';
+import { runSteps } from '../../framework/StepRunner.js';
 import dotenv from 'dotenv';
 
 import { ApiKeyDetectedStep } from './steps/ApiKeyDetectedStep.js';
@@ -53,20 +54,21 @@ export class DoctorHandler implements DoctorCommand {
     console.log(`\n${theme.blue('Stitch Doctor')}\n`);
 
     try {
-      for (const step of this.steps) {
-        if (await step.shouldRun(context)) {
-          const spinner = createSpinner();
+      let spinner: ReturnType<typeof createSpinner>;
+      await runSteps(this.steps, context, {
+        onBeforeStep: (step) => {
+          spinner = createSpinner();
           spinner.start(step.name);
-
-          const result = await step.run(context);
-
+        },
+        onAfterStep: (_step, result) => {
           if (result.success) {
             spinner.succeed(result.detail || 'Passed');
           } else {
             spinner.fail(result.error?.message || 'Failed');
           }
-        }
-      }
+          return false; // always continue
+        },
+      });
 
       // Summary
       const allPassed = context.checks.every((c) => c.passed);
