@@ -274,6 +274,16 @@ describe('AssetGateway', () => {
   });
 
   describe('rewriteCssUrls', () => {
+    // Stub fetchAsset to prevent optimistic prefetch from making real
+    // network/filesystem calls that leak async operations between tests
+    let fetchAssetSpy: ReturnType<typeof spyOn>;
+    beforeEach(() => {
+      fetchAssetSpy = spyOn(gateway, 'fetchAsset').mockResolvedValue(null);
+    });
+    afterEach(() => {
+      fetchAssetSpy.mockRestore();
+    });
+
     test('rewrites relative font URLs resolved against base URL', () => {
       const css = `@font-face { src: url('../webfonts/fa-solid-900.woff2'); }`;
       const base = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
@@ -369,25 +379,14 @@ describe('AssetGateway', () => {
     });
 
     test('triggers optimistic prefetch for discovered URLs', () => {
-      const originalFetch = globalThis.fetch;
-      const fetchedUrls: string[] = [];
-      globalThis.fetch = (async (url: any) => {
-        fetchedUrls.push(url as string);
-        return new Response('ok', { status: 200 });
-      }) as any;
+      const css = `@font-face { src: url('../webfonts/fa-solid-900.woff2'); }`;
+      const base = 'https://cdn.example.com/css/all.min.css';
+      gateway.rewriteCssUrls(css, base);
 
-      try {
-        const css = `@font-face { src: url('../webfonts/fa-solid-900.woff2'); }`;
-        const base = 'https://cdn.example.com/css/all.min.css';
-        gateway.rewriteCssUrls(css, base);
-
-        // fetchAsset is called asynchronously; the URL should be queued for prefetch
-        // We verify by checking the fetch was called (via the mock)
-        // Give it a tick to fire
-        expect(fetchedUrls.length).toBeGreaterThanOrEqual(0); // prefetch is async/fire-and-forget
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
+      // fetchAsset spy (from beforeEach) should have been called for the discovered URL
+      expect(fetchAssetSpy).toHaveBeenCalledWith(
+        'https://cdn.example.com/webfonts/fa-solid-900.woff2'
+      );
     });
 
     test('preserves empty url()', () => {
