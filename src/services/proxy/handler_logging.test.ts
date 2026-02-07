@@ -1,51 +1,56 @@
-import { expect, test, mock, beforeEach, describe, jest } from 'bun:test';
-import { ProxyHandler } from './handler.js';
-import { type WriteStream } from 'node:fs';
+import { expect, test, mock, beforeEach, describe, jest, spyOn, afterEach } from 'bun:test';
 
-// Mock dependencies
-const mockStdioTransport: any = {
-  start: mock(async () => { }),
-  send: mock(async (message: any) => { }),
-  onmessage: (message: any) => { },
-  onclose: () => { },
-};
-
-// Mock GcloudHandler
-const mockGcloudHandler: any = {
-  getAccessToken: mock(async () => 'test-token'),
-  getProjectId: mock(async () => 'test-project'),
-};
-
-// Mock global fetch
-global.fetch = mock(async () => new Response('{}', { status: 200 })) as any;
-
-// Mock WriteStream
-const mockWriteStream = {
-  write: mock((chunk: any) => true),
-  end: mock((cb: any) => { if (cb) cb(); }),
-  on: mock((event: string, cb: any) => { }),
-} as unknown as WriteStream;
-
-// Mock node:fs
-mock.module('node:fs', () => ({
-  createWriteStream: mock(() => mockWriteStream),
-  appendFileSync: mock(() => { }),
-}));
-
-// Mock dotenv
-mock.module('dotenv', () => ({
-  default: {
-    config: mock(() => ({})),
+// Mock MCP SDK before importing anything that uses it
+mock.module('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+  StdioServerTransport: class {
+    start = mock(async () => { });
+    send = mock(async () => { });
   },
-  config: mock(() => ({})),
 }));
+
+mock.module('@modelcontextprotocol/sdk/types.js', () => ({}));
+
+import { ProxyHandler, deps } from './handler.js';
+import { type WriteStream } from 'node:fs';
 
 describe('ProxyHandler Logging', () => {
   let proxyHandler: ProxyHandler;
 
+  // Mock dependencies
+  const mockStdioTransport: any = {
+    start: mock(async () => { }),
+    send: mock(async (message: any) => { }),
+    onmessage: (message: any) => { },
+    onclose: () => { },
+  };
+
+  // Mock GcloudHandler
+  const mockGcloudHandler: any = {
+    getAccessToken: mock(async () => 'test-token'),
+    getProjectId: mock(async () => 'test-project'),
+  };
+
+  // Mock WriteStream
+  const mockWriteStream = {
+    write: mock((chunk: any) => true),
+    end: mock((cb: any) => { if (cb) cb(); }),
+    on: mock((event: string, cb: any) => { }),
+  } as unknown as WriteStream;
+
+  let originalFetch: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as any).mockClear();
+
+    // Mock global fetch
+    originalFetch = global.fetch;
+    global.fetch = mock(async () => new Response('{}', { status: 200 })) as any;
+
+    // Spies on internal deps object to avoid module mocking leakage
+    spyOn(deps, 'createWriteStream').mockReturnValue(mockWriteStream as any);
+    spyOn(deps, 'existsSync').mockReturnValue(true);
+    spyOn(deps, 'mkdirSync').mockReturnValue(undefined as any);
+    spyOn(deps, 'getStitchDir').mockReturnValue('/mock/stitch');
 
     // Clear specific mocks
     (mockWriteStream.write as any).mockClear();
@@ -55,17 +60,20 @@ describe('ProxyHandler Logging', () => {
     delete process.env.STITCH_API_KEY;
   });
 
-  test('should use createWriteStream when debug is enabled', async () => {
-    const fs = await import('node:fs');
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
 
+  test('should use createWriteStream when debug is enabled', async () => {
     // Start proxy but don't await completion yet
     const startPromise = proxyHandler.start({ transport: 'stdio', debug: true });
 
     // Allow time for initialization
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    expect(fs.createWriteStream).toHaveBeenCalledTimes(1);
-    expect(fs.createWriteStream).toHaveBeenCalledWith('/tmp/stitch-proxy-debug.log', { flags: 'a' });
+    expect(deps.createWriteStream).toHaveBeenCalledTimes(1);
+    expect(deps.createWriteStream).toHaveBeenCalledWith('/mock/stitch/proxy-debug.log', { flags: 'a', mode: 0o600 });
 
     // Stop proxy to cleanup
     mockStdioTransport.onclose();
@@ -73,13 +81,11 @@ describe('ProxyHandler Logging', () => {
   });
 
   test('should not use createWriteStream when debug is disabled', async () => {
-    const fs = await import('node:fs');
-
     const startPromise = proxyHandler.start({ transport: 'stdio', debug: false });
 
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    expect(fs.createWriteStream).toHaveBeenCalledTimes(0);
+    expect(deps.createWriteStream).toHaveBeenCalledTimes(0);
 
     mockStdioTransport.onclose();
     await startPromise;
