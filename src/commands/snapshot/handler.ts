@@ -145,7 +145,10 @@ export class SnapshotHandler implements SnapshotCommand {
              autoVerify: true,
              ...data.inputArgs
           };
-          await handler.execute(initInput);
+          const result = await handler.execute(initInput);
+          if (!result.success) {
+             console.error('Init failed:', result.error);
+          }
           break;
         }
         case 'doctor': {
@@ -159,7 +162,10 @@ export class SnapshotHandler implements SnapshotCommand {
              verbose: false,
              ...data.inputArgs
           };
-          await handler.execute(doctorInput);
+          const result = await handler.execute(doctorInput);
+          if (!result.success) {
+             console.error('Doctor failed:', result.error);
+          }
           break;
         }
         case 'site': {

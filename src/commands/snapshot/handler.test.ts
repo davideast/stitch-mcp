@@ -44,24 +44,28 @@ describe('SnapshotHandler Output Tests', () => {
   let viteSpies: any[] = [];
   let originalFetch: any;
 
-  // Mock Service Objects with Debug Logs
-  const mockGcloudService: any = {
-    isInstalled: async () => { /* console.log('DEBUG: isInstalled'); */ return true; },
+  // Mock Service Objects
+  // Ensure strict structure matching GcloudService interface and expected return types
+  const mockGcloudService = {
+    isInstalled: async () => true,
     getVersion: async () => '450.0.0',
     getPath: async () => '/usr/bin/gcloud',
     ensureInstalled: async () => ({ success: true, data: { version: '450.0.0', location: 'system', path: '/usr/bin/gcloud' } }),
-    isAuthenticated: async () => { /* console.log('DEBUG: isAuthenticated'); */ return true; },
-    getActiveAccount: async () => { /* console.log('DEBUG: getActiveAccount'); */ return 'test@example.com'; },
-    hasADC: async () => { /* console.log('DEBUG: hasADC'); */ return true; },
+    isAuthenticated: async () => true,
+    getActiveAccount: async () => 'test@example.com',
+    hasADC: async () => true,
     getProjectId: async () => 'mock-project-id',
-    authenticate: async () => ({ success: true }),
+    getAccessToken: async () => 'mock-access-token',
+    authenticate: async () => ({ success: true, data: { account: 'test@example.com' } }),
     authenticateADC: async () => ({ success: true }),
     listProjects: async () => ({ success: true, data: [{ projectId: 'mock-project-id', name: 'Mock Project' }] }),
     createProject: async () => {},
     enableApi: async () => {},
+    setProject: async () => ({ success: true }),
+    installBetaComponents: async () => ({ success: true }),
   };
 
-  const mockStitchService: any = {
+  const mockStitchService = {
     checkIAMRole: async () => true,
     checkAPIEnabled: async () => true,
     configureIAM: async () => ({ success: true, data: { role: 'roles/owner', member: 'user:test@example.com' } }),
@@ -70,29 +74,36 @@ describe('SnapshotHandler Output Tests', () => {
     testConnectionWithApiKey: async () => ({ success: true, data: { connected: true, statusCode: 200, url: 'https://api.stitch.com' } }),
   };
 
-  const mockMcpConfigService: any = {
-    generateConfig: async () => 'mock-config-content',
+  // Fixed mock shape for generateConfig
+  const mockMcpConfigService = {
+    generateConfig: async () => ({
+        success: true,
+        data: {
+            config: 'mock-config-content',
+            instructions: 'Add this to config file'
+        }
+    }),
   };
 
-  const mockProjectService: any = {
-    selectProject: async () => {
-        // console.log('DEBUG: selectProject called');
-        return { success: true, data: { projectId: 'mock-project-id', name: 'Mock Project' } };
-    },
+  const mockProjectService = {
+    selectProject: async () => ({ success: true, data: { projectId: 'mock-project-id', name: 'Mock Project' } }),
     getProjectDetails: async () => ({ projectId: 'mock-project-id', name: 'Mock Project' }),
   };
 
   beforeEach(() => {
     // Spy but allow pass-through to see logs in runner
     consoleLogSpy = spyOn(console, 'log');
-    stdoutWriteSpy = spyOn(process.stdout, 'write');
+    // process.stdout.write needs to return true
+    stdoutWriteSpy = spyOn(process.stdout, 'write').mockImplementation(() => true);
 
+    // Spy on Vite prototype since SiteBuilder creates it directly (not injected)
     viteSpies = [
         spyOn(StitchViteServer.prototype, 'start').mockResolvedValue('http://localhost:5173'),
         spyOn(StitchViteServer.prototype, 'stop').mockResolvedValue(undefined),
         spyOn(StitchViteServer.prototype, 'navigate').mockImplementation(() => {}),
     ];
 
+    // Mock global fetch for site command content fetching
     originalFetch = globalThis.fetch;
     globalThis.fetch = (async (input: any) => {
         const url = input.toString();
@@ -126,6 +137,7 @@ describe('SnapshotHandler Output Tests', () => {
 
     pathExistsSpy.mockResolvedValue(false);
 
+    // Inject mocks directly
     const handler = new SnapshotHandler({
         gcloud: mockGcloudService as any,
         stitch: mockStitchService as any,
@@ -163,10 +175,12 @@ describe('SnapshotHandler Output Tests', () => {
     expect(result.success).toBe(true);
 
     const logs = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+    const stdouts = stdoutWriteSpy.mock.calls.map(c => c.join(' ')).join('');
+    const fullOutput = logs + stdouts;
 
-    expect(logs).toContain('Stitch Doctor');
-    expect(logs).toContain('Health Check Summary');
-    expect(logs).toContain('All checks passed!');
+    expect(fullOutput).toContain('Stitch Doctor');
+    expect(fullOutput).toContain('Health Check Summary');
+    expect(fullOutput).toContain('All checks passed!');
   });
 
   test('site command snapshot', async () => {
