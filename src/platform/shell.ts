@@ -8,6 +8,16 @@ export interface ShellResult {
   error?: string;
 }
 
+function getSpawnArgs(command: string, args: string[]) {
+  if (process.platform === 'win32') {
+    return {
+      cmd: 'cmd.exe',
+      args: ['/d', '/s', '/c', command, ...args]
+    };
+  }
+  return { cmd: command, args };
+}
+
 /**
  * Execute a shell command and return the result
  */
@@ -25,10 +35,11 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
       env: { ...process.env, ...(options?.env || {}) },
       stdio: 'pipe',
       timeout: options?.timeout,
-      shell: process.platform === 'win32'
+      shell: false
     };
 
-    const child = spawn(cmd, args, spawnOptions) as ChildProcess;
+    const { cmd: spawnCmd, args: spawnArgs } = getSpawnArgs(cmd, args);
+    const child = spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
 
     if (child.stdout) {
       child.stdout.on('data', (data: Buffer) => {
@@ -84,10 +95,11 @@ export async function execCommandStreaming(
       cwd: options?.cwd || process.cwd(),
       env: { ...process.env, ...(options?.env || {}) },
       stdio: 'pipe',
-      shell: process.platform === 'win32'
+      shell: false
     };
 
-    const child = spawn(cmd, args, spawnOptions) as ChildProcess;
+    const { cmd: spawnCmd, args: spawnArgs } = getSpawnArgs(cmd, args);
+    const child = spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
 
     if (child.stdout) {
       child.stdout.on('data', (buffer: Buffer) => {
