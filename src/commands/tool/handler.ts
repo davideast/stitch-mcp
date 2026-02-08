@@ -1,91 +1,41 @@
 import { StitchMCPClient } from '../../services/mcp-client/client.js';
-import type { ToolCommandInput, ToolCommandResult, ToolInfo } from './spec.js';
-import { virtualTools } from './virtual-tools.js';
+import type { CommandStep } from '../../framework/CommandStep.js';
+import { runSteps } from '../../framework/StepRunner.js';
+import type { ToolCommandInput, ToolCommandResult, VirtualTool } from './spec.js';
+import type { ToolContext } from './context.js';
+import { virtualTools as defaultVirtualTools } from './virtual-tools/index.js';
+import { ListToolsStep } from './steps/ListToolsStep.js';
+import { ShowSchemaStep } from './steps/ShowSchemaStep.js';
+import { ParseArgsStep } from './steps/ParseArgsStep.js';
+import { ExecuteToolStep } from './steps/ExecuteToolStep.js';
 
 export class ToolCommandHandler {
   private client: StitchMCPClient;
+  private tools: VirtualTool[];
+  private steps: CommandStep<ToolContext>[];
 
-  constructor(client?: StitchMCPClient) {
+  constructor(client?: StitchMCPClient, tools?: VirtualTool[]) {
     this.client = client || new StitchMCPClient();
-  }
-
-  async listTools(): Promise<ToolInfo[]> {
-    const result = await this.client.getCapabilities();
-    const serverTools = result.tools || [];
-    return [...virtualTools, ...serverTools];
-  }
-
-  async getToolSchema(toolName: string): Promise<ToolInfo | null> {
-    const tools = await this.listTools();
-    return tools.find(t => t.name === toolName) || null;
+    this.tools = tools || defaultVirtualTools;
+    this.steps = [
+      new ListToolsStep(),
+      new ShowSchemaStep(),
+      new ParseArgsStep(),
+      new ExecuteToolStep(),
+    ];
   }
 
   async execute(input: ToolCommandInput): Promise<ToolCommandResult> {
-    // No tool name or explicit 'list' command = list all tools
-    if (!input.toolName || input.toolName === 'list') {
-      const tools = await this.listTools();
-      return { success: true, data: tools };
-    }
-
-    // --schema flag = show tool arguments
-    if (input.showSchema) {
-      const tool = await this.getToolSchema(input.toolName);
-      if (!tool) {
-        return { success: false, error: `Tool not found: ${input.toolName}` };
-      }
-      return { success: true, data: this.formatSchema(tool) };
-    }
-
-    // Parse args from -d or @file
-    let args: Record<string, any> = {};
-    if (input.data) {
-      args = JSON.parse(input.data);
-    } else if (input.dataFile) {
-      const content = await Bun.file(input.dataFile.replace('@', '')).text();
-      args = JSON.parse(content);
-    }
-
-    // Check if it's a virtual tool
-    const virtualTool = virtualTools.find(t => t.name === input.toolName);
-    if (virtualTool) {
-      try {
-        const result = await virtualTool.execute(this.client, args);
-        return { success: true, data: result };
-      } catch (e: any) {
-        return { success: false, error: `Virtual tool execution failed: ${e.message || String(e)}` };
-      }
-    }
-
-    const result = await this.client.callTool(input.toolName, args);
-    return { success: true, data: result };
-  }
-
-  private formatSchema(tool: ToolInfo): object {
-    const schema = tool.inputSchema;
-    const args: Record<string, string> = {};
-
-    if (schema?.properties) {
-      for (const [key, prop] of Object.entries(schema.properties)) {
-        const required = schema.required?.includes(key) ? '(required)' : '(optional)';
-        args[key] = `${prop.type} ${required}${prop.description ? ' - ' + prop.description : ''}`;
-      }
-    }
-
-    return {
-      name: tool.name,
-      description: tool.description,
-      arguments: args,
-      example: this.generateExample(tool),
+    const context: ToolContext = {
+      input,
+      client: this.client,
+      virtualTools: this.tools,
     };
-  }
 
-  private generateExample(tool: ToolInfo): string {
-    const exampleArgs: Record<string, any> = {};
-    if (tool.inputSchema?.properties) {
-      for (const [key, prop] of Object.entries(tool.inputSchema.properties)) {
-        exampleArgs[key] = prop.type === 'string' ? `<${key}>` : `<${prop.type}>`;
-      }
-    }
-    return `stitch-mcp tool ${tool.name} -d '${JSON.stringify(exampleArgs)}'`;
+    await runSteps(this.steps, context, {
+      onAfterStep: (_step, _result, ctx) => ctx.result !== undefined,
+    });
+
+    return context.result ?? { success: false, error: 'No step produced a result' };
   }
 }
