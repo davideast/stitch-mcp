@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 import { virtualTools } from "../../../src/commands/tool/virtual-tools.js";
 import { SiteService } from "../../../src/lib/services/site/SiteService.js";
 
@@ -136,6 +136,10 @@ describe("Virtual Tools", () => {
       generateSiteSpy = spyOn(SiteService, "generateSite").mockResolvedValue(undefined);
       generateSiteSpy.mockClear();
       generateSiteSpy.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      generateSiteSpy.mockRestore();
     });
 
     it("should be registered with correct schema", () => {
