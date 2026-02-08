@@ -199,6 +199,15 @@ describe("ToolCommandHandler", () => {
     expect(tools).toContainEqual(expect.objectContaining({ name: "server_tool" }));
   });
 
+  it("should list build_site in virtual tools", async () => {
+    mockGetCapabilities.mockResolvedValue({ tools: [] });
+
+    const handler = new ToolCommandHandler(mockClient);
+    const tools = await handler.listTools();
+
+    expect(tools).toContainEqual(expect.objectContaining({ name: "build_site" }));
+  });
+
   it("should execute virtual tool when name matches", async () => {
     // Mock get_screen for the virtual tool to use
     const mockScreen = {
