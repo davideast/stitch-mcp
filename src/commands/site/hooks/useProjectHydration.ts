@@ -54,7 +54,7 @@ export function useProjectHydration(
       }
 
       setHydrationStatus('downloading');
-      const limit = pLimit(5);
+      const limit = pLimit(3);
       let completed = 0;
       const total = toDownload.length;
 
