@@ -1,14 +1,12 @@
 import type { StitchMCPClient } from '../../../services/mcp-client/client.js';
 import { ProjectSyncer } from '../../site/utils/ProjectSyncer.js';
 import { SiteService } from '../../../lib/services/site/SiteService.js';
-import { AssetGateway } from '../../../lib/server/AssetGateway.js';
-import type { SiteConfig } from '../../../lib/services/site/types.js';
 import type { VirtualTool } from '../spec.js';
 import pLimit from 'p-limit';
 
 export const buildSiteTool: VirtualTool = {
   name: 'build_site',
-  description: '(Virtual) Generates an Astro site from a Stitch project by specifying screen-to-route mappings.',
+  description: '(Virtual) Builds a site from a Stitch project by mapping screens to routes. Returns the design HTML for each page to use as context for code generation.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -34,15 +32,11 @@ export const buildSiteTool: VirtualTool = {
           required: ['screenId', 'route'],
         },
       },
-      outputDir: {
-        type: 'string',
-        description: 'Optional. Output directory for the generated site. Defaults to ".".',
-      },
     },
     required: ['projectId', 'routes'],
   },
   execute: async (client: StitchMCPClient, args: any) => {
-    const { projectId, routes, outputDir = '.' } = args;
+    const { projectId, routes } = args;
 
     // Validate routes
     if (!Array.isArray(routes)) {
@@ -107,31 +101,18 @@ export const buildSiteTool: VirtualTool = {
       throw new Error(`Failed to fetch HTML for screens: ${errors.join('; ')}`);
     }
 
-    // Construct SiteConfig
-    const siteConfig: SiteConfig = {
-      projectId,
-      routes: routes.map((r: any) => ({
-        screenId: r.screenId,
-        route: r.route,
-        status: 'included' as const,
-      })),
-    };
-
-    // Generate site
-    await SiteService.generateSite(siteConfig, htmlContent, new AssetGateway(), outputDir);
-
-    // Return result
+    // Return raw HTML content for each page
     const pages = routes.map((r: any) => ({
       screenId: r.screenId,
       route: r.route,
       title: screenMap.get(r.screenId)!.title,
+      html: htmlContent.get(r.screenId)!,
     }));
 
     return {
       success: true,
-      outputDir,
       pages,
-      message: `Site generated with ${pages.length} page(s) at ${outputDir}`,
+      message: `Built ${pages.length} page(s) with design HTML`,
     };
   },
 };
