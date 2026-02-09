@@ -9,7 +9,7 @@ bun.lockb
 gen
 bin
 .npmrc
-.jules/cache
+.jules
 src/commands/registry.ts
 .stitch-mcp
 test-site

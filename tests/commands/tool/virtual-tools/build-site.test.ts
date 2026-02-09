@@ -1,6 +1,5 @@
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { buildSiteTool } from "../../../../src/commands/tool/virtual-tools/build-site.js";
-import { SiteService } from "../../../../src/lib/services/site/SiteService.js";
 
 describe("build_site virtual tool", () => {
   let mockClient: any;
@@ -21,31 +20,21 @@ describe("build_site virtual tool", () => {
     ],
   };
 
-  let generateSiteSpy: any;
-
   beforeEach(() => {
     mockCallTool = mock();
     mockClient = { callTool: mockCallTool };
 
-    generateSiteSpy = spyOn(SiteService, "generateSite").mockResolvedValue(undefined);
-    generateSiteSpy.mockClear();
-    generateSiteSpy.mockResolvedValue(undefined);
-
     global.fetch = mock(() => Promise.resolve(new Response(""))) as any;
-  });
-
-  afterEach(() => {
-    generateSiteSpy.mockRestore();
   });
 
   it("should be registered with correct schema", () => {
     expect(buildSiteTool.name).toBe("build_site");
     expect(buildSiteTool.inputSchema!.required).toContain("projectId");
     expect(buildSiteTool.inputSchema!.required).toContain("routes");
-    expect(buildSiteTool.inputSchema!.properties!.outputDir).toBeDefined();
+    expect(buildSiteTool.inputSchema!.properties!.outputDir).toBeUndefined();
   });
 
-  it("should generate a site successfully", async () => {
+  it("should return pages with raw HTML", async () => {
     mockCallTool.mockResolvedValue(mockRemoteScreens);
     const fetchMock = mock(async (url: any) => {
       if (url === "http://example.com/screen1.html") {
@@ -64,15 +53,22 @@ describe("build_site virtual tool", () => {
         { screenId: "screen-1", route: "/" },
         { screenId: "screen-2", route: "/about" },
       ],
-      outputDir: "/tmp/test-site",
     });
 
     expect(result.success).toBe(true);
-    expect(result.outputDir).toBe("/tmp/test-site");
     expect(result.pages).toHaveLength(2);
-    expect(result.pages[0]).toEqual({ screenId: "screen-1", route: "/", title: "Home Screen" });
-    expect(result.pages[1]).toEqual({ screenId: "screen-2", route: "/about", title: "About Screen" });
-    expect(generateSiteSpy).toHaveBeenCalledTimes(1);
+    expect(result.pages[0]).toEqual({
+      screenId: "screen-1",
+      route: "/",
+      title: "Home Screen",
+      html: "<html>Home</html>",
+    });
+    expect(result.pages[1]).toEqual({
+      screenId: "screen-2",
+      route: "/about",
+      title: "About Screen",
+      html: "<html>About</html>",
+    });
   });
 
   it("should throw when screen ID is not found", async () => {
@@ -136,38 +132,7 @@ describe("build_site virtual tool", () => {
     ).rejects.toThrow("Duplicate route paths found: /");
   });
 
-  it("should construct all routes as 'included'", async () => {
-    mockCallTool.mockResolvedValue(mockRemoteScreens);
-    const fetchMock = mock(async () => new Response("<html></html>", { status: 200 }));
-    global.fetch = fetchMock as any;
-
-    await buildSiteTool.execute(mockClient, {
-      projectId: "123",
-      routes: [
-        { screenId: "screen-1", route: "/" },
-        { screenId: "screen-2", route: "/about" },
-      ],
-    });
-
-    const config = generateSiteSpy.mock.calls[0][0];
-    expect(config.routes.every((r: any) => r.status === "included")).toBe(true);
-  });
-
-  it("should default outputDir to '.'", async () => {
-    mockCallTool.mockResolvedValue(mockRemoteScreens);
-    const fetchMock = mock(async () => new Response("<html></html>", { status: 200 }));
-    global.fetch = fetchMock as any;
-
-    await buildSiteTool.execute(mockClient, {
-      projectId: "123",
-      routes: [{ screenId: "screen-1", route: "/" }],
-    });
-
-    const outputDir = generateSiteSpy.mock.calls[0][3];
-    expect(outputDir).toBe(".");
-  });
-
-  it("should pass HTML content map correctly", async () => {
+  it("should return correct HTML for each screen", async () => {
     mockCallTool.mockResolvedValue(mockRemoteScreens);
     const fetchMock = mock(async (url: any) => {
       if (url === "http://example.com/screen1.html") {
@@ -177,7 +142,7 @@ describe("build_site virtual tool", () => {
     });
     global.fetch = fetchMock as any;
 
-    await buildSiteTool.execute(mockClient, {
+    const result = await buildSiteTool.execute(mockClient, {
       projectId: "123",
       routes: [
         { screenId: "screen-1", route: "/" },
@@ -185,9 +150,8 @@ describe("build_site virtual tool", () => {
       ],
     });
 
-    const htmlMap = generateSiteSpy.mock.calls[0][1] as Map<string, string>;
-    expect(htmlMap.get("screen-1")).toBe("<html>Home</html>");
-    expect(htmlMap.get("screen-2")).toBe("<html>About</html>");
+    expect(result.pages[0].html).toBe("<html>Home</html>");
+    expect(result.pages[1].html).toBe("<html>About</html>");
   });
 
   it("should throw for entries missing route string", async () => {
