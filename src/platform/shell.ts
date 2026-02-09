@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
+import * as childProcess from 'node:child_process';
+import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 export interface ShellResult {
   success: boolean;
@@ -8,7 +9,7 @@ export interface ShellResult {
   error?: string;
 }
 
-function getSpawnArgs(command: string, args: string[]) {
+export function getSpawnArgs(command: string, args: string[]) {
   if (process.platform === 'win32') {
     return {
       cmd: 'cmd.exe',
@@ -39,7 +40,7 @@ export async function execCommand(command: string[], options?: { cwd?: string; e
     };
 
     const { cmd: spawnCmd, args: spawnArgs } = getSpawnArgs(cmd, args);
-    const child = spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
+    const child = childProcess.spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
 
     if (child.stdout) {
       child.stdout.on('data', (data: Buffer) => {
@@ -99,7 +100,7 @@ export async function execCommandStreaming(
     };
 
     const { cmd: spawnCmd, args: spawnArgs } = getSpawnArgs(cmd, args);
-    const child = spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
+    const child = childProcess.spawn(spawnCmd, spawnArgs, spawnOptions) as ChildProcess;
 
     if (child.stdout) {
       child.stdout.on('data', (buffer: Buffer) => {
