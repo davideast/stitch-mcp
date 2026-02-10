@@ -35,6 +35,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const [routeValue, setRouteValue] = useState('');
 
   const [followMode, setFollowMode] = useState(true);
+  const [showAllKeys, setShowAllKeys] = useState(false);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [server, setServer] = useState<StitchViteServer | null>(null);
 
@@ -262,7 +263,11 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
         process.stdout.write(JSON.stringify(exportData, null, 2) + '\n');
     }
 
-    if (key.escape) {
+    if (input === '?') {
+        setShowAllKeys(prev => !prev);
+    }
+
+    if (input === 'q') {
         onExit(null);
         exit();
     }
@@ -362,8 +367,10 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text dimColor>
             {viewMode === 'discarded'
-                ? '[↑↓] Navigate [x] Undiscard [d] Back to All [Esc] Quit'
-                : `[↑↓] Navigate [Space] Toggle [Enter] Edit Route [x] Discard [d] View Discarded [t] Filter [f] Follow: ${followMode ? 'ON' : 'OFF'} [g] Generate [e] Export [Esc] Quit`
+                ? '[x] Undiscard [d] Back to All [q] Quit'
+                : showAllKeys
+                    ? `[Space] Toggle [Enter] Edit Route [x] Discard [d] View Discarded [t] Filter [f] Follow: ${followMode ? 'ON' : 'OFF'} [o] Open [g] Generate [e] Export [q] Quit [?] Less`
+                    : '[Space] Toggle [Enter] Edit Route [g] Generate [x] Discard [o] Open [q] Quit [?] More'
             }
         </Text>
       </Box>
