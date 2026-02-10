@@ -126,6 +126,7 @@ npx @_davideast/stitch-mcp site -p <project-id> [options]
 |--------|-------------|
 | `-p, --project <id>` | **Required.** Project ID |
 | `-o, --output <dir>` | Output directory (default: `.`) |
+| `-e, --export` | Export screen-to-route config as `build_site` JSON (no interactive UI) |
 
 Launches an interactive screen-to-route mapper, then generates an Astro project with the following structure:
 
@@ -140,6 +141,8 @@ Launches an interactive screen-to-route mapper, then generates an Astro project 
 ```
 
 External assets (fonts, images) are downloaded to `public/assets/` with URLs rewritten to local paths.
+
+Press `e` in the interactive builder to export the current screen-to-route config as JSON to stdout (useful for piping into `build_site`).
 
 ### `view` — Interactive resource browser
 

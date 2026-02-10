@@ -8,7 +8,8 @@ export const command: CommandDefinition = {
     { flags: '-p, --project <id>', description: 'Project ID' }
   ],
   options: [
-    { flags: '-o, --output <dir>', description: 'Output directory', defaultValue: '.' }
+    { flags: '-o, --output <dir>', description: 'Output directory', defaultValue: '.' },
+    { flags: '-e, --export', description: 'Export screen-to-route config as build_site JSON', defaultValue: false }
   ],
   action: async (_args, options) => {
     try {
@@ -16,7 +17,8 @@ export const command: CommandDefinition = {
       const handler = new SiteCommandHandler();
       await handler.execute({
           projectId: options.project,
-          outputDir: options.output
+          outputDir: options.output,
+          export: options.export
       });
       process.exit(0);
     } catch (error) {

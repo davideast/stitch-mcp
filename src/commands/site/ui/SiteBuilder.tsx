@@ -250,6 +250,18 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
         exit();
     }
 
+    if (input === 'e') {
+        const included = screens.filter(s => s.status === 'included');
+        const exportData = {
+            projectId,
+            routes: included.map(s => ({
+                screenId: s.id,
+                route: s.route,
+            })),
+        };
+        process.stdout.write(JSON.stringify(exportData, null, 2) + '\n');
+    }
+
     if (key.escape) {
         onExit(null);
         exit();
@@ -351,7 +363,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
         <Text dimColor>
             {viewMode === 'discarded'
                 ? '[↑↓] Navigate [x] Undiscard [d] Back to All [Esc] Quit'
-                : `[↑↓] Navigate [Space] Toggle [Enter] Edit Route [x] Discard [d] View Discarded [t] Filter [f] Follow: ${followMode ? 'ON' : 'OFF'} [g] Generate [Esc] Quit`
+                : `[↑↓] Navigate [Space] Toggle [Enter] Edit Route [x] Discard [d] View Discarded [t] Filter [f] Follow: ${followMode ? 'ON' : 'OFF'} [g] Generate [e] Export [Esc] Quit`
             }
         </Text>
       </Box>
