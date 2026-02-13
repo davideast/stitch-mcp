@@ -30,11 +30,15 @@ mock.module('vite', () => {
     };
 });
 
-// Import after mocking
-import { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
+// Use dynamic import to ensure mock.module is fully registered before loading
+let StitchViteServer: any;
+beforeAll(async () => {
+    const mod = await import('../../../src/lib/server/vite/StitchViteServer');
+    StitchViteServer = mod.StitchViteServer;
+});
 
 describe('StitchViteServer', () => {
-  let server: StitchViteServer;
+    let server: any;
 
   afterEach(async () => {
     if (server) await server.stop();
@@ -79,3 +83,4 @@ describe('StitchViteServer', () => {
         // but this test ensures navigate() doesn't throw
     });
 });
+
