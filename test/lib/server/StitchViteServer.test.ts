@@ -30,15 +30,15 @@ mock.module('vite', () => {
     };
 });
 
-// Use dynamic import to ensure mock.module is fully registered before loading
-let StitchViteServer: any;
+// Use a different name to avoid TDZ collision with the exported class name
+let ServerClass: any;
 
 describe('StitchViteServer', () => {
     let server: any;
 
     beforeAll(async () => {
     const mod = await import('../../../src/lib/server/vite/StitchViteServer');
-    StitchViteServer = mod.StitchViteServer;
+      ServerClass = mod.StitchViteServer;
   });
 
   afterEach(async () => {
@@ -46,7 +46,7 @@ describe('StitchViteServer', () => {
   });
 
   it('should start and stop the server', async () => {
-    server = new StitchViteServer();
+      server = new ServerClass();
     const url = await server.start(0);
     expect(url).toContain('http://localhost:3000');
     // We can't fetch from the mock server, but we verified the abstraction calls start
@@ -62,7 +62,7 @@ describe('StitchViteServer', () => {
           rewriteHtmlForPreview: mock(async (html: string) => html)
       } as unknown as AssetGateway;
 
-      server = new StitchViteServer(process.cwd(), mockAssetGateway);
+      server = new ServerClass(process.cwd(), mockAssetGateway);
       await server.start(0);
 
       server.mount('/test', '<h1>Hello</h1>');
@@ -73,7 +73,7 @@ describe('StitchViteServer', () => {
   });
 
     it('should send navigate event via WebSocket', async () => {
-        server = new StitchViteServer();
+        server = new ServerClass();
         await server.start(0);
 
         // Call navigate
@@ -84,4 +84,5 @@ describe('StitchViteServer', () => {
         // but this test ensures navigate() doesn't throw
     });
 });
+
 
