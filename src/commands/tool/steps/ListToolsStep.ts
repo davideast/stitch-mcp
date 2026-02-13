@@ -6,7 +6,8 @@ export class ListToolsStep implements CommandStep<ToolContext> {
   name = 'List available tools';
 
   async shouldRun(context: ToolContext): Promise<boolean> {
-    return !context.input.toolName || context.input.toolName === 'list';
+    const name = context.input.toolName?.toLowerCase();
+    return !name || name === 'list' || name === 'listtools' || name === 'list_tools';
   }
 
   async run(context: ToolContext): Promise<StepResult> {

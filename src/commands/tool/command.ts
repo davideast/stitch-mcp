@@ -24,7 +24,12 @@ export const command: CommandDefinition = {
       });
 
       if (!result.success) {
-        console.error(result.error);
+        const errorOutput = {
+          success: false,
+          error: result.error,
+          ...(result.data && { data: result.data }),
+        };
+        console.error(JSON.stringify(errorOutput, null, 2));
         process.exit(1);
       }
 
@@ -36,8 +41,15 @@ export const command: CommandDefinition = {
         console.log(JSON.stringify(result.data, null, 2));
       }
       process.exit(0);
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (error: any) {
+      // Detect MCP SDK errors and print a clean message
+      if (error?.code !== undefined && error?.message) {
+        console.error(`Error: ${error.message}`);
+      } else if (error instanceof Error) {
+        console.error(`Error: ${error.message}`);
+      } else {
+        console.error('Unexpected error:', error);
+      }
       process.exit(1);
     }
   }

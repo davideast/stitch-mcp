@@ -7,6 +7,7 @@ import { virtualTools as defaultVirtualTools } from './virtual-tools/index.js';
 import { ListToolsStep } from './steps/ListToolsStep.js';
 import { ShowSchemaStep } from './steps/ShowSchemaStep.js';
 import { ParseArgsStep } from './steps/ParseArgsStep.js';
+import { ValidateToolStep } from './steps/ValidateToolStep.js';
 import { ExecuteToolStep } from './steps/ExecuteToolStep.js';
 
 export class ToolCommandHandler {
@@ -21,6 +22,7 @@ export class ToolCommandHandler {
       new ListToolsStep(),
       new ShowSchemaStep(),
       new ParseArgsStep(),
+      new ValidateToolStep(),
       new ExecuteToolStep(),
     ];
   }
