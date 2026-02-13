@@ -32,13 +32,14 @@ mock.module('vite', () => {
 
 // Use dynamic import to ensure mock.module is fully registered before loading
 let StitchViteServer: any;
-beforeAll(async () => {
-    const mod = await import('../../../src/lib/server/vite/StitchViteServer');
-    StitchViteServer = mod.StitchViteServer;
-});
 
 describe('StitchViteServer', () => {
     let server: any;
+
+    beforeAll(async () => {
+    const mod = await import('../../../src/lib/server/vite/StitchViteServer');
+    StitchViteServer = mod.StitchViteServer;
+  });
 
   afterEach(async () => {
     if (server) await server.stop();
