@@ -2,6 +2,9 @@ import { expect, test, describe, spyOn, mock, afterEach, beforeEach } from 'bun:
 import { SnapshotHandler } from './handler.js';
 import path from 'path';
 import fs from 'fs-extra';
+
+// StitchViteServer uses dynamic import('vite') inside start(), so we can
+// import it directly without mocking vite at the module level.
 import { StitchViteServer } from '../../lib/server/vite/StitchViteServer.js';
 
 // Use absolute paths for reliable mocking

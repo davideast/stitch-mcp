@@ -58,6 +58,7 @@ describe("ToolCommandHandler (integration)", () => {
   it("should execute server tool with -d data", async () => {
     const mockResult = { id: "123", title: "My Project" };
     mockCallTool.mockResolvedValue(mockResult);
+    mockGetCapabilities.mockResolvedValue({ tools: [{ name: "create_project" }] });
 
     const handler = new ToolCommandHandler(mockClient);
     const result = await handler.execute({
@@ -75,6 +76,7 @@ describe("ToolCommandHandler (integration)", () => {
   it("should route to virtual tool when name matches", async () => {
     const mockScreen = { name: "projects/123/screens/abc", title: "Test Screen" };
     mockCallTool.mockResolvedValue(mockScreen);
+    mockGetCapabilities.mockResolvedValue({ tools: [] });
     global.fetch = mock(() => Promise.resolve(new Response(""))) as any;
 
     const handler = new ToolCommandHandler(mockClient);
