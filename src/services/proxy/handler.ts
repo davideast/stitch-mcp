@@ -161,7 +161,7 @@ export class ProxyHandler implements ProxyService {
     }
 
     try {
-      dotenv.config();
+      dotenv.config({ quiet: true });
       const apiKey = process.env.STITCH_API_KEY;
       let authConfig: AuthConfig;
 
