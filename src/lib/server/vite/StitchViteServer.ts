@@ -1,4 +1,4 @@
-import { createServer, type ViteDevServer } from 'vite';
+import type { ViteDevServer } from 'vite';
 import { AssetGateway } from '../AssetGateway.js';
 import { virtualContent } from './plugins/virtualContent.js';
 
@@ -12,6 +12,11 @@ export class StitchViteServer {
   }
 
   async start(port: number = 3000): Promise<string> {
+    // Dynamic import to avoid loading vite at module evaluation time.
+    // Vite's module initialization (testCaseInsensitiveFS) can fail in
+    // CI environments and makes the class unmockable in tests.
+    const { createServer } = await import('vite');
+
     this.server = await createServer({
       configFile: false,
       root: process.cwd(),

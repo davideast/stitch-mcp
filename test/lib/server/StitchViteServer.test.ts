@@ -1,7 +1,8 @@
-import { describe, it, expect, afterEach, mock, beforeAll } from 'bun:test';
+import { describe, it, expect, afterEach, mock } from 'bun:test';
 import { Readable } from 'stream';
+import { StitchViteServer } from '../../../src/lib/server/vite/StitchViteServer';
 
-// Create mock vite server instance for reuse
+// Mock vite's createServer via dynamic import interception
 const mockViteWsSend = mock();
 const mockViteServer = {
     listen: mock().mockResolvedValue(undefined),
@@ -20,21 +21,13 @@ const mockViteServer = {
     })
 };
 
-// Mock vite before any imports that depend on it
+// mock.module still intercepts the dynamic import('vite') inside start()
 mock.module('vite', () => ({
     createServer: mock(async () => mockViteServer),
-    Plugin: class { },
-    ViteDevServer: class { }
 }));
 
 describe('StitchViteServer', () => {
-    let mod: any;
-    let server: any;
-
-    beforeAll(async () => {
-        // Dynamic import AFTER mock.module is registered
-        mod = await import('../../../src/lib/server/vite/StitchViteServer');
-    });
+    let server: StitchViteServer;
 
     afterEach(async () => {
         if (server) await server.stop();
@@ -42,7 +35,7 @@ describe('StitchViteServer', () => {
     });
 
     it('should start and stop the server', async () => {
-        server = new mod.StitchViteServer();
+        server = new StitchViteServer();
         const url = await server.start(0);
         expect(url).toContain('http://localhost:3000');
     });
@@ -56,13 +49,13 @@ describe('StitchViteServer', () => {
             rewriteHtmlForPreview: mock(async (html: string) => html)
         };
 
-        server = new mod.StitchViteServer(process.cwd(), mockAssetGateway);
+        server = new StitchViteServer(process.cwd(), mockAssetGateway as any);
         await server.start(0);
         server.mount('/test', '<h1>Hello</h1>');
     });
 
     it('should send navigate event via WebSocket', async () => {
-        server = new mod.StitchViteServer();
+        server = new StitchViteServer();
         await server.start(0);
         server.navigate('/_preview/test-screen-id');
         expect(mockViteWsSend).toHaveBeenCalled();

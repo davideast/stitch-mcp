@@ -3,21 +3,8 @@ import { SnapshotHandler } from './handler.js';
 import path from 'path';
 import fs from 'fs-extra';
 
-// Mock vite BEFORE importing StitchViteServer to prevent vite's
-// testCaseInsensitiveFS() from running (client.mjs is missing on CI)
-mock.module('vite', () => ({
-  createServer: mock(async () => ({
-    listen: mock().mockResolvedValue(undefined),
-    close: mock().mockResolvedValue(undefined),
-    httpServer: { address: () => ({ port: 5173 }) },
-    ws: { send: mock() },
-    middlewares: { use: mock() },
-    transformIndexHtml: mock(async (_url: string, html: string) => html)
-  })),
-  Plugin: class { },
-  ViteDevServer: class { }
-}));
-
+// StitchViteServer uses dynamic import('vite') inside start(), so we can
+// import it directly without mocking vite at the module level.
 import { StitchViteServer } from '../../lib/server/vite/StitchViteServer.js';
 
 // Use absolute paths for reliable mocking
