@@ -42,7 +42,7 @@ export class DoctorHandler implements DoctorCommand {
   }
 
   async execute(input: DoctorInput): Promise<DoctorResult> {
-    dotenv.config();
+    dotenv.config({ quiet: true });
     const apiKey = process.env.STITCH_API_KEY;
 
     const context: DoctorContext = {
