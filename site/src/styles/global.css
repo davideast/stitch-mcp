@@ -182,7 +182,7 @@ pre {
  * Astro injects inline style="background-color:var(--astro-code-background)"
  * so we set that variable in :root above instead of fighting specificity. */
 .docs-prose pre {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: 0;
   padding: 24px;
   margin: 16px 0 24px;
@@ -202,9 +202,71 @@ pre {
   line-height: inherit;
 }
 
-/* lists */
-.docs-prose ul,
+/* TUI frame — header bar + code body (rehype-tui-frames plugin) */
+.docs-prose .tui-frame {
+  border: 1px solid var(--color-border-strong);
+  margin: 16px 0 24px;
+}
+.tui-frame-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-strong);
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tui-frame-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-white);
+}
+.tui-frame-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tui-frame-copy {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-dim);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+.tui-frame-copy::before { content: "["; }
+.tui-frame-copy::after  { content: "]"; }
+.tui-frame-copy:hover {
+  color: var(--color-white);
+}
+.tui-frame-copy.copied {
+  color: var(--color-white);
+}
+.tui-frame-dots { display: flex; gap: 4px; }
+.tui-frame-dots > div {
+  width: 8px;
+  height: 8px;
+  background: var(--color-border-strong);
+}
+/* Remove pre's own border/margin inside frame */
+.docs-prose .tui-frame pre {
+  border: none;
+  margin: 0;
+}
+
+/* lists — Tailwind v4 preflight sets list-style: none; restore it */
+.docs-prose ul {
+  list-style-type: disc;
+  margin: 12px 0 20px;
+  padding-left: 24px;
+}
 .docs-prose ol {
+  list-style-type: decimal;
   margin: 12px 0 20px;
   padding-left: 24px;
 }
@@ -220,33 +282,42 @@ pre {
   color: var(--color-dim);
 }
 
-/* table — original uses grid-cols but markdown tables render as <table> */
+/* table — TUI bordered grid */
 .docs-prose table {
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0 24px;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--color-border-strong);
 }
 
-/* th — "text-label text-primary uppercase tracking-widest border-b border-border py-3" */
+/* th — compact uppercase label row */
 .docs-prose th {
-  color: var(--color-primary);
+  color: var(--color-dim);
   font-weight: 500;
   text-align: left;
-  padding: 12px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
 }
 
-/* td — "text-sm text-secondary border-b border-border py-4" */
+/* td — tight data cells */
 .docs-prose td {
   color: var(--color-secondary);
-  padding: 16px 12px;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-strong);
+  font-size: 13px;
+}
+
+/* first column — brighter for labels/keys */
+.docs-prose td:first-child {
+  color: var(--color-primary);
+  white-space: nowrap;
 }
 
 .docs-prose blockquote {

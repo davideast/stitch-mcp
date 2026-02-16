@@ -30,4 +30,20 @@ const { title, categoryDisplay, description, activePath, sections, prev, next } 
       <PrevNextNav prev={prev} next={next} />
     </div>
   </main>
+  <script>
+    document.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-role=tui-copy]");
+      if (!btn) return;
+      const frame = btn.closest(".tui-frame");
+      const code = frame?.querySelector("pre")?.textContent ?? "";
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = "OK";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = "COPY";
+          btn.classList.remove("copied");
+        }, 1500);
+      });
+    });
+  </script>
 </BaseLayout>

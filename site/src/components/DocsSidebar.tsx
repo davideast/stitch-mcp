@@ -27,6 +27,16 @@ const GitHubIcon = () => (
   </svg>
 );
 
+/** Short sidebar labels — keep every entry to one line. */
+const NAV_LABELS: Record<string, string> = {
+  "Connect Your Agent": "Connect Agent",
+  "Use Stitch Tools in Agents": "Stitch Tools",
+  "Build Agent Skills": "Agent Skills",
+  "Virtual Tools": "Virtual Tools",
+  "Command Reference": "Commands",
+  "Preview Designs": "Previewing",
+};
+
 export function DocsSidebar({ sections, activePath }: DocsSidebarProps) {
   return (
     <aside className="fixed top-0 left-0 w-[200px] h-screen bg-bg border-r border-subtle-white flex flex-col p-6 z-50">
@@ -45,29 +55,19 @@ export function DocsSidebar({ sections, activePath }: DocsSidebarProps) {
             <ul className="space-y-2">
               {section.links.map((link) => {
                 const isActive = link.href === activePath;
+                const label = NAV_LABELS[link.label] ?? link.label;
                 return (
-                  <li
-                    key={link.href}
-                    className={`pl-4 ${isActive ? "flex items-center gap-1.5" : ""}`}
-                  >
-                    {isActive ? (
-                      <>
-                        <span className="text-primary">&gt;</span>
-                        <a
-                          className="text-[13px] text-primary"
-                          href={link.href}
-                        >
-                          {link.label}
-                        </a>
-                      </>
-                    ) : (
-                      <a
-                        className="text-[13px] text-secondary hover:text-primary transition-colors"
-                        href={link.href}
-                      >
-                        {link.label}
-                      </a>
-                    )}
+                  <li key={link.href}>
+                    <a
+                      className={`text-[12px] block pl-4 whitespace-nowrap ${
+                        isActive
+                          ? "text-primary border-l border-primary"
+                          : "text-secondary hover:text-primary transition-colors border-l border-transparent"
+                      }`}
+                      href={link.href}
+                    >
+                      {label}
+                    </a>
                   </li>
                 );
               })}

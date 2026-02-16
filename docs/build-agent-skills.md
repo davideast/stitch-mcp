@@ -1,201 +1,251 @@
 ---
 title: Build Agent Skills
-description: Programmatic usage, library API, and virtual tool architecture for skill builders.
+description: Package Stitch design-to-code workflows as reusable agent skills.
 order: 3
 category: agent-integration
 ---
 
 # Build Agent Skills
 
-This guide covers how to use stitch-mcp programmatically to build agent skills, automations, and custom tooling.
+Your agent can already call Stitch tools. But every time it does, you're writing the same prompts from scratch — "fetch the screen, compare it to my code, tell me what's off." Agent Skills let you write those instructions once and reuse them forever.
 
-## The design-to-code pattern
+An [Agent Skill](https://agentskills.io) is a directory with a `SKILL.md` file. No SDK, no runtime, no build step. Just markdown that any coding agent — Claude Code, Cursor, Gemini CLI, Codex — can discover and execute.
 
-The typical agent workflow:
+## Why Stitch + Agent Skills
 
-1. **Generate** — create or select designs in Stitch
-2. **Fetch** — use `get_screen_code` or `build_site` to get design HTML
-3. **Implement** — pass the HTML to a coding agent as context for code generation
-4. **Iterate** — edit designs with `edit_screens`, re-fetch, and refine
+Stitch gives agents design context through MCP tools — screen HTML, images, project metadata. That's the raw material. Agent Skills are the recipes that tell an agent what to *do* with it.
 
-## `build_site` + code generation
+The built-in tools handle atomic operations: fetch a screen, list projects, get an image. But the interesting work happens when you combine them with agent intelligence — reviewing implementations against designs, extracting component patterns across screens, generating design system documentation.
 
-The `build_site` virtual tool is designed for agents that scaffold entire applications. It maps screens to routes and returns the design HTML for each page:
+Without a skill, you explain that workflow every session. With one, the agent already knows it. You say "review my header against the Stitch design" and it runs.
+
+## The `tool` command
+
+The `tool` command is the CLI interface skills use to call Stitch tools. It's how you test and debug tool calls outside an agent session:
 
 ```bash
-npx @_davideast/stitch-mcp tool build_site -d '{
-  "projectId": "123456",
-  "routes": [
-    { "screenId": "abc", "route": "/" },
-    { "screenId": "def", "route": "/about" }
-  ]
+# List every tool available
+stitch tool
+
+# See what a specific tool expects
+stitch tool get_screen_code -s
+
+# Call a tool with data
+stitch tool list_projects -o json
+```
+
+## What this looks like in practice
+
+Say you've implemented a landing page and want to verify it matches the original Stitch design. Here's what a **design review** skill instructs the agent to do:
+
+**Step 1 — Get the design source:**
+
+```bash
+stitch tool get_screen_code -d '{
+  "projectId": "8837201",
+  "screenId": "a1b2c3"
 }'
 ```
 
-Returns:
+The agent gets back the full design HTML — every color value, spacing token, font stack, and layout decision the designer made.
 
-```json
-{
-  "success": true,
-  "pages": [
-    { "screenId": "abc", "route": "/", "title": "Home", "html": "<!DOCTYPE html>..." },
-    { "screenId": "def", "route": "/about", "title": "About", "html": "<!DOCTYPE html>..." }
-  ],
-  "message": "Built 2 page(s) with design HTML"
-}
-```
-
-Agents can use the returned HTML as the ground truth for layout, colors, and component structure.
-
-## `site --export` for agent consumption
-
-The `site` command has an `--export` flag that outputs the screen-to-route mapping as JSON instead of generating an Astro project:
+**Step 2 — Get the visual reference:**
 
 ```bash
-npx @_davideast/stitch-mcp site -p 123456 --export
+stitch tool get_screen_image -d '{
+  "projectId": "8837201",
+  "screenId": "a1b2c3"
+}'
 ```
 
-This outputs `build_site`-compatible JSON that an agent can pass directly to the `build_site` tool. Useful when a human picks routes interactively and hands off to an agent for implementation.
+Now the agent has a screenshot of the intended design. It can see the page the way a human would.
 
-## Library API
+**Step 3 — The agent reads your code and compares.**
 
-Install stitch-mcp as a dependency for programmatic access:
+This is the part no built-in command can do. The agent reads your `src/pages/index.tsx`, diffs the computed styles against the design HTML, eyeballs the screenshot against your running dev server, and reports:
+
+- "The hero heading uses `text-4xl` but the design specifies `44px` — should be `text-[44px]`"
+- "The card grid has `gap-4` but the design uses `24px` gap — should be `gap-6`"
+- "The CTA button background is `#3b82f6` but the design uses `#2563eb`"
+
+Two tool calls gave the agent eyes. The skill told it where to look.
+
+## Existing skills
+
+The [stitch-skills](https://github.com/google-labs-code/stitch-skills) repository has production-ready skills you can install and study:
+
+| Skill | What it does |
+|-------|-------------|
+| `react-components` | Converts Stitch screens into React component systems with design token consistency |
+| `design-md` | Analyzes a Stitch project and generates a `DESIGN.md` documenting the design system |
+| `stitch-loop` | Generates complete multi-page websites from a single prompt |
+| `enhance-prompt` | Transforms vague UI ideas into polished, Stitch-optimized generation prompts |
+| `remotion` | Generates walkthrough videos from Stitch projects with transitions and overlays |
+| `shadcn-ui` | Integrates shadcn/ui components with Stitch design output |
+
+Install any of them:
 
 ```bash
-npm install @_davideast/stitch-mcp
+npx skills add google-labs-code/stitch-skills --list
+npx skills add google-labs-code/stitch-skills --skill react-components
 ```
 
-### Available exports
+## Building your own
 
-| Export | Description |
-|--------|-------------|
-| `GcloudHandler` | Manage gcloud installation, auth, and projects |
-| `StitchHandler` | Configure IAM, enable API, test connections |
-| `McpConfigHandler` | Generate MCP client configurations |
-| `ProjectHandler` | Interactive project selection |
-| `InitHandler` | Full setup wizard |
-| `DoctorHandler` | Health check diagnostics |
+A skill is a directory with a `SKILL.md` file:
 
-### Authenticate and get a token
-
-```typescript
-import { GcloudHandler } from '@_davideast/stitch-mcp';
-
-const gcloud = new GcloudHandler();
-
-const installResult = await gcloud.ensureInstalled({ forceLocal: false });
-if (!installResult.success) {
-  console.error('gcloud not available:', installResult.error.message);
-  process.exit(1);
-}
-
-const authResult = await gcloud.authenticate({ skipIfActive: true });
-if (authResult.success) {
-  console.log(`Authenticated as: ${authResult.data.account}`);
-}
-
-const token = await gcloud.getAccessToken();
+```plaintext
+design-review/
+├── SKILL.md
+├── scripts/       # Executable helpers (optional)
+├── references/    # Extra docs loaded on demand (optional)
+└── assets/        # Templates, schemas (optional)
 ```
 
-### Test Stitch API connectivity
+### SKILL.md format
 
-```typescript
-import { StitchHandler, GcloudHandler } from '@_davideast/stitch-mcp';
+YAML frontmatter followed by markdown instructions.
 
-const gcloud = new GcloudHandler();
-const stitch = new StitchHandler();
-const token = await gcloud.getAccessToken();
-
-const result = await stitch.testConnection({
-  projectId: 'my-project-id',
-  accessToken: token!,
-});
-
-if (result.success) {
-  console.log(`Connected (HTTP ${result.data.statusCode})`);
-}
+```yaml
+---
+name: design-review
+description: Review UI implementations against Stitch designs. Use when the user asks to compare their code to a design, check design fidelity, or audit visual accuracy.
+license: MIT
+compatibility: Requires npx and network access to the Stitch API.
+allowed-tools: mcp__stitch__get_screen mcp__stitch__get_project mcp__stitch__list_screens Bash(npx:*) Bash(stitch:*) Read
+metadata:
+  author: your-org
+  version: "1.0"
+---
 ```
 
-### Generate MCP config for a client
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Lowercase, hyphens, numbers. Max 64 chars. Must match directory name. |
+| `description` | Yes | What the skill does and when to activate. Max 1024 chars. |
+| `license` | No | License name or reference to a bundled file. |
+| `compatibility` | No | Environment requirements. |
+| `allowed-tools` | No | Pre-approved tools. Experimental — format varies by agent. |
+| `metadata` | No | Arbitrary key-value pairs. |
 
-```typescript
-import { McpConfigHandler } from '@_davideast/stitch-mcp';
+### About `allowed-tools`
 
-const configGenerator = new McpConfigHandler();
-const result = await configGenerator.generateConfig({
-  client: 'vscode',
-  projectId: 'my-project',
-  transport: 'stdio',
-  apiKey: 'your-api-key',
-});
+The `allowed-tools` field lists tools the agent is pre-approved to call without prompting the user. What goes in this list depends on how the agent reaches the tools:
 
-if (result.success) {
-  console.log(result.data.config);
-}
+- **MCP tools** — if the agent has stitch-mcp connected as an MCP server, it calls tools like `get_screen`, `list_screens` directly through the protocol. List them by their MCP tool name (e.g., `mcp__stitch__get_screen`).
+- **CLI tools** — if the skill uses `stitch tool ...` bash commands, list `Bash(stitch:*)` and/or `Bash(npx:*)`.
+- **File access** — `Read` and `Write` for reading user code and writing reports.
+
+Most Stitch skills need both: MCP tool names for agents connected via MCP, and Bash patterns as a fallback for CLI invocation.
+
+### Writing descriptions that trigger
+
+The `description` is how agents decide whether to activate your skill. Include the verbs and nouns a user would actually say:
+
+```yaml
+# Good — matches natural requests
+description: Review UI implementations against Stitch designs. Use when the user asks to compare their code to a design, check design fidelity, or audit visual accuracy.
 ```
 
-### Run diagnostics
-
-```typescript
-import { DoctorHandler } from '@_davideast/stitch-mcp';
-
-const doctor = new DoctorHandler();
-const result = await doctor.execute({ verbose: true });
-
-if (result.success) {
-  result.data.checks.forEach(check => {
-    console.log(`${check.passed ? 'PASS' : 'FAIL'} ${check.name}: ${check.message}`);
-  });
-}
+```yaml
+# Bad — too vague, agents won't match it
+description: Works with Stitch designs.
 ```
 
-## Virtual tool architecture
+### The body
 
-Virtual tools extend the proxy with operations that combine multiple upstream API calls. They're defined using the `VirtualTool` interface:
+After the frontmatter, write whatever instructions help the agent succeed. Step-by-step workflows, tool invocations, edge cases, output formatting — there are no format restrictions.
 
-```typescript
-interface VirtualTool {
-  name: string;
-  description?: string;
-  inputSchema?: {
-    type: string;
-    properties?: Record<string, any>;
-    required?: string[];
-  };
-  execute: (client: StitchMCPClient, args: any) => Promise<any>;
-}
+### Name rules
+
+- 1–64 characters, lowercase letters, numbers, and hyphens
+- No leading/trailing hyphens, no consecutive hyphens (`--`)
+- Must match the parent directory name
+
+## Example: a design review skill
+
+````markdown
+---
+name: design-review
+description: Review UI implementations against Stitch designs. Use when the user asks to compare their code to a design, check design fidelity, or audit visual accuracy.
+allowed-tools: mcp__stitch__get_screen mcp__stitch__list_screens Bash(stitch:*) Read
+metadata:
+  author: your-org
+  version: "1.0"
+---
+
+## When to activate
+
+The user asks something like:
+- "Does my page match the Stitch design?"
+- "Review my header against the original screen"
+- "Check design fidelity for the pricing page"
+
+## Steps
+
+1. Ask the user which Stitch project and screen to compare against.
+2. If they don't know the screen ID, run `stitch tool list_screens -d '{ "projectId": "PROJECT_ID" }'` and let them pick.
+3. Fetch the design HTML:
+
+```bash
+stitch tool get_screen_code -d '{
+  "projectId": "PROJECT_ID",
+  "screenId": "SCREEN_ID"
+}'
 ```
 
-Each virtual tool receives the authenticated `StitchMCPClient` and can call upstream tools through `client.callTool(toolName, args)`.
+4. Fetch the design screenshot:
 
-The four built-in virtual tools are in `src/commands/tool/virtual-tools/`:
-
-- `build-site.ts` — orchestrates screen fetching and HTML download for multi-page sites
-- `get-screen-code.ts` — fetches a screen then downloads its HTML content
-- `get-screen-image.ts` — fetches a screen then downloads its screenshot as base64
-- `list-tools.ts` — returns all available tools and their schemas
-
-## Example: a skill that scaffolds an app
-
-Here's the flow for an agent skill that creates a web app from Stitch designs:
-
-1. Call `list_projects` to find available projects
-2. Call `list_screens` with the chosen project ID
-3. Present screens to the user and collect route assignments
-4. Call `build_site` with the project ID and route mappings
-5. Use the returned HTML to scaffold components in the chosen framework
-6. Optionally call `get_screen_image` for visual reference during implementation
-
-The `site --export` command automates steps 2-3 by providing an interactive picker that outputs `build_site`-compatible JSON.
-
-## Type safety
-
-All handlers export their TypeScript interfaces for mocking in tests:
-
-```typescript
-import type {
-  GcloudService,
-  StitchService,
-  McpConfigService
-} from '@_davideast/stitch-mcp';
+```bash
+stitch tool get_screen_image -d '{
+  "projectId": "PROJECT_ID",
+  "screenId": "SCREEN_ID"
+}'
 ```
+
+5. Read the user's implementation files.
+6. Compare and report discrepancies in these categories:
+
+### What to check
+
+- **Colors** — hex values, CSS variables, opacity
+- **Typography** — font family, size, weight, line height, letter spacing
+- **Spacing** — margins, padding, gaps
+- **Layout** — flex/grid structure, alignment, ordering
+- **Components** — missing elements, extra elements, structural differences
+
+### Output format
+
+Report findings as a checklist:
+
+```
+## Design Review: [screen name]
+
+### Matches
+- [x] Font family matches (JetBrains Mono)
+- [x] Background color matches (#0c0c0c)
+
+### Discrepancies
+- [ ] Hero heading: `text-4xl` → should be `text-[44px]`
+- [ ] Card grid gap: `gap-4` → should be `gap-6` (design uses 24px)
+- [ ] CTA button: `bg-blue-500` → should be `bg-[#2563eb]`
+```
+````
+
+## Progressive disclosure
+
+Skills should minimize context usage. The agent loads content in three stages:
+
+1. **Metadata** (~100 tokens) — `name` and `description` loaded at startup for all installed skills
+2. **Instructions** (< 5000 tokens) — the full `SKILL.md` body loaded when activated
+3. **Resources** (on demand) — `scripts/`, `references/`, `assets/` loaded only when referenced
+
+Keep `SKILL.md` under 500 lines. Move detailed reference material to separate files.
+
+## Validation
+
+```bash
+npx skills-ref validate ./my-skill
+```
+
+Checks that frontmatter is valid and naming conventions are followed.
