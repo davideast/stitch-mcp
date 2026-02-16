@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monochromatic Connect Your Agent Guide</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "mono-bg": "#0c0c0c",
+                        "mono-surface": "#141414",
+                        "mono-primary": "#e8e8e8",
+                        "mono-body": "#888888",
+                        "mono-label": "#555555",
+                        "mono-border": "#3f3f46", 
+                    },
+                    fontFamily: {
+                        "sans": ["JetBrains Mono", "monospace"], // Override sans to be mono as requested
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    fontSize: {
+                        "display": ["48px", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
+                        "heading": ["24px", { lineHeight: "1.3", letterSpacing: "-0.01em" }],
+                        "body": ["15px", { lineHeight: "1.6" }],
+                    },
+                    borderRadius: {
+                        "none": "0px",
+                        "DEFAULT": "0px",
+                    },
+                    spacing: {
+                        "18": "4.5rem",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0c0c0c;
+            color: #888888;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .mono-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .mono-scrollbar::-webkit-scrollbar-track {
+            background: #0c0c0c;
+            border-left: 1px solid #3f3f46;
+        }
+        .mono-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border: 1px solid #0c0c0c;
+        }
+        .mono-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        pre {
+            background-color: #141414 !important;
+            border: 1px solid #3f3f46;
+        }
+        .ascii-art {
+            line-height: 1.2;
+            white-space: pre;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body class="bg-mono-bg text-mono-body font-mono antialiased selection:bg-mono-label selection:text-white flex min-h-screen">
+<aside class="fixed top-0 left-0 bottom-0 w-[220px] border-r border-mono-border bg-mono-bg z-20 flex flex-col hidden md:flex">
+<div class="p-6 border-b border-mono-border">
+<a class="font-bold text-mono-primary tracking-tight" href="#">stitch-mcp</a>
+</div>
+<nav class="flex-1 overflow-y-auto mono-scrollbar py-8 px-6 space-y-10">
+<div>
+<h3 class="font-bold text-[11px] uppercase tracking-widest text-mono-label mb-4">Getting Started</h3>
+<ul class="space-y-3 font-light text-[13px]">
+<li><a class="hover:text-mono-primary transition-colors" href="#">Introduction</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Installation</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Quick Start</a></li>
+</ul>
+</div>
+<div>
+<h3 class="font-bold text-[11px] uppercase tracking-widest text-mono-label mb-4">Agent Integration</h3>
+<ul class="space-y-3 font-light text-[13px]">
+<li><a class="text-mono-primary font-normal" href="#">Connect Your Agent</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Tool Definitions</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Security</a></li>
+</ul>
+</div>
+<div>
+<h3 class="font-bold text-[11px] uppercase tracking-widest text-mono-label mb-4">Reference</h3>
+<ul class="space-y-3 font-light text-[13px]">
+<li><a class="hover:text-mono-primary transition-colors" href="#">CLI Commands</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Config Options</a></li>
+<li><a class="hover:text-mono-primary transition-colors" href="#">Troubleshooting</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="flex-1 md:ml-[220px] w-full max-w-[940px] px-6 md:px-12 py-12 md:py-20">
+<div class="max-w-[720px]">
+<header class="mb-12">
+<h1 class="text-display font-bold text-mono-primary mb-6">Connect Your Agent</h1>
+<p class="text-body font-light max-w-xl mb-12">
+                    Enable AI agents to interact directly with your design system. By exposing local tools via MCP, agents can read design tokens, generate components, and scaffold entire pages.
+                </p>
+<div class="h-px bg-mono-border w-full"></div>
+</header>
+<section class="mb-16">
+<div class="flex items-center gap-4 mb-6">
+<h2 class="text-heading font-bold text-mono-primary whitespace-nowrap">──── PROXY VS DIRECT CONNECTION ────</h2>
+</div>
+<div class="space-y-4 mb-8">
+<p class="text-body font-light">
+                        The `stitch-mcp` CLI acts as a bridge between your local development environment and the LLM. When running in proxy mode, it establishes a secure tunnel that allows the agent to execute specific read-only or generation commands.
+                    </p>
+</div>
+<div class="bg-mono-surface border border-mono-border p-6 mb-8">
+<div class="ascii-art text-mono-body">
+  [ AGENT / IDE ]               [ LOCAL PROXY ]              [ PROJECT ]
+        |                              |                          |
+        |  JSON-RPC Request            |                          |
+        | ---------------------------&gt; |                          |
+        |                              |  fs.read / exec          |
+        |                              | -----------------------&gt; |
+        |                              |                          |
+        |                              |      File Content        |
+        |                              | &lt;----------------------- |
+        |  Tool Result                 |                          |
+        | &lt;--------------------------- |                          |
+        |                              |                          |
+                    </div>
+</div>
+</section>
+<section class="mb-16">
+<div class="flex items-center gap-4 mb-6">
+<h2 class="text-heading font-bold text-mono-primary whitespace-nowrap">──── CAPABILITIES ────</h2>
+</div>
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse font-light">
+<thead>
+<tr>
+<th class="py-3 pr-4 border-b border-mono-border text-mono-primary text-sm font-bold">Feature</th>
+<th class="py-3 pr-4 border-b border-mono-border text-mono-primary text-sm font-bold">Standard CLI</th>
+<th class="py-3 pr-4 border-b border-mono-border text-mono-primary text-sm font-bold">Agent Mode</th>
+</tr>
+</thead>
+<tbody class="text-body text-sm">
+<tr>
+<td class="py-3 pr-4 border-b border-mono-border text-mono-body">File Access</td>
+<td class="py-3 pr-4 border-b border-mono-border">Manual</td>
+<td class="py-3 pr-4 border-b border-mono-border">Autonomous (Scoped)</td>
+</tr>
+<tr>
+<td class="py-3 pr-4 border-b border-mono-border text-mono-body">Component Gen</td>
+<td class="py-3 pr-4 border-b border-mono-border">Scaffold only</td>
+<td class="py-3 pr-4 border-b border-mono-border">Context-aware</td>
+</tr>
+<tr>
+<td class="py-3 pr-4 border-b border-mono-border text-mono-body">Visual QA</td>
+<td class="py-3 pr-4 border-b border-mono-border">Browser</td>
+<td class="py-3 pr-4 border-b border-mono-border">Screenshot analysis</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="mb-16">
+<div class="flex items-center gap-4 mb-6">
+<h2 class="text-heading font-bold text-mono-primary whitespace-nowrap">──── WHAT VIRTUAL TOOLS ADD ────</h2>
+</div>
+<p class="text-body font-light mb-8">
+                    When connected, the agent gains access to three primary tools designed to understand and manipulate your design system structure without hallucinations.
+                </p>
+<div class="space-y-0 divide-y divide-mono-border border-t border-b border-mono-border">
+<div class="py-6 flex flex-col sm:flex-row gap-4 sm:gap-12">
+<code class="font-normal text-mono-primary text-sm sm:w-48 shrink-0">build_site</code>
+<p class="text-body text-sm font-light">Compiles the current screen selection into a deployable static artifact. Used when the agent determines the design is finalized.</p>
+</div>
+<div class="py-6 flex flex-col sm:flex-row gap-4 sm:gap-12">
+<code class="font-normal text-mono-primary text-sm sm:w-48 shrink-0">get_screen_code</code>
+<p class="text-body text-sm font-light">Fetches the underlying Astro or React code for a specific screen ID. Allows the agent to refactor existing components.</p>
+</div>
+<div class="py-6 flex flex-col sm:flex-row gap-4 sm:gap-12">
+<code class="font-normal text-mono-primary text-sm sm:w-48 shrink-0">get_screen_image</code>
+<p class="text-body text-sm font-light">Requests a headless browser snapshot of a component in isolation. Essential for visual regression verification.</p>
+</div>
+</div>
+</section>
+<section class="mb-16">
+<div class="flex items-center gap-4 mb-10">
+<h2 class="text-heading font-bold text-mono-primary whitespace-nowrap">──── PER-CLIENT CONFIGURATION ────</h2>
+</div>
+<div class="space-y-12">
+<div>
+<h3 class="text-mono-primary font-normal mb-4">Claude Code</h3>
+<p class="text-body text-sm font-light mb-4">Add the following to your <code class="bg-mono-surface px-1 py-0.5 text-mono-label text-xs">config.json</code>:</p>
+<div class="bg-mono-surface p-6 border border-mono-border overflow-x-auto">
+<pre class="text-sm leading-relaxed text-mono-body bg-transparent border-0 p-0 font-light"><span class="text-mono-primary">"mcpServers"</span>: {
+  <span class="text-mono-primary">"stitch"</span>: {
+    <span class="text-mono-primary">"command"</span>: "npx",
+    <span class="text-mono-primary">"args"</span>: [
+      "-y",
+      "@_davideast/stitch-mcp",
+      "proxy"
+    ]
+  }
+}</pre>
+</div>
+</div>
+<div>
+<h3 class="text-mono-primary font-normal mb-4">VS Code</h3>
+<p class="text-body text-sm font-light mb-4">Configure in User Settings or Workspace Settings:</p>
+<div class="bg-mono-surface p-6 border border-mono-border overflow-x-auto">
+<pre class="text-sm leading-relaxed text-mono-body bg-transparent border-0 p-0 font-light"><span class="text-mono-primary">"cline.mcpServers"</span>: {
+  <span class="text-mono-primary">"stitch-local"</span>: {
+    <span class="text-mono-primary">"command"</span>: "node",
+    <span class="text-mono-primary">"args"</span>: ["./node_modules/.bin/stitch-mcp", "start"],
+    <span class="text-mono-primary">"env"</span>: {
+      <span class="text-mono-primary">"STITCH_PROJECT_ROOT"</span>: "${workspaceFolder}"
+    }
+  }
+}</pre>
+</div>
+</div>
+<div>
+<h3 class="text-mono-primary font-normal mb-4">Cursor</h3>
+<p class="text-body text-sm font-light mb-4">Use the absolute path for reliability in Cursor AI pane:</p>
+<div class="bg-mono-surface p-6 border border-mono-border overflow-x-auto">
+<pre class="text-sm leading-relaxed text-mono-body bg-transparent border-0 p-0 font-light"><span class="text-mono-primary">"cursor.agent.tools"</span>: [
+  {
+    <span class="text-mono-primary">"name"</span>: "stitch-mcp",
+    <span class="text-mono-primary">"command"</span>: "stitch proxy --port 3000"
+  }
+]</pre>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-20">
+<div class="flex items-center gap-4 mb-6">
+<h2 class="text-heading font-bold text-mono-primary whitespace-nowrap">──── VERIFYING THE CONNECTION ────</h2>
+</div>
+<p class="text-body font-light mb-6">
+                    Once configured, restart your IDE or agent runtime. You can verify the tools are loaded by asking the agent to list its available capabilities.
+                </p>
+<div class="bg-mono-surface border border-mono-border p-4 mb-4">
+<div class="flex items-center gap-2 mb-2 border-b border-mono-border pb-2">
+<div class="w-2 h-2 bg-mono-label rounded-full"></div>
+<span class="text-[10px] font-bold uppercase tracking-widest text-mono-label">Terminal</span>
+</div>
+<code class="text-sm text-mono-primary block font-normal">$ stitch doctor --mcp</code>
+<div class="mt-2 text-mono-body text-xs opacity-70 font-light">
+                        &gt; Checking MCP registry... OK<br/>
+                        &gt; Verifying tool definitions... 3 found<br/>
+                        &gt; Connection ready.
+                    </div>
+</div>
+<div class="bg-mono-surface border border-mono-border p-4">
+<div class="flex items-center gap-2 mb-2 border-b border-mono-border pb-2">
+<div class="w-2 h-2 bg-mono-label rounded-full"></div>
+<span class="text-[10px] font-bold uppercase tracking-widest text-mono-label">Agent Prompt</span>
+</div>
+<code class="text-sm text-mono-primary block font-normal">User: "Check the current screen code."</code>
+<div class="mt-2 text-mono-body text-xs opacity-70 font-light">
+                        &gt; Agent: "Using tool `get_screen_code` to retrieve context..."
+                    </div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

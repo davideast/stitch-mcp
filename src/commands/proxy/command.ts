@@ -5,8 +5,8 @@ export const command: CommandDefinition = {
   name: 'proxy',
   description: 'Start the Stitch MCP proxy server',
   options: [
-    { flags: '--transport <type>', description: 'Transport type (stdio or sse)', defaultValue: 'stdio' },
-    { flags: '--port <number>', description: 'Port number (required for sse)', fn: (val) => parseInt(val, 10) },
+    { flags: '--transport <type>', description: 'Transport type (stdio)', defaultValue: 'stdio' },
+    { flags: '--port <number>', description: 'Port number', fn: (val) => parseInt(val, 10) },
     { flags: '--debug', description: 'Enable debug logging to file', defaultValue: false },
   ],
   action: async (_args, options) => {

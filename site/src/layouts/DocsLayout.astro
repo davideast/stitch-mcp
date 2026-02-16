@@ -1,0 +1,33 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import { DocsSidebar } from "../components/DocsSidebar";
+import { PrevNextNav } from "../components/PrevNextNav";
+import { PageHeader } from "../components/PageHeader";
+
+interface Props {
+  title: string;
+  category: string;
+  categoryDisplay: string;
+  description?: string;
+  activePath: string;
+  sections: { category: string; links: { label: string; href: string }[] }[];
+  prev?: { label: string; href: string };
+  next?: { label: string; href: string };
+}
+
+const { title, categoryDisplay, description, activePath, sections, prev, next } = Astro.props;
+---
+<BaseLayout title={`${title} — stitch-mcp`}>
+  <DocsSidebar sections={sections} activePath={activePath} />
+  <main class="ml-[200px]">
+    <div class="max-w-[700px] mx-auto px-6 pt-24 pb-24">
+      <PageHeader category={categoryDisplay} title={title}>
+        {description}
+      </PageHeader>
+      <div class="docs-prose">
+        <slot />
+      </div>
+      <PrevNextNav prev={prev} next={next} />
+    </div>
+  </main>
+</BaseLayout>

@@ -1,0 +1,86 @@
+---
+import { getCollection, render } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const CATEGORY_ORDER = [
+  "getting-started",
+  "agent-integration",
+  "workflows",
+  "reference",
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  overview: "Overview",
+  "getting-started": "Getting Started",
+  "agent-integration": "Agent Integration",
+  workflows: "Workflows",
+  reference: "Reference",
+};
+
+export async function getStaticPaths() {
+  const docs = await getCollection("docs");
+  return docs.map((entry) => ({
+    params: { slug: entry.id === "index" ? undefined : entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const allDocs = await getCollection("docs");
+
+// Build sidebar sections (exclude overview — it's the landing page)
+const sections = CATEGORY_ORDER.map((cat) => {
+  const pages = allDocs
+    .filter((d) => d.data.category === cat)
+    .sort((a, b) => a.data.order - b.data.order);
+  return {
+    category: CATEGORY_LABELS[cat],
+    links: pages.map((p) => ({
+      label: p.data.title,
+      href: `/docs/${p.id}`,
+    })),
+  };
+}).filter((s) => s.links.length > 0);
+
+// Build flat navigation order for prev/next
+const navOrder: typeof allDocs = [];
+const overview = allDocs.find((d) => d.data.category === "overview");
+if (overview) navOrder.push(overview);
+for (const cat of CATEGORY_ORDER) {
+  const pages = allDocs
+    .filter((d) => d.data.category === cat)
+    .sort((a, b) => a.data.order - b.data.order);
+  navOrder.push(...pages);
+}
+
+const currentIndex = navOrder.findIndex((d) => d.id === entry.id);
+const prevEntry = currentIndex > 0 ? navOrder[currentIndex - 1] : undefined;
+const nextEntry =
+  currentIndex < navOrder.length - 1 ? navOrder[currentIndex + 1] : undefined;
+
+function entryHref(e: (typeof allDocs)[number]) {
+  return e.id === "index" ? "/docs/" : `/docs/${e.id}`;
+}
+
+const activePath = entryHref(entry);
+const prev = prevEntry
+  ? { label: prevEntry.data.title, href: entryHref(prevEntry) }
+  : undefined;
+const next = nextEntry
+  ? { label: nextEntry.data.title, href: entryHref(nextEntry) }
+  : undefined;
+---
+<DocsLayout
+  title={entry.data.title}
+  category={entry.data.category}
+  categoryDisplay={CATEGORY_LABELS[entry.data.category] || entry.data.category}
+  description={entry.data.description}
+  activePath={activePath}
+  sections={sections}
+  prev={prev}
+  next={next}
+>
+  <Content />
+</DocsLayout>
