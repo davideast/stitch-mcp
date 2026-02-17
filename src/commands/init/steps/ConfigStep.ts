@@ -44,7 +44,13 @@ export class ConfigStep implements CommandStep<InitContext> {
   private async setupGeminiExtension(context: InitContext): Promise<void> {
     const spinner = createSpinner();
     const extensionPath = path.join(os.homedir(), '.gemini', 'extensions', 'Stitch', 'gemini-extension.json');
-    const isInstalled = fs.existsSync(extensionPath);
+    let isInstalled = false;
+    try {
+      await fs.promises.access(extensionPath);
+      isInstalled = true;
+    } catch {
+      isInstalled = false;
+    }
 
     if (isInstalled) {
       spinner.succeed('Stitch extension is already installed');
@@ -73,14 +79,16 @@ export class ConfigStep implements CommandStep<InitContext> {
 
     spinner.start('Configuring extension...');
 
-    if (!fs.existsSync(extensionPath)) {
+    try {
+      await fs.promises.access(extensionPath);
+    } catch {
       spinner.fail('Extension configuration file not found');
       context.ui.log(theme.gray(`  Expected path: ${extensionPath}`));
       return;
     }
 
     try {
-      const content = fs.readFileSync(extensionPath, 'utf8');
+      const content = await fs.promises.readFile(extensionPath, 'utf8');
       const config = JSON.parse(content);
 
       if (!config.mcpServers?.stitch) {
@@ -105,7 +113,7 @@ export class ConfigStep implements CommandStep<InitContext> {
           env,
         };
 
-        fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+        await fs.promises.writeFile(extensionPath, JSON.stringify(config, null, 4));
         const successMsg = context.apiKey
           ? 'Stitch extension configured for STDIO with API Key'
           : `Stitch extension configured for STDIO: Project ID set to ${theme.blue(context.projectId!)}`;
@@ -125,7 +133,7 @@ export class ConfigStep implements CommandStep<InitContext> {
              if (config.mcpServers.stitch.headers['Authorization']) delete config.mcpServers.stitch.headers['Authorization'];
              if (config.mcpServers.stitch.headers['X-Goog-User-Project']) delete config.mcpServers.stitch.headers['X-Goog-User-Project'];
 
-             fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+             await fs.promises.writeFile(extensionPath, JSON.stringify(config, null, 4));
              spinner.succeed(`Stitch extension configured for HTTP with API Key`);
         } else {
             config.mcpServers.stitch = {
@@ -136,7 +144,7 @@ export class ConfigStep implements CommandStep<InitContext> {
                 'X-Goog-User-Project': context.projectId!,
               },
             };
-            fs.writeFileSync(extensionPath, JSON.stringify(config, null, 4));
+            await fs.promises.writeFile(extensionPath, JSON.stringify(config, null, 4));
             spinner.succeed(`Stitch extension configured for HTTP: Project ID set to ${theme.blue(context.projectId!)}`);
         }
       }
