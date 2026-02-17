@@ -13,6 +13,7 @@ interface SidebarSection {
 interface DocsSidebarProps {
   sections: SidebarSection[];
   activePath?: string;
+  basePath?: string;
 }
 
 const GitHubIcon = () => (
@@ -41,11 +42,11 @@ const NAV_LABELS: Record<string, string> = {
   "Preview Designs": "Previewing",
 };
 
-export function DocsSidebar({ sections, activePath }: DocsSidebarProps) {
+export function DocsSidebar({ sections, activePath, basePath = "" }: DocsSidebarProps) {
   return (
     <aside className="fixed top-0 left-0 w-[200px] h-screen bg-bg border-r border-subtle-white flex flex-col p-6 z-50">
       <div className="mb-10">
-        <a href="/" className="text-[13px] text-white font-mono">
+        <a href={`${basePath}/`} className="text-[13px] text-white font-mono">
           stitch-mcp
         </a>
       </div>

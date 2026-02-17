@@ -31,6 +31,8 @@ const { Content } = await render(entry);
 const allDocs = await getCollection("docs");
 
 // Build sidebar sections (exclude overview — it's the landing page)
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 const sections = CATEGORY_ORDER.map((cat) => {
   const pages = allDocs
     .filter((d) => d.data.category === cat)
@@ -39,7 +41,7 @@ const sections = CATEGORY_ORDER.map((cat) => {
     category: CATEGORY_LABELS[cat],
     links: pages.map((p) => ({
       label: p.data.title,
-      href: `/${p.id}`,
+      href: `${base}/${p.id}`,
     })),
   };
 }).filter((s) => s.links.length > 0);
@@ -61,7 +63,7 @@ const nextEntry =
   currentIndex < navOrder.length - 1 ? navOrder[currentIndex + 1] : undefined;
 
 function entryHref(e: (typeof allDocs)[number]) {
-  return e.id === "index" ? "/" : `/${e.id}`;
+  return e.id === "index" ? `${base}/` : `${base}/${e.id}`;
 }
 
 const activePath = entryHref(entry);
