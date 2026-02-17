@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: site
-        run: npm install
+        run: rm -rf node_modules package-lock.json && npm install
 
       - name: Build site
         working-directory: site
