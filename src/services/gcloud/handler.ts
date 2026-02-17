@@ -55,7 +55,15 @@ export class GcloudHandler implements GcloudService {
       const localSdkPath = getGcloudSdkPath();
       const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
 
-      if (fs.existsSync(localBinaryPath)) {
+      let localExists = false;
+      try {
+        await fs.promises.access(localBinaryPath, fs.constants.F_OK);
+        localExists = true;
+      } catch {
+        // file doesn't exist
+      }
+
+      if (localExists) {
         const version = await this.getVersionFromPath(localBinaryPath);
         if (version) {
           this.gcloudPath = localBinaryPath;
