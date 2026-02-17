@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>stitch-mcp Goal-Oriented Documentation Guide</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "term-bg": "#0a0a0a",
+                        "term-surface": "#111111",
+                        "term-text": "#d4d4d8",
+                        "term-dim": "#71717a",
+                        "term-border": "#3f3f46",
+                        "term-heading": "#f4f4f5",
+                        "term-inline-bg": "#1a1a1a",
+                    },
+                    fontFamily: {
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "sans": ["JetBrains Mono", "monospace"],
+                    },
+                    borderRadius: {
+                        "none": "0px",
+                        "DEFAULT": "0px",
+                        "sm": "0px",
+                        "md": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px",
+                    },
+                    letterSpacing: {
+                        "extra-wide": "0.15em",
+                    },
+                    lineHeight: {
+                        "relaxed-custom": "1.6",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        * {
+            border-radius: 0 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; border-left: 1px solid #3f3f46; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border: 2px solid #0a0a0a; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        html { scroll-behavior: smooth; }
+        .nav-link-active {
+            color: #f4f4f5 !important;
+            font-weight: 700;
+        }
+        .nav-link-active::before {
+            content: '> ';
+            color: #71717a;
+        }
+        .box-draw-border {
+            position: relative;
+            border: 1px solid #3f3f46;
+        }
+        .section-divider {
+            display: flex;
+            align-items: center;
+            color: #71717a;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        .section-divider::before {
+            content: '──── ';
+            white-space: pre;
+            color: #71717a;
+        }
+        .section-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #3f3f46;
+            margin-left: 1ch;
+        }
+        .section-text {
+            color: #f4f4f5;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-size: 1rem;
+        }
+        .code-block-hover:hover .copy-btn { opacity: 1; }
+        code:not(pre code) {
+            background-color: #1a1a1a;
+            color: #d4d4d8;
+            padding: 0.1em 0.3em;
+            font-size: 0.9em;
+        }
+        .troubleshooting-item {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+        }
+        .troubleshooting-marker {
+            flex-shrink: 0;
+            width: 1.5rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-term-bg text-term-text font-mono antialiased selection:bg-term-dim/30 selection:text-white flex flex-col min-h-screen">
+<nav class="fixed top-0 w-full z-50 border-b border-term-border bg-term-bg">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-14 items-center">
+<div class="flex items-center gap-4">
+<span class="text-base font-bold tracking-widest text-term-heading uppercase">STITCH-MCP</span>
+</div>
+<a class="text-term-dim hover:text-term-text transition-colors text-xs uppercase tracking-widest font-light hover:underline decoration-term-border underline-offset-4" href="https://github.com/davideast/stitch-mcp" target="_blank">
+                    [GITHUB]
+                </a>
+</div>
+</div>
+</nav>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 relative z-10 flex flex-col md:flex-row gap-12 flex-1 w-full">
+<aside class="hidden md:block w-64 shrink-0 border-r border-term-border pr-6">
+<div class="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin">
+<nav class="flex flex-col gap-8">
+<div>
+<h3 class="mb-3 text-[10px] font-light uppercase tracking-widest text-term-dim">GUIDES</h3>
+<div class="flex flex-col space-y-1">
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors nav-link-active" href="#quick-start">Quick start</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#preview-your-designs">Preview your designs</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#build-a-site">Build a site</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#connect-your-agent">Connect your agent</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">└──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#explore-your-designs">Explore your designs</a>
+</div>
+</div>
+</div>
+<div>
+<h3 class="mb-3 text-[10px] font-light uppercase tracking-widest text-term-dim">REFERENCE</h3>
+<div class="flex flex-col space-y-1">
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#commands">Commands</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#authentication">Authentication</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">├──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#env-vars">Env variables</a>
+</div>
+<div class="flex items-center text-term-dim">
+<span class="mr-2 font-light">└──</span>
+<a class="block py-1 text-xs font-light text-term-dim hover:text-term-text transition-colors" href="#troubleshooting">Troubleshooting</a>
+</div>
+</div>
+</div>
+</nav>
+</div>
+</aside>
+<main class="flex-1 max-w-4xl min-w-0 pb-20">
+<div class="mb-16" id="overview">
+<div class="border border-term-border p-6 bg-term-surface mb-8">
+<h1 class="text-4xl font-bold tracking-extra-wide text-term-heading mb-4 uppercase">STITCH-MCP</h1>
+<p class="text-sm text-term-text font-light leading-relaxed-custom max-w-2xl font-mono">
+                        Move your AI-generated designs into code. Preview locally, build sites, give agents context.
+                    </p>
+</div>
+</div>
+<section class="mb-20 scroll-mt-28" id="quick-start">
+<div class="section-divider">
+<span class="section-text">QUICK START</span>
+</div>
+<div class="bg-term-bg border border-term-border text-xs relative group code-block-hover">
+<div class="bg-term-surface border-b border-term-border px-3 py-1 flex items-center justify-between">
+<span class="text-term-heading text-[10px] font-bold tracking-widest">TERMINAL</span>
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-term-border"></div>
+<div class="w-2 h-2 rounded-full bg-term-border"></div>
+</div>
+</div>
+<div class="p-6 text-term-text space-y-4 font-mono">
+<div class="flex">
+<span class="text-term-dim mr-3 select-none">$</span>
+<span class="text-term-heading font-bold">stitch init</span>
+</div>
+<div class="text-term-dim pl-6 pb-2 border-l border-term-border ml-1">
+                            &gt; Created stitch.config.json
+                        </div>
+<div class="flex">
+<span class="text-term-dim mr-3 select-none">$</span>
+<span class="text-term-heading font-bold">stitch serve</span>
+</div>
+<div class="text-term-dim pl-6 pb-2 border-l border-term-border ml-1">
+                            &gt; Server running at http://localhost:3000
+                        </div>
+<div class="pt-4 border-t border-term-border/50 text-term-dim italic">
+                            # Note: Ensure Docker is running if using local LLMs
+                        </div>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="preview-your-designs">
+<div class="section-divider">
+<span class="section-text">PREVIEW YOUR DESIGNS</span>
+</div>
+<div class="flex flex-col md:flex-row gap-8 items-start">
+<div class="md:w-1/3 pt-4">
+<p class="text-term-text text-xs leading-relaxed-custom font-light">
+                            Every screen gets its own URL. Use the local server to verify design integrity before committing to code.
+                        </p>
+</div>
+<div class="md:w-2/3 w-full">
+<div class="bg-term-bg border border-term-border text-xs">
+<div class="bg-term-surface border-b border-term-border px-3 py-1 flex items-center justify-between">
+<span class="text-term-heading text-[10px] font-bold tracking-widest">ROUTES</span>
+</div>
+<div class="p-4 text-term-text font-mono space-y-2">
+<div class="flex justify-between border-b border-term-border/20 pb-1">
+<span class="text-term-dim">GET</span>
+<span class="text-term-text">/preview/8921a...</span>
+</div>
+<div class="flex justify-between border-b border-term-border/20 pb-1">
+<span class="text-term-dim">GET</span>
+<span class="text-term-text">/preview/7718b...</span>
+</div>
+<div class="flex justify-between border-b border-term-border/20 pb-1">
+<span class="text-term-dim">GET</span>
+<span class="text-term-text">/assets/main.css</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="build-a-site">
+<div class="section-divider">
+<span class="section-text">BUILD A SITE</span>
+</div>
+<div class="flex flex-col md:flex-row-reverse gap-8 items-start">
+<div class="md:w-1/3 pt-4">
+<p class="text-term-text text-xs leading-relaxed-custom font-light">
+                            Map your screens to routes and get an Astro project you can deploy immediately. Clean component architecture included.
+                        </p>
+</div>
+<div class="md:w-2/3 w-full">
+<div class="bg-term-bg border border-term-border text-xs">
+<div class="bg-term-surface border-b border-term-border px-3 py-1 flex items-center justify-between">
+<span class="text-term-heading text-[10px] font-bold tracking-widest">FILE TREE</span>
+</div>
+<div class="p-4 font-mono text-xs leading-relaxed">
+<div class="text-term-dim">src/</div>
+<div class="text-term-dim pl-4">├── <span class="text-term-text">components/</span></div>
+<div class="text-term-dim pl-8">│   ├── <span class="text-term-text">Navbar.astro</span></div>
+<div class="text-term-dim pl-8">│   └── <span class="text-term-text">Hero.astro</span></div>
+<div class="text-term-dim pl-4">├── <span class="text-term-text">layouts/</span></div>
+<div class="text-term-dim pl-8">│   └── <span class="text-term-text">Layout.astro</span></div>
+<div class="text-term-dim pl-4">└── <span class="text-term-text">pages/</span></div>
+<div class="text-term-dim pl-8">    └── <span class="text-term-text">index.astro</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-24 scroll-mt-28" id="connect-your-agent">
+<div class="section-divider">
+<span class="section-text">CONNECT YOUR AGENT</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="bg-term-bg border border-term-border relative group h-full">
+<div class="px-3 py-1 border-b border-term-border bg-term-surface text-[10px] text-term-heading font-bold tracking-widest">
+                            MCP CONFIG
+                        </div>
+<div class="p-4 overflow-x-auto code-block-hover">
+<pre class="text-xs leading-relaxed text-term-text"><code>{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@_davideast/stitch-mcp",
+        "proxy"
+      ]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="bg-term-bg border border-term-border h-full">
+<div class="px-3 py-1 border-b border-term-border bg-term-surface text-[10px] text-term-heading font-bold tracking-widest">
+                                TOOLS
+                            </div>
+<ul class="divide-y divide-term-border">
+<li class="px-4 py-3 flex flex-col gap-1">
+<code class="text-xs text-term-text font-bold bg-transparent p-0">build_site</code>
+<span class="text-[10px] text-term-dim font-light">Generates static site assets from current context</span>
+</li>
+<li class="px-4 py-3 flex flex-col gap-1">
+<code class="text-xs text-term-text font-bold bg-transparent p-0">get_screen_code</code>
+<span class="text-[10px] text-term-dim font-light">Retrieves raw HTML/CSS/JSX for specific screen ID</span>
+</li>
+<li class="px-4 py-3 flex flex-col gap-1">
+<code class="text-xs text-term-text font-bold bg-transparent p-0">get_screen_image</code>
+<span class="text-[10px] text-term-dim font-light">Returns base64 snapshot of rendered component</span>
+</li>
+</ul>
+</div>
+<div class="text-[10px] text-term-dim uppercase tracking-wider text-right">
+                             Supported: Claude Desktop, Cursor, Windsurf
+                        </div>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="explore-your-designs">
+<div class="section-divider">
+<span class="section-text">EXPLORE YOUR DESIGNS</span>
+</div>
+<div class="bg-term-bg border border-term-border">
+<div class="bg-term-surface border-b border-term-border px-3 py-1 flex items-center justify-between">
+<span class="text-term-heading text-[10px] font-bold tracking-widest">KEYBOARD SHORTCUTS (VIEW MODE)</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-6">
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-12 font-bold text-term-heading">←→</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Navigate</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-12 font-bold text-term-heading">Enter</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Select</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-8 font-bold text-term-heading">c</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Copy Code</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-8 font-bold text-term-heading">cc</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Copy Component</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-8 font-bold text-term-heading">s</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Snapshot</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-8 font-bold text-term-heading">o</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Open Browser</span>
+</div>
+<div class="flex flex-col gap-1">
+<kbd class="bg-term-surface border border-term-border text-xs text-center py-1 w-8 font-bold text-term-heading">q</kbd>
+<span class="text-[10px] text-term-dim font-light uppercase tracking-wider">Quit</span>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="commands">
+<div class="section-divider">
+<span class="section-text">COMMANDS</span>
+</div>
+<div class="border border-term-border bg-term-bg text-xs">
+<div class="bg-term-surface border-b border-term-border px-4 py-2 text-term-dim font-light uppercase tracking-widest text-[10px]">Setup</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline border-b border-term-border">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ init</code>
+<span class="text-term-text font-light leading-relaxed-custom">Initialize a new stitch configuration in the current directory.</span>
+</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline border-b border-term-border">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ doctor</code>
+<span class="text-term-text font-light leading-relaxed-custom">Verify environment dependencies and MCP connection health.</span>
+</div>
+<div class="bg-term-surface border-b border-term-border px-4 py-2 text-term-dim font-light uppercase tracking-widest text-[10px] mt-0">Development</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline border-b border-term-border">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ serve</code>
+<span class="text-term-text font-light leading-relaxed-custom">Start the local development server and listen for design inputs.</span>
+</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline border-b border-term-border">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ view</code>
+<span class="text-term-text font-light leading-relaxed-custom">Open the terminal-based interactive viewer for captured screens.</span>
+</div>
+<div class="bg-term-surface border-b border-term-border px-4 py-2 text-term-dim font-light uppercase tracking-widest text-[10px] mt-0">Build</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline border-b border-term-border">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ site</code>
+<span class="text-term-text font-light leading-relaxed-custom">Scaffold a full web project (Astro/Next.js) from selected screens.</span>
+</div>
+<div class="bg-term-surface border-b border-term-border px-4 py-2 text-term-dim font-light uppercase tracking-widest text-[10px] mt-0">Integration</div>
+<div class="p-4 grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-baseline">
+<code class="text-term-heading font-bold bg-transparent p-0 text-sm">$ proxy</code>
+<span class="text-term-text font-light leading-relaxed-custom">Run in MCP mode to allow AI agents to control the CLI tools.</span>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="authentication">
+<div class="section-divider">
+<span class="section-text">AUTHENTICATION</span>
+</div>
+<div class="border border-term-border bg-term-bg">
+<div class="border-b border-term-border bg-term-surface p-3 flex justify-between items-center">
+<h3 class="text-xs font-bold text-term-heading uppercase tracking-wider">Methods</h3>
+<div class="w-2 h-2 rounded-full bg-term-dim/30"></div>
+</div>
+<div class="divide-y divide-term-border">
+<div class="flex flex-col md:flex-row p-4 items-start md:items-center hover:bg-term-surface/30 transition-colors">
+<div class="md:w-1/3 flex flex-col gap-1 mb-2 md:mb-0">
+<h4 class="text-xs font-bold text-term-heading uppercase">Guided setup</h4>
+<p class="text-[10px] text-term-dim font-light">Recommended</p>
+</div>
+<div class="md:w-2/3 w-full">
+<code class="text-xs text-term-text font-mono block w-full bg-term-surface/50 border border-term-border/50 p-2">$ stitch auth login</code>
+</div>
+</div>
+<div class="flex flex-col md:flex-row p-4 items-start md:items-center hover:bg-term-surface/30 transition-colors">
+<div class="md:w-1/3 flex flex-col gap-1 mb-2 md:mb-0">
+<h4 class="text-xs font-bold text-term-heading uppercase">API key</h4>
+<p class="text-[10px] text-term-dim font-light">CI/CD</p>
+</div>
+<div class="md:w-2/3 w-full">
+<code class="text-xs text-term-text font-mono block w-full bg-term-surface/50 border border-term-border/50 p-2">$ export STITCH_KEY=...</code>
+</div>
+</div>
+<div class="flex flex-col md:flex-row p-4 items-start md:items-center hover:bg-term-surface/30 transition-colors">
+<div class="md:w-1/3 flex flex-col gap-1 mb-2 md:mb-0">
+<h4 class="text-xs font-bold text-term-heading uppercase">Manual gcloud</h4>
+<p class="text-[10px] text-term-dim font-light">Enterprise</p>
+</div>
+<div class="md:w-2/3 w-full">
+<code class="text-xs text-term-text font-mono block w-full bg-term-surface/50 border border-term-border/50 p-2">$ gcloud auth login</code>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-20 scroll-mt-28" id="env-vars">
+<div class="section-divider">
+<span class="section-text">ENVIRONMENT VARIABLES</span>
+</div>
+<div class="">
+<table class="min-w-full text-left text-xs">
+<thead class="text-term-dim font-light border-b border-term-border">
+<tr>
+<th class="py-3 px-0 font-light tracking-widest uppercase text-[#71717a] w-1/3">Variable</th>
+<th class="py-3 px-0 font-light tracking-widest uppercase text-[#71717a]">Description</th>
+</tr>
+</thead>
+<tbody class="text-term-text">
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_API_KEY</td><td class="py-3 px-0 font-light leading-relaxed-custom">Override authentication token</td></tr>
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_PROJECT_ID</td><td class="py-3 px-0 font-light leading-relaxed-custom">Default project ID context</td></tr>
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_LOG_LEVEL</td><td class="py-3 px-0 font-light leading-relaxed-custom">Debug verbosity (debug, info, error)</td></tr>
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_HOST</td><td class="py-3 px-0 font-light leading-relaxed-custom">Custom host binding</td></tr>
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_PORT</td><td class="py-3 px-0 font-light leading-relaxed-custom">Custom port (default 3000)</td></tr>
+<tr><td class="py-3 px-0 font-bold text-term-heading">STITCH_NO_COLOR</td><td class="py-3 px-0 font-light leading-relaxed-custom">Disable terminal color output</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="mb-24 scroll-mt-28" id="troubleshooting">
+<div class="section-divider">
+<span class="section-text">TROUBLESHOOTING</span>
+</div>
+<div class="space-y-4">
+<div class="border border-term-border bg-term-bg p-4 troubleshooting-item">
+<span class="text-term-dim font-bold text-sm troubleshooting-marker">[!]</span>
+<div class="flex-1">
+<h3 class="text-sm font-bold text-term-heading mb-1">Permission denied</h3>
+<p class="text-term-text font-light text-xs leading-relaxed-custom">Check read/write access to the current directory or run with sudo if needed (not recommended).</p>
+</div>
+</div>
+<div class="border border-term-border bg-term-bg p-4 troubleshooting-item">
+<span class="text-term-dim font-bold text-sm troubleshooting-marker">[!]</span>
+<div class="flex-1">
+<h3 class="text-sm font-bold text-term-heading mb-1">Auth URL not opening</h3>
+<p class="text-term-text font-light text-xs leading-relaxed-custom">Manually copy the link printed in the terminal if the browser fails to launch.</p>
+</div>
+</div>
+<div class="border border-term-border bg-term-bg p-4 troubleshooting-item">
+<span class="text-term-dim font-bold text-sm troubleshooting-marker">[!]</span>
+<div class="flex-1">
+<h3 class="text-sm font-bold text-term-heading mb-1">Token expiry</h3>
+<p class="text-term-text font-light text-xs leading-relaxed-custom">Run <code>stitch logout</code> followed by login if you encounter 401 Unauthorized errors.</p>
+</div>
+</div>
+<div class="border border-term-border bg-term-bg p-4 troubleshooting-item">
+<span class="text-term-dim font-bold text-sm troubleshooting-marker">[!]</span>
+<div class="flex-1">
+<h3 class="text-sm font-bold text-term-heading mb-1">WSL/SSH Environments</h3>
+<p class="text-term-text font-light text-xs leading-relaxed-custom">Use <code>--headless</code> mode when authenticating in environments without a browser.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<footer class="w-full border-t border-term-border py-4 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+<p class="text-[10px] text-term-dim uppercase tracking-wider font-light">
+<span class="mr-2">──── EOF ────</span> stitch-mcp v0.3.2
+            </p>
+</div>
+</footer>
+
+</body></html>

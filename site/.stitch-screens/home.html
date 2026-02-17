@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="dark scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>stitch-mcp Monochromatic CLI Landing Page</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tui-bg": "#0a0a0a",
+                        "tui-bg-alt": "#111111",
+                        "tui-fg": "#d4d4d8", // Light Zinc
+                        "tui-dim": "#71717a", // Muted Zinc
+                        "tui-border": "#3f3f46", // Dark Zinc
+                        "tui-white": "#f4f4f5", // High White
+                        "tui-black": "#000000",
+                    },
+                    fontFamily: {
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    boxShadow: {
+                        "offset": "4px 4px 0px 0px #3f3f46",
+                        "offset-white": "4px 4px 0px 0px #f4f4f5",
+                    }
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .tui-border-box {
+                @apply border border-tui-border;
+            }
+        }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #0a0a0a;
+            color: #d4d4d8;
+        }
+        ::selection {
+            background: #d4d4d8;
+            color: #0a0a0a;
+        }
+    </style>
+</head>
+<body class="bg-tui-bg text-tui-fg antialiased selection:bg-tui-fg selection:text-black font-mono">
+<nav class="fixed top-0 w-full z-50 bg-tui-bg/95 border-b border-tui-border">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16 items-center">
+<div class="flex items-center">
+<span class="text-tui-white font-bold text-lg">&gt; stitch-mcp<span class="animate-pulse">_</span></span>
+</div>
+<div class="flex items-center gap-6 text-sm">
+<a class="text-tui-dim hover:text-tui-white transition-colors" href="#">[ docs ]</a>
+<a class="text-tui-dim hover:text-tui-white transition-colors" href="https://github.com" target="_blank">[ github ]</a>
+</div>
+</div>
+</div>
+</nav>
+<section class="min-h-screen flex flex-col justify-center items-center pt-24 pb-12 px-4 bg-tui-bg relative">
+<div class="max-w-4xl w-full mx-auto text-center flex flex-col items-center z-10">
+<h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-tui-white mb-6 leading-tight">
+            AI designs,<br/>
+            meet your codebase.
+        </h1>
+<div class="text-left space-y-2 mb-12">
+<p class="text-sm sm:text-base text-tui-dim font-mono">
+                // The MCP server that gives your coding agent eyes.
+            </p>
+<p class="text-sm sm:text-base text-tui-dim font-mono">
+                // Design context stays local. Code ships production-ready.
+            </p>
+</div>
+<div class="mb-12 w-full max-w-xl mx-auto text-left">
+<div class="text-tui-dim select-none leading-none">┌─ bash ──────────────────────────────────────────────┐</div>
+<div class="bg-tui-bg border-l border-r border-tui-border px-4 py-3 flex justify-between items-center group">
+<code class="text-tui-fg text-sm">
+<span class="text-tui-dim">$</span> npx @_davideast/stitch-mcp init
+                </code>
+<button class="text-tui-dim hover:text-tui-white transition-colors" title="Copy">
+                    [copy]
+                </button>
+</div>
+<div class="text-tui-dim select-none leading-none">└─────────────────────────────────────────────────────┘</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-6 items-center">
+<a class="group relative inline-block focus:outline-none" href="#get-started">
+<span class="absolute inset-0 translate-x-1 translate-y-1 bg-tui-dim group-hover:translate-x-1.5 group-hover:translate-y-1.5 transition-transform"></span>
+<span class="relative block border border-tui-white bg-tui-white px-8 py-3 text-sm font-bold text-black uppercase tracking-widest group-hover:-translate-y-0.5 group-hover:-translate-x-0.5 transition-transform">
+                    Get Started
+                </span>
+</a>
+<a class="group relative inline-block focus:outline-none" href="https://github.com">
+<span class="absolute inset-0 translate-x-1 translate-y-1 bg-tui-border group-hover:translate-x-1.5 group-hover:translate-y-1.5 transition-transform"></span>
+<span class="relative block border border-tui-border bg-tui-bg px-8 py-3 text-sm font-bold text-tui-fg uppercase tracking-widest group-hover:-translate-y-0.5 group-hover:-translate-x-0.5 transition-transform hover:bg-tui-bg-alt">
+                    GitHub
+                </span>
+</a>
+</div>
+</div>
+</section>
+<section class="py-24 bg-tui-bg-alt border-t border-b border-tui-border">
+<div class="max-w-6xl mx-auto px-6">
+<div class="flex items-center gap-4 mb-12 text-tui-dim">
+<span class="text-tui-border">──────</span>
+<h2 class="text-xl font-bold text-tui-white uppercase tracking-widest">AGENT INTEGRATION</h2>
+<span class="flex-grow text-tui-border line-through decoration-tui-border decoration-1">─────────────────────────────────────────────────────────────</span>
+</div>
+<div class="grid lg:grid-cols-2 gap-12 items-start">
+<div class="font-mono text-sm w-full">
+<div class="text-tui-dim select-none leading-none">┌─ mcp-config.json ────────────────────────────────────┐</div>
+<div class="bg-tui-bg border-l border-r border-tui-border p-6 overflow-x-auto">
+<pre class="text-tui-fg"><code>{
+  <span class="text-tui-white">"mcpServers"</span>: {
+    <span class="text-tui-white">"stitch"</span>: {
+      <span class="text-tui-white">"command"</span>: "npx",
+      <span class="text-tui-white">"args"</span>: [
+        "-y",
+        "@_davideast/stitch-mcp"
+      ],
+      <span class="text-tui-white">"env"</span>: {
+        <span class="text-tui-white">"PROJECT_ROOT"</span>: "./frontend"
+      }
+    }
+  }
+}</code></pre>
+</div>
+<div class="text-tui-dim select-none leading-none">└──────────────────────────────────────────────────────┘</div>
+</div>
+<div class="border border-tui-border bg-tui-bg p-8 relative">
+<div class="absolute -top-3 left-4 bg-tui-bg px-2 text-tui-dim text-xs uppercase tracking-widest">Available Tools</div>
+<ul class="space-y-8">
+<li class="flex items-start gap-4">
+<span class="text-tui-white mt-1">▸</span>
+<div>
+<span class="text-tui-white block mb-1 font-bold text-lg">build_site</span>
+<span class="text-tui-dim text-sm">Compiles the design tokens and structure into code.</span>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="text-tui-white mt-1">▸</span>
+<div>
+<span class="text-tui-white block mb-1 font-bold text-lg">get_screen_code</span>
+<span class="text-tui-dim text-sm">Retrieves the JSX/HTML for a specific visual state.</span>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="text-tui-white mt-1">▸</span>
+<div>
+<span class="text-tui-white block mb-1 font-bold text-lg">get_screen_image</span>
+<span class="text-tui-dim text-sm">Returns a snapshot for visual verification.</span>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<section class="py-24 bg-tui-bg" id="get-started">
+<div class="max-w-4xl mx-auto px-6">
+<div class="flex items-center gap-4 mb-16 text-tui-dim justify-center">
+<span class="text-tui-border">──────</span>
+<h2 class="text-xl font-bold text-tui-white uppercase tracking-widest">GET STARTED</h2>
+<span class="text-tui-border">──────</span>
+</div>
+<div class="space-y-0 relative">
+<div class="absolute left-[19px] top-0 bottom-0 w-px bg-tui-border z-0"></div>
+<div class="flex gap-8 relative z-10 pb-16">
+<div class="flex flex-col items-center">
+<div class="bg-tui-bg border border-tui-border w-10 h-10 flex items-center justify-center text-tui-white font-bold text-sm">01</div>
+</div>
+<div class="w-full pt-1">
+<h3 class="text-tui-white font-bold mb-2 text-lg">Design</h3>
+<p class="text-tui-dim text-sm mb-4">Initialize your project with a single command.</p>
+<div class="w-full max-w-md">
+<div class="text-tui-dim select-none leading-none">┌─ terminal ───────────────────────┐</div>
+<div class="border-l border-r border-tui-border p-3 bg-tui-bg-alt font-mono text-sm text-tui-fg flex justify-between items-center">
+<span><span class="text-tui-dim">$</span> npx stitch-mcp init</span>
+<button class="text-tui-dim text-xs cursor-pointer hover:text-tui-white">[copy]</button>
+</div>
+<div class="text-tui-dim select-none leading-none">└──────────────────────────────────┘</div>
+</div>
+</div>
+</div>
+<div class="flex gap-8 relative z-10 pb-16">
+<div class="flex flex-col items-center">
+<div class="bg-tui-bg border border-tui-border w-10 h-10 flex items-center justify-center text-tui-white font-bold text-sm">02</div>
+</div>
+<div class="w-full pt-1">
+<h3 class="text-tui-white font-bold mb-2 text-lg">Preview</h3>
+<p class="text-tui-dim text-sm mb-4">Visualize generated components locally with hot reload.</p>
+<div class="w-full max-w-md">
+<div class="text-tui-dim select-none leading-none">┌─ terminal ───────────────────────┐</div>
+<div class="border-l border-r border-tui-border p-3 bg-tui-bg-alt font-mono text-sm text-tui-fg flex justify-between items-center">
+<span><span class="text-tui-dim">$</span> stitch serve</span>
+<button class="text-tui-dim text-xs cursor-pointer hover:text-tui-white">[copy]</button>
+</div>
+<div class="text-tui-dim select-none leading-none">└──────────────────────────────────┘</div>
+</div>
+</div>
+</div>
+<div class="flex gap-8 relative z-10">
+<div class="flex flex-col items-center">
+<div class="bg-tui-bg border border-tui-border w-10 h-10 flex items-center justify-center text-tui-white font-bold text-sm">03</div>
+</div>
+<div class="w-full pt-1">
+<h3 class="text-tui-white font-bold mb-2 text-lg">Ship</h3>
+<p class="text-tui-dim text-sm mb-4">Export clean, framework-specific code ready for production.</p>
+<div class="w-full max-w-md">
+<div class="text-tui-dim select-none leading-none">┌─ terminal ───────────────────────┐</div>
+<div class="border-l border-r border-tui-border p-3 bg-tui-bg-alt font-mono text-sm text-tui-fg flex justify-between items-center">
+<span><span class="text-tui-dim">$</span> stitch site</span>
+<button class="text-tui-dim text-xs cursor-pointer hover:text-tui-white">[copy]</button>
+</div>
+<div class="text-tui-dim select-none leading-none">└──────────────────────────────────┘</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-24 bg-tui-bg-alt border-t border-tui-border">
+<div class="max-w-6xl mx-auto px-6">
+<div class="flex items-center gap-4 mb-12 text-tui-dim">
+<span class="text-tui-border">──────</span>
+<h2 class="text-xl font-bold text-tui-white uppercase tracking-widest">FEATURES</h2>
+<span class="flex-grow text-tui-border line-through decoration-tui-border decoration-1">────────────────────────────────────────────────────────────────────</span>
+</div>
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">&gt;</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">CLI First</div>
+<p class="text-sm text-tui-dim leading-relaxed">Built for the terminal. Fast, scriptable, and easy to integrate into CI/CD pipelines.</p>
+</div>
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">⚙</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">Framework Ready</div>
+<p class="text-sm text-tui-dim leading-relaxed">Supports React, Vue, Svelte, and vanilla HTML out of the box.</p>
+</div>
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">◆</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">Design Tokens</div>
+<p class="text-sm text-tui-dim leading-relaxed">Automatically extracts colors, typography, and spacing into CSS variables.</p>
+</div>
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">◈</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">AI Native</div>
+<p class="text-sm text-tui-dim leading-relaxed">Designed from the ground up to work with Claude, GPT-4, and local LLMs.</p>
+</div>
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">⊘</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">Local &amp; Secure</div>
+<p class="text-sm text-tui-dim leading-relaxed">Your designs and code never leave your machine unless you want them to.</p>
+</div>
+<div class="group border border-tui-border bg-tui-bg p-6 hover:border-tui-white transition-colors duration-300">
+<div class="text-2xl text-tui-white mb-4">↻</div>
+<div class="text-tui-white mb-2 font-bold text-lg uppercase">Instant Sync</div>
+<p class="text-sm text-tui-dim leading-relaxed">Watch mode detects changes in design files and updates the dev server instantly.</p>
+</div>
+</div>
+</div>
+</section>
+<footer class="py-12 bg-tui-bg text-tui-dim border-t border-tui-border">
+<div class="max-w-6xl mx-auto px-6">
+<div class="text-tui-border mb-6 select-none truncate">
+            ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        </div>
+<div class="flex flex-col md:flex-row justify-between items-center gap-6 text-sm">
+<span>© 2024 stitch-mcp. v1.0.0</span>
+<div class="flex gap-6">
+<a class="hover:text-tui-white transition-colors" href="#">[ Privacy ]</a>
+<a class="hover:text-tui-white transition-colors" href="#">[ Terms ]</a>
+<a class="hover:text-tui-white transition-colors" href="#">[ GitHub ]</a>
+</div>
+</div>
+</div>
+</footer>
+
+</body></html>

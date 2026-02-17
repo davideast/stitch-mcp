@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Terminal Tree Sidebar Documentation Reference</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "bg": "#0c0c0c",
+                        "surface": "#111111",
+                        "primary": "#e8e8e8",
+                        "secondary": "#888888",
+                        "dim-gray": "#555555",
+                        "label-gray": "#aaaaaa",
+                        "border": "rgba(255, 255, 255, 0.06)",
+                        "subtle-white": "rgba(255, 255, 255, 0.1)",
+                    },
+                    fontFamily: {
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    fontSize: {
+                        "display": ["44px", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
+                        "heading": ["28px", { lineHeight: "1.3" }],
+                        "subheading": ["18px", { lineHeight: "1.4" }],
+                        "body": ["14px", { lineHeight: "1.75" }],
+                        "label": ["11px", { lineHeight: "1", letterSpacing: "0.08em" }],
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            background-color: #0c0c0c;
+            color: #888888;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .link-standard {
+            color: #e8e8e8;
+            text-decoration: none;
+        }
+        .link-standard:hover {
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+        }
+        ::selection {
+            background-color: #333;
+            color: #fff;
+        }
+        pre {
+            color: #888;
+        }
+        .json-key { color: #fff; }
+        .json-string { color: #888; }.tree-line {
+            padding-left: 1.25rem;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-bg text-secondary font-mono antialiased flex">
+<aside class="fixed top-0 left-0 w-[200px] h-screen bg-bg border-r border-[#ffffff10] flex flex-col p-6 z-50">
+<div class="mb-10">
+<span class="text-[13px] text-white font-mono">stitch-mcp</span>
+</div>
+<nav class="flex-1 space-y-8">
+<div>
+<h3 class="text-dim-gray text-[11px] uppercase tracking-wider mb-3">GETTING STARTED</h3>
+<ul class="space-y-2">
+<li class="pl-4">
+<a class="text-[13px] text-secondary hover:text-primary" href="#">Quick Start</a>
+</li>
+<li class="pl-4">
+<a class="text-[13px] text-secondary hover:text-primary" href="#">Install</a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="text-dim-gray text-[11px] uppercase tracking-wider mb-3">AGENT INTEGRATION</h3>
+<ul class="space-y-2">
+<li class="pl-4 flex items-center gap-1.5">
+<span class="text-primary">&gt;</span>
+<a class="text-[13px] text-primary" href="#">Connect Your Agent</a>
+</li>
+<li class="pl-4">
+<a class="text-[13px] text-secondary hover:text-primary" href="#">Build</a>
+</li>
+<li class="pl-4">
+<a class="text-[13px] text-secondary hover:text-primary" href="#">Preview</a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="text-dim-gray text-[11px] uppercase tracking-wider mb-3">REFERENCE</h3>
+<ul class="space-y-2">
+<li class="pl-4">
+<a class="text-[13px] text-secondary hover:text-primary" href="#">API</a>
+</li>
+</ul>
+</div>
+</nav>
+<div class="mt-auto pt-6">
+<a class="text-[12px] text-dim-gray hover:text-secondary transition-colors flex items-center gap-2" href="#">
+<svg aria-hidden="true" fill="currentColor" height="12" version="1.1" viewBox="0 0 16 16" width="12"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.12-1.61.63-1.76-1.63-.09-.52-.51-.92-.85-1.02-.08-.02-.12-.01-.06.07.21.28.46.72.63 1.25.13.41.44.82 1.13.91.73.1.91.43.95.66.01.55 0 1.29 0 1.54 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+            GitHub
+        </a>
+</div>
+</aside>
+<main class="flex-1 ml-[200px]">
+<div class="max-w-[700px] mx-auto px-6 pt-24 pb-24">
+<header>
+<div class="mb-5">
+<span class="text-label font-medium uppercase tracking-widest text-label-gray">Agent Integration</span>
+</div>
+<h1 class="text-display font-normal text-primary mb-6">Connect Your Agent</h1>
+<div class="h-[1px] bg-subtle-white w-full mb-12"></div>
+<p class="text-body text-secondary mb-16">
+                Enable AI agents to interact directly with your design system. By exposing local tools via MCP, agents can read design tokens, generate components, and scaffold entire pages. Before proceeding, ensure you have completed the <a class="link-standard" href="#">Setup</a> guide.
+            </p>
+</header>
+<section class="mb-20">
+<h2 class="text-heading text-primary font-medium mb-6">Proxy vs Direct</h2>
+<p class="text-body mb-10">
+                The <code class="text-[13px] text-primary bg-surface px-1.5 py-0.5 border border-border rounded-sm">stitch-mcp</code> CLI acts as a bridge between your local development environment and the LLM. When running in proxy mode, it establishes a secure tunnel that allows the agent to execute specific read-only or generation commands without full shell access.
+            </p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+<div class="bg-surface p-6 border border-border rounded-[2px]">
+<div class="text-label text-secondary mb-4">Direct Connection</div>
+<pre class="text-xs text-secondary leading-tight whitespace-pre overflow-x-auto">[ AGENT ]
+    |
+    | JSON-RPC
+    v
+[ STITCH ] -&gt; [ FS ]</pre>
+</div>
+<div class="bg-surface p-6 border border-border rounded-[2px]">
+<div class="text-label text-secondary mb-4">Proxy Tunnel</div>
+<pre class="text-xs text-secondary leading-tight whitespace-pre overflow-x-auto">[ CLOUD LLM ]
+    |
+    | SSE / WebSocket
+    v
+[ LOCAL PROXY ]
+    |
+    v
+[ STITCH ]</pre>
+</div>
+</div>
+<div class="w-full">
+<div class="grid grid-cols-3 border-b border-border py-3 text-label text-primary uppercase tracking-widest">
+<div>Feature</div>
+<div>Proxy</div>
+<div>Direct</div>
+</div>
+<div class="grid grid-cols-3 border-b border-border py-4 text-sm text-secondary">
+<div>Latency</div>
+<div>Higher (~200ms)</div>
+<div>Instant</div>
+</div>
+<div class="grid grid-cols-3 border-b border-border py-4 text-sm text-secondary">
+<div>Security</div>
+<div>Scoped Token</div>
+<div>Local Process</div>
+</div>
+<div class="grid grid-cols-3 border-b border-border py-4 text-sm text-secondary">
+<div>Setup</div>
+<div>Zero Config</div>
+<div>Requires Node</div>
+</div>
+<div class="grid grid-cols-3 border-b border-border py-4 text-sm text-secondary">
+<div>Persistance</div>
+<div>Session Based</div>
+<div>Stateful</div>
+</div>
+</div>
+</section>
+<section class="mb-20">
+<h3 class="text-subheading text-primary font-medium mb-8">Virtual Tools</h3>
+<div class="space-y-8">
+<div class="group">
+<code class="text-primary text-sm block mb-2 font-bold">build_site</code>
+<p class="text-body">Compiles the current screen selection into a deployable static artifact. Used when the agent determines the design is finalized.</p>
+</div>
+<div class="group">
+<code class="text-primary text-sm block mb-2 font-bold">get_screen_code</code>
+<p class="text-body">Fetches the underlying Astro or React code for a specific screen ID. Allows the agent to refactor existing components or query structure.</p>
+</div>
+<div class="group">
+<code class="text-primary text-sm block mb-2 font-bold">get_screen_image</code>
+<p class="text-body">Requests a headless browser snapshot of a component in isolation. Essential for visual regression verification during generation.</p>
+</div>
+</div>
+</section>
+<section class="mb-20">
+<h2 class="text-heading text-primary font-medium mb-10">Client Configuration</h2>
+<div class="space-y-12">
+<div>
+<h4 class="text-subheading text-primary font-medium mb-4">Claude Code</h4>
+<p class="text-body mb-4">Add the definition to your global configuration file.</p>
+<div class="bg-surface p-6 border border-border rounded-[2px] overflow-x-auto text-sm">
+<pre class="m-0 p-0 bg-transparent border-0">{
+  <span class="json-key">"mcpServers"</span>: {
+    <span class="json-key">"stitch"</span>: {
+      <span class="json-key">"command"</span>: <span class="json-string">"npx"</span>,
+      <span class="json-key">"args"</span>: [
+        <span class="json-string">"-y"</span>,
+        <span class="json-string">"@_davideast/stitch-mcp"</span>,
+        <span class="json-string">"proxy"</span>
+      ]
+    }
+  }
+}</pre>
+</div>
+</div>
+<div>
+<h4 class="text-subheading text-primary font-medium mb-4">VS Code</h4>
+<p class="text-body mb-4">Configure in User Settings or Workspace Settings for Cline/Roo.</p>
+<div class="bg-surface p-6 border border-border rounded-[2px] overflow-x-auto text-sm">
+<pre class="m-0 p-0 bg-transparent border-0">{
+  <span class="json-key">"cline.mcpServers"</span>: {
+    <span class="json-key">"stitch-local"</span>: {
+      <span class="json-key">"command"</span>: <span class="json-string">"node"</span>,
+      <span class="json-key">"args"</span>: [<span class="json-string">"./node_modules/.bin/stitch-mcp"</span>, <span class="json-string">"start"</span>],
+      <span class="json-key">"env"</span>: {
+        <span class="json-key">"STITCH_PROJECT_ROOT"</span>: <span class="json-string">"${workspaceFolder}"</span>
+      }
+    }
+  }
+}</pre>
+</div>
+</div>
+<div>
+<h4 class="text-subheading text-primary font-medium mb-4">Cursor</h4>
+<p class="text-body mb-4">Use the absolute path for reliability in the Cursor AI pane settings.</p>
+<div class="bg-surface p-6 border border-border rounded-[2px] overflow-x-auto text-sm">
+<pre class="m-0 p-0 bg-transparent border-0">[
+  {
+    <span class="json-key">"name"</span>: <span class="json-string">"stitch-mcp"</span>,
+    <span class="json-key">"command"</span>: <span class="json-string">"stitch proxy --port 3000"</span>
+  }
+]</pre>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-20">
+<h3 class="text-subheading text-primary font-medium mb-6">Verification</h3>
+<p class="text-body mb-6">
+                Once configured, restart your IDE or agent runtime. You can verify the tools are loaded by asking the agent to list its available capabilities.
+            </p>
+<div class="bg-surface border border-border p-4 text-sm text-secondary rounded-[2px]">
+<div class="flex items-center gap-2 mb-3 text-secondary border-b border-border pb-2">
+<span class="text-label uppercase tracking-widest text-label-gray">Terminal</span>
+</div>
+<div class="mb-1"><span class="text-primary">$</span> stitch doctor --mcp</div>
+<div class="opacity-70 pl-0">
+                    &gt; Checking MCP registry... OK<br/>
+                    &gt; Verifying tool definitions... 3 found<br/>
+                    &gt; Connection ready.
+                </div>
+</div>
+</section>
+<nav class="flex justify-between items-center pt-10 border-t border-border mt-12 text-sm">
+<a class="group flex items-center gap-3 text-secondary hover:text-white transition-colors" href="#">
+<span class="group-hover:-translate-x-1 transition-transform">←</span>
+<span>Setup</span>
+</a>
+<a class="group flex items-center gap-3 text-secondary hover:text-white transition-colors" href="#">
+<span>Use Stitch Tools</span>
+<span class="group-hover:translate-x-1 transition-transform">→</span>
+</a>
+</nav>
+</div>
+</main>
+
+</body></html>
