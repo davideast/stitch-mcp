@@ -1,7 +1,7 @@
 ---
 title: Use Stitch Tools in Agents
 description: Tool catalog, input schemas, and prompting patterns for agent workflows.
-order: 2
+order: 3
 category: agent-integration
 ---
 

@@ -30,9 +30,12 @@ const GitHubIcon = () => (
 /** Short sidebar labels — keep every entry to one line. */
 const NAV_LABELS: Record<string, string> = {
   "Connect Your Agent": "Connect Agent",
+  "Connection Modes": "Connections",
   "Use Stitch Tools in Agents": "Stitch Tools",
-  "Build Agent Skills": "Agent Skills",
+  "Agent Skills": "Agent Skills",
+  "Build an Agent Skill": "Build a Skill",
   "Virtual Tools": "Virtual Tools",
+  "Build a Virtual Tool": "Build a Tool",
   "Command Reference": "Commands",
   "Preview Designs": "Previewing",
 };
