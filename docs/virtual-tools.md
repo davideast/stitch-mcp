@@ -1,15 +1,13 @@
 ---
 title: Virtual Tools
 description: Interface reference for virtual tools — custom operations that combine multiple Stitch API calls.
-order: 1
+order: 2
 category: reference
 ---
 
 # Virtual Tools
 
-The Stitch MCP server exposes upstream tools like `get_screen` and `list_screens` — but these are atomic. An agent that wants a screen's HTML has to call `get_screen`, find the download URL in the response, then fetch the HTML separately. Virtual tools collapse that into one call.
-
-A virtual tool is a TypeScript object that receives an authenticated client and can call any upstream tool through it. The four built-in virtual tools — `get_screen_code`, `get_screen_image`, `build_site`, and `list_tools` — are all built this way. You can add your own.
+A virtual tool is a TypeScript object registered with the proxy that agents call like any other MCP tool. It receives an authenticated `StitchMCPClient` and can invoke upstream Stitch tools through it. The four built-in virtual tools — `get_screen_code`, `get_screen_image`, `build_site`, and `list_tools` — are all implemented this way.
 
 ## The interface
 
@@ -26,7 +24,7 @@ interface VirtualTool {
 }
 ```
 
-That's the entire API. `name` and `execute` are the only things that matter. The `inputSchema` is JSON Schema that tells agents what arguments the tool expects. The `client` gives you access to every upstream Stitch tool.
+`name` and `execute` are required. `inputSchema` is JSON Schema describing the tool's expected arguments. `client` provides access to upstream Stitch tools.
 
 ## What the client gives you
 
@@ -59,4 +57,4 @@ const tools = await client.getCapabilities();
 | `build_site` | Maps screens to routes, fetches HTML for each in parallel |
 | `list_tools` | Returns all tools and their schemas |
 
-Ready to create your own? See [Build a Virtual Tool](build-virtual-tools.md) for the full walkthrough.
+See [Build a Virtual Tool](build-virtual-tools.md) for implementation steps.

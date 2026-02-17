@@ -49,6 +49,8 @@ Each page file contains the design HTML from the mapped screen, wrapped in the s
 
 ## Command flags
 
+See [Command Reference — `site`](command-reference.md#site) for the full flag list. The essentials:
+
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --project <id>` | Project ID (required) | — |

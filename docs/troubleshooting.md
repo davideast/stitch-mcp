@@ -53,14 +53,14 @@ When `init` runs OAuth, it prints an authentication URL to the terminal. If you 
 2. If using the proxy with `--debug`, check the log at `/tmp/stitch-proxy-debug.log`
 3. In headless environments (WSL, SSH, Docker), the URL may be printed but can't open a browser automatically. Copy it and open it on another machine.
 
-## Bundled vs system gcloud
+## Auth errors when system gcloud is installed
 
-stitch-mcp installs its own gcloud SDK at `~/.stitch-mcp/` to avoid interfering with your system installation. This means:
+stitch-mcp installs its own gcloud SDK at `~/.stitch-mcp/`, separate from any system gcloud. If you have both, auth errors often mean you authenticated one but the proxy is using the other.
 
-- **Bundled gcloud** (default): credentials and config live in `~/.stitch-mcp/config/`. Commands use `CLOUDSDK_CONFIG=~/.stitch-mcp/config`.
-- **System gcloud**: set `STITCH_USE_SYSTEM_GCLOUD=1` to use your existing gcloud installation and its default credentials.
+- **Bundled gcloud** (default): credentials live in `~/.stitch-mcp/config/`.
+- **System gcloud**: set `STITCH_USE_SYSTEM_GCLOUD=1` to use your system installation instead.
 
-If you see auth issues, make sure you're authenticating the right gcloud instance. To print a token from the bundled gcloud:
+To check which gcloud the proxy is using, print a token from the bundled instance:
 
 ```bash
 CLOUDSDK_CONFIG=~/.stitch-mcp/config ~/.stitch-mcp/google-cloud-sdk/bin/gcloud auth print-access-token

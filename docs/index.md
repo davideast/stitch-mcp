@@ -31,8 +31,9 @@ Pick the path that matches what you're trying to do:
 3. [Build a site](build-a-site.md)
 
 **Extend Stitch with custom tools**
-1. [Virtual Tools reference](virtual-tools.md)
-2. [Build a Virtual Tool](build-virtual-tools.md)
+1. [Tool Catalog](tool-catalog.md) — see what's built in
+2. [Virtual Tools reference](virtual-tools.md)
+3. [Build a Virtual Tool](build-virtual-tools.md)
 
 ## Guides
 
@@ -41,10 +42,11 @@ Pick the path that matches what you're trying to do:
 | [Setup](setup.md) | Authentication, environment configuration, and verifying your install |
 | [Connect your agent](connect-your-agent.md) | MCP config for Claude Code, VS Code, Cursor, Gemini CLI, Codex, OpenCode, and Antigravity |
 | [Connection Modes](connection-modes.md) | Proxy vs direct architecture, comparison, and when to use each |
-| [Use Stitch tools in agents](use-stitch-tools-in-agents.md) | Tool catalog, input schemas, and prompting patterns |
+| [Use Stitch tools in agents](use-stitch-tools-in-agents.md) | Prompting patterns and debugging workflows |
 | [Agent Skills](agent-skills.md) | What Agent Skills are, why they pair with Stitch, and existing skills |
 | [Build an Agent Skill](build-agent-skills.md) | SKILL.md format, directory structure, and creating your own |
-| [Virtual Tools](virtual-tools.md) | Interface reference, client API, conventions, and built-in tools |
+| [Tool Catalog](tool-catalog.md) | Schemas, return types, and parameters for all Stitch tools |
+| [Virtual Tools](virtual-tools.md) | Interface reference, client API, and conventions for building virtual tools |
 | [Build a Virtual Tool](build-virtual-tools.md) | Creating, registering, and testing custom virtual tools |
 | [Preview designs](preview-designs.md) | Local dev server, terminal browser, and resource viewer |
 | [Build a site](build-a-site.md) | Astro site generation from screen-to-route mappings |

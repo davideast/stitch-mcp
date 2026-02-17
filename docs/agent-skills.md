@@ -21,33 +21,11 @@ Without a skill, you explain that workflow every session. With one, the agent al
 
 ## What this looks like in practice
 
-Say you've implemented a landing page and want to verify it matches the original Stitch design. Here's what a **design review** skill instructs the agent to do:
+Say you've implemented a landing page and want to verify it matches the original Stitch design. A **design review** skill gives the agent a playbook for this.
 
-**Step 1 — Get the design source:**
+The skill retrieves the design HTML via `get_screen_code` — every color value, spacing token, font stack, and layout decision the designer made. Then it fetches a visual reference via `get_screen_image`, giving the agent a screenshot of the intended design the way a human would see it.
 
-```bash
-stitch tool get_screen_code -d '{
-  "projectId": "8837201",
-  "screenId": "a1b2c3"
-}'
-```
-
-The agent gets back the full design HTML — every color value, spacing token, font stack, and layout decision the designer made.
-
-**Step 2 — Get the visual reference:**
-
-```bash
-stitch tool get_screen_image -d '{
-  "projectId": "8837201",
-  "screenId": "a1b2c3"
-}'
-```
-
-Now the agent has a screenshot of the intended design. It can see the page the way a human would.
-
-**Step 3 — The agent reads your code and compares.**
-
-This is the part no built-in command can do. The agent reads your `src/pages/index.tsx`, diffs the computed styles against the design HTML, eyeballs the screenshot against your running dev server, and reports:
+With both in hand, the agent reads your `src/pages/index.tsx`, diffs the computed styles against the design HTML, compares the screenshot against your running dev server, and reports:
 
 - "The hero heading uses `text-4xl` but the design specifies `44px` — should be `text-[44px]`"
 - "The card grid has `gap-4` but the design uses `24px` gap — should be `gap-6`"
@@ -68,12 +46,17 @@ The [stitch-skills](https://github.com/google-labs-code/stitch-skills) repositor
 | `remotion` | Generates walkthrough videos from Stitch projects with transitions and overlays |
 | `shadcn-ui` | Integrates shadcn/ui components with Stitch design output |
 
-Install any of them:
+Installation instructions are in the [stitch-skills repository](https://github.com/google-labs-code/stitch-skills).
 
-```bash
-npx skills add google-labs-code/stitch-skills --list
-npx skills add google-labs-code/stitch-skills --skill react-components
-```
+## How agents load skills
+
+Skills are designed for progressive disclosure. Agents load content in three stages, so a large skill doesn't bloat every conversation:
+
+1. **Metadata** (~100 tokens) — `name` and `description` loaded at startup for all installed skills
+2. **Instructions** (< 5000 tokens) — the full `SKILL.md` body loaded only when activated
+3. **Resources** (on demand) — `scripts/`, `references/`, `assets/` loaded only when referenced
+
+This means the `description` field is the only thing every session pays for. The rest loads on demand.
 
 ## Next steps
 

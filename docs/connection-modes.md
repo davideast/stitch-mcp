@@ -1,13 +1,13 @@
 ---
 title: Connection Modes
-description: How the proxy and direct connection modes work and when to use each.
+description: How the proxy and direct connection modes work, why each exists, and when to use each.
 order: 2
 category: agent-integration
 ---
 
 # Connection Modes
 
-There are two ways your agent can talk to Stitch. Understanding the trade-offs helps you pick the right one for your setup.
+There are two ways your agent can talk to Stitch: through a local proxy or directly over HTTP. Each exists for a reason, and understanding the trade-offs helps you pick the right one.
 
 ## Proxy (stdio)
 
@@ -17,6 +17,12 @@ Your MCP client launches the stitch-mcp proxy as a local process. The proxy talk
 Agent  <-stdio->  stitch-mcp proxy  <-HTTP->  Stitch API
 ```
 
+The proxy exists because the upstream Stitch API exposes atomic operations — list projects, get a screen, edit a screen — but coding agents need higher-level workflows. An agent implementing a design needs a screen's HTML source, but the `get_screen` API returns metadata with a download URL, not the HTML itself. The proxy's virtual tools handle that orchestration: `get_screen_code` calls `get_screen`, follows the download URL, and returns the HTML in one step.
+
+The proxy also manages OAuth token lifecycle. Stitch access tokens expire after one hour. The proxy refreshes them automatically every 55 minutes, so long-running agent sessions don't hit auth errors mid-workflow.
+
+stdio is the transport because it's how MCP clients (Claude Code, VS Code, Cursor) launch tool servers — as child processes communicating over stdin/stdout. No port configuration, no firewall rules, no process management. The client starts the proxy and owns its lifecycle.
+
 ## Direct (HTTP)
 
 Your MCP client connects straight to the Stitch API with no proxy in between.
@@ -24,6 +30,10 @@ Your MCP client connects straight to the Stitch API with no proxy in between.
 ```
 Agent  <-HTTP->  Stitch API
 ```
+
+Direct mode is simpler: one HTTPS connection, no child process, no local state. It works well for API key authentication where there's no token to refresh, and for environments where spawning child processes is impractical (CI pipelines, serverless, constrained containers).
+
+The trade-off is that direct mode only exposes the upstream Stitch tools. Virtual tools like `build_site` and `get_screen_code` aren't available — your agent would need to replicate their logic in its own prompts.
 
 ## Comparison
 
@@ -34,18 +44,14 @@ Agent  <-HTTP->  Stitch API
 | **API key auth** | Works | Works |
 | **Setup** | `npx @_davideast/stitch-mcp proxy` runs in the background | Just a URL and headers |
 
-Use the proxy if you want virtual tools or automatic token refresh. Use direct if you only need the upstream Stitch tools and want a simpler config with an API key.
+## When to use each
 
-## What virtual tools add
+Start with the **proxy** if you're working interactively with a coding agent. The virtual tools save significant back-and-forth, and automatic token refresh means you won't debug auth errors during a long session.
 
-The upstream Stitch API provides tools for listing projects, getting screens, generating designs, and editing screens. The proxy adds virtual tools on top of these that are designed for coding agents:
+Use **direct** if you only need the upstream Stitch tools and want the simplest possible config — an API key and a URL. This is common in CI pipelines, automated scripts, or setups where you can't spawn child processes.
 
-- **`build_site`** — maps screens to routes and returns the design HTML for each page
-- **`get_screen_code`** — fetches a screen and downloads its HTML source
-- **`get_screen_image`** — fetches a screen and downloads its screenshot as base64
-
-These combine multiple API calls into single operations. See [Virtual Tools](virtual-tools.md) for the full interface and conventions.
+If you start with direct and later need virtual tools, switching to the proxy is a config change — same auth credentials, different transport.
 
 ## Next steps
 
-Ready to connect? See [Connect Your Agent](connect-your-agent.md) for per-client configuration.
+See [Connect Your Agent](connect-your-agent.md) for per-client configuration.

@@ -83,11 +83,3 @@ Your project ID appears in several places:
 
 The project ID is a numeric string (e.g., `4044680601076201931`).
 
-## Asset proxy details
-
-When serving screens locally, external assets (Google Fonts, images, etc.) are proxied through `/_stitch/asset?url=<encoded-url>`:
-
-- **CSS files** get their `url()` references rewritten to also go through the proxy, so font files and background images load correctly
-- **Non-CSS assets** are served with long-lived cache headers (`max-age=31536000`)
-- **CSS assets** use `no-cache` headers because their content is transformed server-side
-- **All assets** are cached to disk at `.stitch-mcp/cache/` using content hashes

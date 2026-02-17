@@ -17,7 +17,7 @@ The `init` wizard generates the right config for you:
 npx @_davideast/stitch-mcp init
 ```
 
-Or manually configure your client below. Each client shows the proxy config first (with API key auth), then the direct config.
+Or manually configure your client below. If you haven't decided between proxy and direct, read [Connection Modes](connection-modes.md) first. Each client below shows the proxy config first (with API key auth), then the direct config.
 
 ### Claude Code
 

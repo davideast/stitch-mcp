@@ -1,7 +1,7 @@
 ---
 title: Build a Virtual Tool
 description: Create custom virtual tools that combine Stitch API calls into single operations.
-order: 2
+order: 3
 category: reference
 ---
 
@@ -96,7 +96,7 @@ stitch tool compare_screens -d '{
 
 ### Wrapper — `get_screen_code`
 
-The simplest pattern. Call an upstream tool, fetch additional data, return the enriched result:
+The simplest pattern. Call an upstream tool, fetch additional data, return the combined result:
 
 ```typescript
 execute: async (client: StitchMCPClient, args: any) => {
@@ -123,11 +123,11 @@ execute: async (client: StitchMCPClient, args: any) => {
 },
 ```
 
-One upstream call, one fetch, one return. This is the pattern you'll use most.
+Start here for most virtual tools — one upstream call, one fetch, one return.
 
 ### Orchestrator — `build_site`
 
-Validates input, fetches data in parallel with concurrency limits, and assembles a structured result:
+For tools that coordinate multiple fetches, validate input first, use `pLimit` to cap concurrency, and assemble a structured result:
 
 ```typescript
 execute: async (client: StitchMCPClient, args: any) => {
@@ -171,11 +171,11 @@ execute: async (client: StitchMCPClient, args: any) => {
 },
 ```
 
-Key details: `pLimit(3)` caps concurrent fetches. Errors are collected and thrown together, not on first failure.
+Use `pLimit(3)` to cap concurrent fetches. Collect errors and throw them together rather than failing on the first one.
 
 ### Passthrough — `list_tools`
 
-The minimal case. Delegates directly to a client method:
+When you only need to forward a single client method, delegate directly:
 
 ```typescript
 execute: async (client: StitchMCPClient, _args: any) => {

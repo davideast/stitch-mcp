@@ -17,9 +17,9 @@ export function PageHeader({ category, title, children }: PageHeaderProps) {
       <h1 className="text-[44px] leading-[1.1] tracking-[-0.02em] font-normal text-primary mb-6">
         {title}
       </h1>
-      <div className="h-[1px] bg-subtle-white w-full mb-12" />
+      <div className="h-[1px] bg-subtle-white w-full mb-6" />
       {children ? (
-        <div className="text-[14px] leading-[1.75] text-secondary mb-16">
+        <div className="text-[14px] leading-[1.75] text-secondary mb-8">
           {children}
         </div>
       ) : null}

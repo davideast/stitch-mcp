@@ -34,6 +34,7 @@ const NAV_LABELS: Record<string, string> = {
   "Use Stitch Tools in Agents": "Stitch Tools",
   "Agent Skills": "Agent Skills",
   "Build an Agent Skill": "Build a Skill",
+  "Tool Catalog": "Tool Catalog",
   "Virtual Tools": "Virtual Tools",
   "Build a Virtual Tool": "Build a Tool",
   "Command Reference": "Commands",

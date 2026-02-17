@@ -166,15 +166,9 @@ Report findings as a checklist:
 ```
 ````
 
-## Progressive disclosure
+## Size guidelines
 
-Skills should minimize context usage. The agent loads content in three stages:
-
-1. **Metadata** (~100 tokens) — `name` and `description` loaded at startup for all installed skills
-2. **Instructions** (< 5000 tokens) — the full `SKILL.md` body loaded when activated
-3. **Resources** (on demand) — `scripts/`, `references/`, `assets/` loaded only when referenced
-
-Keep `SKILL.md` under 500 lines. Move detailed reference material to separate files.
+Keep `SKILL.md` under 500 lines. Move detailed reference material to `references/` or `assets/` — agents load those on demand, so they don't count against the skill's initial context cost.
 
 ## Validation
 

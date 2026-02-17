@@ -83,14 +83,11 @@ Then set `STITCH_USE_SYSTEM_GCLOUD=1` in your MCP client config so the proxy use
 
 ## Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `STITCH_API_KEY` | API key for direct authentication (skips OAuth) |
-| `STITCH_ACCESS_TOKEN` | Pre-existing access token |
-| `STITCH_USE_SYSTEM_GCLOUD` | Use system gcloud config instead of bundled config |
-| `STITCH_PROJECT_ID` | Override project ID |
-| `GOOGLE_CLOUD_PROJECT` | Alternative project ID variable |
-| `STITCH_HOST` | Custom Stitch API endpoint |
+See [Command Reference — Environment variables](command-reference.md#environment-variables) for the full list. The most common ones used during setup:
+
+- `STITCH_API_KEY` — API key for direct authentication (skips OAuth)
+- `STITCH_PROJECT_ID` — Override project ID
+- `STITCH_USE_SYSTEM_GCLOUD` — Use system gcloud instead of bundled config
 
 ## Verifying your setup
 
