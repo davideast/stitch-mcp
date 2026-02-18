@@ -19,8 +19,8 @@ const { title, categoryDisplay, description, activePath, sections, prev, next } 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 <BaseLayout title={`${title} — stitch-mcp`}>
-  <DocsSidebar sections={sections} activePath={activePath} basePath={basePath} />
-  <main class="ml-[200px]">
+  <DocsSidebar sections={sections} activePath={activePath} basePath={basePath} client:load />
+  <main class="md:ml-[200px] ml-0 transition-[margin] duration-300">
     <div class="max-w-[700px] mx-auto px-6 pt-24 pb-24">
       <PageHeader category={categoryDisplay} title={title}>
         {description}

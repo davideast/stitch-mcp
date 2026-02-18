@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 interface SidebarLink {
   label: string;
@@ -28,6 +28,39 @@ const GitHubIcon = () => (
   </svg>
 );
 
+const MenuIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
 /** Short sidebar labels — keep every entry to one line. */
 const NAV_LABELS: Record<string, string> = {
   "Connect Your Agent": "Connect Agent",
@@ -42,54 +75,97 @@ const NAV_LABELS: Record<string, string> = {
   "Preview Designs": "Previewing",
 };
 
-export function DocsSidebar({ sections, activePath, basePath = "" }: DocsSidebarProps) {
+export function DocsSidebar({
+  sections,
+  activePath,
+  basePath = "",
+}: DocsSidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <aside className="fixed top-0 left-0 w-[200px] h-screen bg-bg border-r border-subtle-white flex flex-col p-6 z-50">
-      <div className="mb-10">
-        <a href={`${basePath}/`} className="text-[13px] text-white font-mono">
-          stitch-mcp
-        </a>
-      </div>
-
-      <nav className="flex-1 space-y-8">
-        {sections.map((section) => (
-          <div key={section.category}>
-            <h3 className="text-dim text-[11px] uppercase tracking-wider mb-3">
-              {section.category}
-            </h3>
-            <ul className="space-y-2">
-              {section.links.map((link) => {
-                const isActive = link.href === activePath;
-                const label = NAV_LABELS[link.label] ?? link.label;
-                return (
-                  <li key={link.href}>
-                    <a
-                      className={`text-[12px] block pl-4 whitespace-nowrap ${
-                        isActive
-                          ? "text-primary border-l border-primary"
-                          : "text-secondary hover:text-primary transition-colors border-l border-transparent"
-                      }`}
-                      href={link.href}
-                    >
-                      {label}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
-
-      <div className="mt-auto pt-6">
-        <a
-          className="text-[12px] text-dim hover:text-secondary transition-colors flex items-center gap-2"
-          href="https://github.com/nicepkg/stitch-mcp"
+    <>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-bg border-b border-subtle-white z-40 flex items-center px-4 justify-between">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="text-white p-2 -ml-2 hover:bg-subtle-white rounded-md transition-colors"
+          aria-label="Open menu"
         >
-          <GitHubIcon />
-          GitHub
-        </a>
+          <MenuIcon />
+        </button>
+        <span className="text-white font-mono text-sm">stitch-mcp</span>
+        <div className="w-10" /> {/* Spacer for balance */}
       </div>
-    </aside>
+
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 w-[200px] h-screen bg-bg border-r border-subtle-white flex flex-col p-6 z-50 transform transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        } md:translate-x-0 md:shadow-none`}
+      >
+        <div className="flex items-center justify-between mb-10">
+          <a href={`${basePath}/`} className="text-[13px] text-white font-mono">
+            stitch-mcp
+          </a>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="md:hidden text-dim hover:text-white transition-colors"
+            aria-label="Close menu"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <nav className="flex-1 space-y-8 overflow-y-auto">
+          {sections.map((section) => (
+            <div key={section.category}>
+              <h3 className="text-dim text-[11px] uppercase tracking-wider mb-3">
+                {section.category}
+              </h3>
+              <ul className="space-y-2">
+                {section.links.map((link) => {
+                  const isActive = link.href === activePath;
+                  const label = NAV_LABELS[link.label] ?? link.label;
+                  return (
+                    <li key={link.href}>
+                      <a
+                        className={`text-[12px] block pl-4 whitespace-nowrap ${
+                          isActive
+                            ? "text-primary border-l border-primary"
+                            : "text-secondary hover:text-primary transition-colors border-l border-transparent"
+                        }`}
+                        href={link.href}
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {label}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <div className="mt-auto pt-6 border-t border-subtle-white md:border-none">
+          <a
+            className="text-[12px] text-dim hover:text-secondary transition-colors flex items-center gap-2"
+            href="https://github.com/nicepkg/stitch-mcp"
+          >
+            <GitHubIcon />
+            GitHub
+          </a>
+        </div>
+      </aside>
+    </>
   );
 }
