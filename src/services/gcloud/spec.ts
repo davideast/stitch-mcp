@@ -1,6 +1,19 @@
 import { z } from 'zod';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Regex for validating Google Cloud project IDs.
+ * - 6 to 30 characters in length.
+ * - Contain only lowercase letters, numbers, and hyphens.
+ * - Must start with a letter.
+ * - Cannot end with a hyphen.
+ */
+export const PROJECT_ID_REGEX = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
+// ============================================================================
 // INPUT SCHEMAS
 // ============================================================================
 
@@ -24,7 +37,9 @@ export const ListProjectsInputSchema = z.object({
 export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>;
 
 export const SetProjectInputSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().regex(PROJECT_ID_REGEX, {
+    message: 'Invalid project ID format. Project IDs must be 6-30 characters, start with a letter, end with a letter or number, and contain only lowercase letters, numbers, and hyphens.',
+  }),
 });
 export type SetProjectInput = z.infer<typeof SetProjectInputSchema>;
 

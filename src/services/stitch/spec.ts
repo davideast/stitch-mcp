@@ -1,22 +1,23 @@
 import { z } from 'zod';
+import { PROJECT_ID_REGEX } from '../gcloud/spec.js';
 
 // ============================================================================
 // INPUT SCHEMAS
 // ============================================================================
 
 export const ConfigureIAMInputSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().regex(PROJECT_ID_REGEX),
   userEmail: z.string().email(),
 });
 export type ConfigureIAMInput = z.infer<typeof ConfigureIAMInputSchema>;
 
 export const EnableAPIInputSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().regex(PROJECT_ID_REGEX),
 });
 export type EnableAPIInput = z.infer<typeof EnableAPIInputSchema>;
 
 export const TestConnectionInputSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().regex(PROJECT_ID_REGEX),
   accessToken: z.string().min(1),
 });
 export type TestConnectionInput = z.infer<typeof TestConnectionInputSchema>;

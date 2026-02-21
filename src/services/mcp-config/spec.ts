@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROJECT_ID_REGEX } from '../gcloud/spec.js';
 
 // ============================================================================
 // INPUT SCHEMAS
@@ -10,7 +11,7 @@ export type TransportType = 'http' | 'stdio';
 
 export const GenerateConfigInputSchema = z.object({
   client: z.enum(['antigravity', 'vscode', 'cursor', 'claude-code', 'gemini-cli', 'codex', 'opencode']),
-  projectId: z.string().min(1),
+  projectId: z.string().regex(PROJECT_ID_REGEX),
   accessToken: z.string().optional(),
   transport: z.enum(['http', 'stdio']).default('http'),
   authMode: z.enum(['oauth', 'apiKey']).optional(),
