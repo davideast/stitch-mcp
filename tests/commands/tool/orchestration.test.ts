@@ -1,15 +1,5 @@
 import { describe, it, expect, mock, spyOn, afterEach } from "bun:test";
 
-// Mock external dependencies to avoid environment issues
-mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
-  Client: class {}
-}));
-mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-  StreamableHTTPClientTransport: class {}
-}));
-mock.module("@modelcontextprotocol/sdk/server/stdio.js", () => ({}));
-mock.module("p-limit", () => () => (fn: any) => fn());
-
 import { ToolCommandHandler, deps } from "../../../src/commands/tool/handler.js";
 
 describe("ToolCommandHandler Orchestration", () => {
