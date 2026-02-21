@@ -12,12 +12,14 @@ mock.module('ink', () => ({
     exit: () => {},
   }),
   useInput: () => {},
+  useStdout: () => ({ stdout: { write: () => {} } }),
   Box: () => null,
   Text: () => null,
 }));
 
-import { SiteCommandHandler } from './index.js';
-import { SiteManifest } from './utils/SiteManifest.js';
+// Use dynamic imports to ensure mock.module applies before imports
+const { SiteCommandHandler } = await import('./index.js');
+const { SiteManifest } = await import('./utils/SiteManifest.js');
 import type { RemoteScreen } from '../../lib/services/site/types.js';
 
 const TEST_PROJECT_ID = 'test-export-project';
