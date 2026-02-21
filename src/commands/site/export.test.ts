@@ -1,7 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+
+// Mock Ink to prevent WASM load issues in CI
+mock.module('ink', () => ({
+  render: () => ({
+    waitUntilExit: async () => {},
+  }),
+  useApp: () => ({
+    exit: () => {},
+  }),
+  useInput: () => {},
+  Box: () => null,
+  Text: () => null,
+}));
+
 import { SiteCommandHandler } from './index.js';
 import { SiteManifest } from './utils/SiteManifest.js';
 import type { RemoteScreen } from '../../lib/services/site/types.js';
