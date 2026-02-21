@@ -2,6 +2,18 @@ import { StitchMCPClient } from '../../services/mcp-client/client.js';
 import type { CommandStep } from '../../framework/CommandStep.js';
 import { runSteps } from '../../framework/StepRunner.js';
 import type { ToolCommandInput, ToolCommandResult, VirtualTool } from './spec.js';
+
+/**
+ * Internal dependencies for testing
+ */
+export const deps = {
+  runSteps,
+  ListToolsStep,
+  ShowSchemaStep,
+  ParseArgsStep,
+  ValidateToolStep,
+  ExecuteToolStep,
+};
 import type { ToolContext } from './context.js';
 import { virtualTools as defaultVirtualTools } from './virtual-tools/index.js';
 import { ListToolsStep } from './steps/ListToolsStep.js';
@@ -19,11 +31,11 @@ export class ToolCommandHandler {
     this.client = client || new StitchMCPClient();
     this.tools = tools || defaultVirtualTools;
     this.steps = [
-      new ListToolsStep(),
-      new ShowSchemaStep(),
-      new ParseArgsStep(),
-      new ValidateToolStep(),
-      new ExecuteToolStep(),
+      new deps.ListToolsStep(),
+      new deps.ShowSchemaStep(),
+      new deps.ParseArgsStep(),
+      new deps.ValidateToolStep(),
+      new deps.ExecuteToolStep(),
     ];
   }
 
@@ -34,7 +46,7 @@ export class ToolCommandHandler {
       virtualTools: this.tools,
     };
 
-    await runSteps(this.steps, context, {
+    await deps.runSteps(this.steps, context, {
       onAfterStep: (_step, _result, ctx) => ctx.result !== undefined,
     });
 
