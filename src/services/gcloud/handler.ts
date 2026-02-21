@@ -11,7 +11,6 @@ import {
   type AuthResult,
   type ProjectListResult,
   type ProjectSetResult,
-  type ProjectSchema,
 } from './spec.js';
 import { detectPlatform, getGcloudSdkPath, getGcloudConfigPath, getStitchDir } from '../../platform/detector.js';
 import { execCommand, commandExists } from '../../platform/shell.js';
