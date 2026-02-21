@@ -11,6 +11,7 @@ import {
   type AuthResult,
   type ProjectListResult,
   type ProjectSetResult,
+  PROJECT_ID_REGEX,
 } from './spec.js';
 import { detectPlatform, getGcloudSdkPath, getGcloudConfigPath, getStitchDir } from '../../platform/detector.js';
 import { execCommand, commandExists } from '../../platform/shell.js';
@@ -337,6 +338,19 @@ export class GcloudHandler implements GcloudService {
    * Set active project
    */
   async setProject(input: SetProjectInput): Promise<ProjectSetResult> {
+    // Explicit validation before command execution
+    if (!PROJECT_ID_REGEX.test(input.projectId)) {
+      return {
+        success: false,
+        error: {
+          code: 'PROJECT_SET_FAILED',
+          message: `Invalid project ID: ${input.projectId}. Project IDs must be 6-30 characters, start with a letter, and contain only lowercase letters, numbers, and hyphens.`,
+          suggestion: 'Verify the project ID is correct',
+          recoverable: false,
+        },
+      };
+    }
+
     try {
       const gcloudCmd = await this.getGcloudCommand();
       const result = await execCommand([gcloudCmd, 'config', 'set', 'project', input.projectId, '--quiet'], {
