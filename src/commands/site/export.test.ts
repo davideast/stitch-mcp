@@ -1,9 +1,25 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { SiteCommandHandler } from './index.js';
-import { SiteManifest } from './utils/SiteManifest.js';
+
+// Mock Ink to prevent WASM load issues in CI
+mock.module('ink', () => ({
+  render: () => ({
+    waitUntilExit: async () => {},
+  }),
+  useApp: () => ({
+    exit: () => {},
+  }),
+  useInput: () => {},
+  useStdout: () => ({ stdout: { write: () => {} } }),
+  Box: () => null,
+  Text: () => null,
+}));
+
+// Use dynamic imports to ensure mock.module applies before imports
+const { SiteCommandHandler } = await import('./index.js');
+const { SiteManifest } = await import('./utils/SiteManifest.js');
 import type { RemoteScreen } from '../../lib/services/site/types.js';
 
 const TEST_PROJECT_ID = 'test-export-project';
