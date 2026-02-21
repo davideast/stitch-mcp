@@ -1,6 +1,7 @@
 import type { RemoteScreen, SiteConfig, IAssetGateway, UIScreen } from './types.js';
 import fs from 'fs-extra';
 import path from 'path';
+import pLimit from 'p-limit';
 
 export class SiteService {
   static toUIScreens(screens: RemoteScreen[]): UIScreen[] {
@@ -76,36 +77,41 @@ const { title } = Astro.props;
     await fs.writeFile(path.join(outputDir, 'src/layouts/Layout.astro'), layout);
 
     // Process routes
-    for (const route of config.routes) {
-      if (route.status !== 'included') continue;
+    const limit = pLimit(10);
+    const tasks = config.routes.map((route) =>
+      limit(async () => {
+        if (route.status !== 'included') return;
 
-      const html = htmlContent.get(route.screenId);
-      if (!html) {
-        console.warn(`No HTML content found for screen ${route.screenId}`);
-        continue;
-      }
+        const html = htmlContent.get(route.screenId);
+        if (!html) {
+          console.warn(`No HTML content found for screen ${route.screenId}`);
+          return;
+        }
 
-      // Rewrite
-      const { html: rewrittenHtml, assets } = await assetGateway.rewriteHtmlForBuild(html);
+        // Rewrite
+        const { html: rewrittenHtml, assets } = await assetGateway.rewriteHtmlForBuild(html);
 
-      // Copy assets
-      const assetsDir = path.join(outputDir, 'public/assets');
-      for (const asset of assets) {
-        await assetGateway.copyAssetTo(asset.url, path.join(assetsDir, asset.filename));
-      }
+        // Copy assets
+        const assetsDir = path.join(outputDir, 'public/assets');
+        for (const asset of assets) {
+          await assetGateway.copyAssetTo(asset.url, path.join(assetsDir, asset.filename));
+        }
 
-      let filePath = route.route;
-      if (filePath === '/') {
-        filePath = 'index';
-      } else {
-        // Remove leading slash
-        if (filePath.startsWith('/')) filePath = filePath.substring(1);
-      }
+        let filePath = route.route;
+        if (filePath === '/') {
+          filePath = 'index';
+        } else {
+          // Remove leading slash
+          if (filePath.startsWith('/')) filePath = filePath.substring(1);
+        }
 
-      const fullPath = path.join(outputDir, 'src/pages', `${filePath}.astro`);
-      await fs.ensureDir(path.dirname(fullPath));
-      await fs.writeFile(fullPath, rewrittenHtml);
-    }
+        const fullPath = path.join(outputDir, 'src/pages', `${filePath}.astro`);
+        await fs.ensureDir(path.dirname(fullPath));
+        await fs.writeFile(fullPath, rewrittenHtml);
+      })
+    );
+
+    await Promise.all(tasks);
   }
 
   static slugify(text: string): string {
