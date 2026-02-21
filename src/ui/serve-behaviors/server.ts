@@ -18,7 +18,12 @@ export async function serveHtmlInMemory(
 
   return new Promise((resolve, reject) => {
     const server: Server = createServer((req, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:;",
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+      });
       res.end(html);
     });
 
