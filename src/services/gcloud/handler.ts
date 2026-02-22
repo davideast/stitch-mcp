@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-
-import AdmZip from 'adm-zip';
 import {
   type GcloudService,
   type EnsureGcloudInput,
@@ -11,746 +8,83 @@ import {
   type AuthResult,
   type ProjectListResult,
   type ProjectSetResult,
-  PROJECT_ID_REGEX,
 } from './spec.js';
-import { detectPlatform, getGcloudSdkPath, getGcloudConfigPath, getStitchDir } from '../../platform/detector.js';
-import { execCommand, commandExists } from '../../platform/shell.js';
-import { joinPath } from '../../platform/paths.js';
-import { theme } from '../../ui/theme.js';
+import { GcloudExecutor } from './core.js';
+import { GcloudInstallService } from './install.js';
+import { GcloudAuthService } from './auth.js';
+import { GcloudProjectService } from './projects.js';
 
 export class GcloudHandler implements GcloudService {
-  private platform = detectPlatform();
-  private gcloudPath: string | null = null;
-  private useSystemGcloud = false;
+  public executor: GcloudExecutor;
+  private installService: GcloudInstallService;
+  private authService: GcloudAuthService;
+  private projectService: GcloudProjectService;
+
+  constructor() {
+    this.executor = new GcloudExecutor();
+    this.installService = new GcloudInstallService(this.executor);
+    this.authService = new GcloudAuthService(this.executor);
+    this.projectService = new GcloudProjectService(this.executor);
+  }
 
   /**
    * Ensure gcloud is installed and available
    */
   async ensureInstalled(input: EnsureGcloudInput): Promise<GcloudResult> {
-    this.useSystemGcloud = input.useSystemGcloud || false;
-
-    try {
-      // Priority 1: Check for system gcloud first (unless forced local)
-      // This ensures we respect the user's existing environment if available
-      if (!input.forceLocal) {
-        const globalPath = await this.findGlobalGcloud();
-        if (globalPath) {
-          const version = await this.getVersionFromPath(globalPath);
-          if (version && this.isVersionValid(version, input.minVersion)) {
-            this.gcloudPath = globalPath;
-            this.useSystemGcloud = true; // Auto-enable system mode if found
-            return {
-              success: true,
-              data: {
-                version,
-                location: 'system',
-                path: globalPath,
-              },
-            };
-          }
-        }
-      }
-
-      // Fast path: Check if local installation already exists (just a file check)
-      const localSdkPath = getGcloudSdkPath();
-      const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
-
-      let localExists = false;
-      try {
-        await fs.promises.access(localBinaryPath, fs.constants.F_OK);
-        localExists = true;
-      } catch {
-        // file doesn't exist
-      }
-
-      if (localExists) {
-        const version = await this.getVersionFromPath(localBinaryPath);
-        if (version) {
-          this.gcloudPath = localBinaryPath;
-          this.setupEnvironment();
-          return {
-            success: true,
-            data: {
-              version,
-              location: 'bundled',
-              path: localBinaryPath,
-            },
-          };
-        }
-      }
-
-      // Only check global installation if local doesn't exist and not forced local
-      if (!input.forceLocal) {
-        const globalPath = await this.findGlobalGcloud();
-        if (globalPath) {
-          const version = await this.getVersionFromPath(globalPath);
-          if (version && this.isVersionValid(version, input.minVersion)) {
-            this.gcloudPath = globalPath;
-            return {
-              success: true,
-              data: {
-                version,
-                location: 'system',
-                path: globalPath,
-              },
-            };
-          }
-        }
-      }
-
-      // Install locally to ~/.stitch-mcp
-      const localPath = await this.installLocal();
-      if (!localPath) {
-        return {
-          success: false,
-          error: {
-            code: 'DOWNLOAD_FAILED',
-            message: 'Failed to install gcloud locally',
-            suggestion: 'Check your internet connection and try again',
-            recoverable: true,
-          },
-        };
-      }
-
-      const version = await this.getVersionFromPath(localPath);
-      if (!version) {
-        return {
-          success: false,
-          error: {
-            code: 'VERSION_CHECK_FAILED',
-            message: 'Could not determine gcloud version',
-            recoverable: false,
-          },
-        };
-      }
-
-      this.gcloudPath = localPath;
-      this.setupEnvironment();
-
-      return {
-        success: true,
-        data: {
-          version,
-          location: 'bundled',
-          path: localPath,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UNKNOWN_ERROR',
-          message: error instanceof Error ? error.message : String(error),
-          recoverable: false,
-        },
-      };
-    }
+    return this.installService.ensureInstalled(input);
   }
 
   /**
    * Authenticate user
    */
   async authenticate(input: AuthenticateInput): Promise<AuthResult> {
-    try {
-      // Check if already authenticated
-      if (input.skipIfActive) {
-        const activeAccount = await this.getActiveAccount();
-        if (activeAccount) {
-          return {
-            success: true,
-            data: {
-              account: activeAccount,
-              type: 'user',
-            },
-          };
-        }
-      }
-
-      // Run gcloud auth login
-      const result = await this.runAuthFlow(['auth', 'login']);
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            code: 'AUTH_FAILED',
-            message: 'Failed to authenticate with gcloud',
-            suggestion: 'Complete the browser authentication flow',
-            recoverable: true,
-          },
-        };
-      }
-
-      const account = await this.getActiveAccount();
-      if (!account) {
-        return {
-          success: false,
-          error: {
-            code: 'AUTH_FAILED',
-            message: 'Authentication appeared to succeed but no active account found',
-            recoverable: false,
-          },
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          account,
-          type: 'user',
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTH_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          recoverable: false,
-        },
-      };
-    }
+    return this.authService.authenticate(input);
   }
 
   /**
    * Authenticate application default credentials
    */
   async authenticateADC(input: AuthenticateInput): Promise<AuthResult> {
-    try {
-      // Check if ADC already exists
-      if (input.skipIfActive) {
-        const hasADC = await this.hasADC();
-        if (hasADC) {
-          const account = await this.getActiveAccount();
-          return {
-            success: true,
-            data: {
-              account: account || 'unknown',
-              type: 'adc',
-            },
-          };
-        }
-      }
-
-      // Run gcloud auth application-default login
-      const result = await this.runAuthFlow(['auth', 'application-default', 'login']);
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            code: 'ADC_FAILED',
-            message: 'Failed to authenticate application default credentials',
-            suggestion: 'Complete the browser authentication flow',
-            recoverable: true,
-          },
-        };
-      }
-
-      const account = await this.getActiveAccount();
-
-      return {
-        success: true,
-        data: {
-          account: account || 'unknown',
-          type: 'adc',
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'ADC_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          recoverable: false,
-        },
-      };
-    }
+    return this.authService.authenticateADC(input);
   }
 
   /**
    * List projects
    */
   async listProjects(input: ListProjectsInput): Promise<ProjectListResult> {
-    try {
-      const gcloudCmd = await this.getGcloudCommand();
-      const args = [gcloudCmd, 'projects', 'list', '--format=json'];
-
-      if (input.limit) {
-        args.push(`--limit=${input.limit}`);
-      }
-
-      if (input.filter) {
-        args.push(`--filter=${input.filter}`);
-      }
-
-      if (input.sortBy) {
-        args.push(`--sort-by=${input.sortBy}`);
-      }
-
-      const result = await execCommand(args, {
-        env: this.getEnvironment(),
-      });
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            code: 'PROJECT_LIST_FAILED',
-            message: `Failed to list projects: ${result.stderr}`,
-            suggestion: 'Ensure you are authenticated and have access to projects',
-            recoverable: true,
-          },
-        };
-      }
-
-      const projects = JSON.parse(result.stdout) as Array<{
-        projectId: string;
-        name: string;
-        projectNumber?: string;
-        createTime?: string;
-      }>;
-
-      return {
-        success: true,
-        data: {
-          projects: projects.map((p) => ({
-            projectId: p.projectId,
-            name: p.name,
-            projectNumber: p.projectNumber,
-            createTime: p.createTime,
-          })),
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'PROJECT_LIST_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          recoverable: false,
-        },
-      };
-    }
+    return this.projectService.listProjects(input);
   }
 
   /**
    * Set active project
    */
   async setProject(input: SetProjectInput): Promise<ProjectSetResult> {
-    // Explicit validation before command execution
-    if (!PROJECT_ID_REGEX.test(input.projectId)) {
-      return {
-        success: false,
-        error: {
-          code: 'PROJECT_SET_FAILED',
-          message: `Invalid project ID: ${input.projectId}. Project IDs must be 6-30 characters, start with a letter, and contain only lowercase letters, numbers, and hyphens.`,
-          suggestion: 'Verify the project ID is correct',
-          recoverable: false,
-        },
-      };
-    }
-
-    try {
-      const gcloudCmd = await this.getGcloudCommand();
-      const result = await execCommand([gcloudCmd, 'config', 'set', 'project', input.projectId, '--quiet'], {
-        env: this.getEnvironment(),
-      });
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            code: 'PROJECT_SET_FAILED',
-            message: `Failed to set project: ${input.projectId}`,
-            suggestion: 'Verify the project ID is correct',
-            recoverable: true,
-          },
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          projectId: input.projectId,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'PROJECT_SET_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          recoverable: false,
-        },
-      };
-    }
+    return this.projectService.setProject(input);
   }
 
   /**
    * Get access token
    */
   async getAccessToken(): Promise<string | null> {
-    try {
-      const gcloudCmd = await this.getGcloudCommand();
-      const result = await execCommand([gcloudCmd, 'auth', 'application-default', 'print-access-token'], {
-        env: this.getEnvironment(),
-      });
-
-      if (result.success) {
-        return result.stdout.trim();
-      }
-
-      // Build the correct login command with config prefix for bundled gcloud
-      const loginCmd = await this.getLoginCommand();
-      console.error(`[Gcloud] Token fetch failed. Please run:\n\n  ${loginCmd}\n\nto obtain new credentials.`);
-      return null;
-    } catch (e) {
-      console.error('[Gcloud] Token fetch exception:', e);
-      return null;
-    }
-  }
-
-  /**
-   * Get the correct login command with config prefix if using bundled gcloud
-   */
-  private async getLoginCommand(): Promise<string> {
-    const gcloudCmd = await this.getGcloudCommand();
-
-    // If using system gcloud, no config prefix needed
-    if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      return `${gcloudCmd} auth application-default login`;
-    }
-
-    // For bundled gcloud, include the CLOUDSDK_CONFIG prefix
-    const configPath = getGcloudConfigPath();
-    return `CLOUDSDK_CONFIG="${configPath}" ${gcloudCmd} auth application-default login`;
+    return this.authService.getAccessToken();
   }
 
   async getProjectId(): Promise<string | null> {
-    // Check environment variables first
-    if (process.env.STITCH_PROJECT_ID) {
-      return process.env.STITCH_PROJECT_ID;
-    }
-    if (process.env.GOOGLE_CLOUD_PROJECT) {
-      return process.env.GOOGLE_CLOUD_PROJECT;
-    }
-
-    try {
-      const gcloudCmd = await this.getGcloudCommand();
-      const result = await execCommand([gcloudCmd, 'config', 'get-value', 'project'], {
-        env: this.getEnvironment(),
-      });
-
-      if (result.success && result.stdout.trim()) {
-        return result.stdout.trim();
-      }
-
-      return null;
-    } catch (e) {
-      return null;
-    }
+    return this.projectService.getProjectId();
   }
 
   /**
    * Install beta components
    */
   async installBetaComponents(): Promise<{ success: boolean; error?: { message: string } }> {
-    try {
-      const gcloudCmd = await this.getGcloudCommand();
-      const result = await execCommand(
-        [gcloudCmd, 'components', 'install', 'beta', '--quiet'],
-        { env: this.getEnvironment() }
-      );
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            message: `Failed to install beta components: ${result.stderr || result.error || 'Unknown error'}`,
-          },
-        };
-      }
-
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : String(error),
-        },
-      };
-    }
-  }
-
-  // ============================================================================
-  // PRIVATE HELPERS
-  // ============================================================================
-
-  /**
-   * Run the gcloud authentication flow (URL extraction followed by actual login)
-   */
-  private async runAuthFlow(authArgs: string[]) {
-    const gcloudCmd = await this.getGcloudCommand();
-    console.log(theme.gray("  Opening browser for authentication..."));
-
-    // CRITICAL: Always extract and print the URL before attempting browser launch
-    // This ensures users can authenticate even if browser opening fails
-    // Use a 5-second timeout to prevent hanging
-    const noBrowserResult = await execCommand(
-      [gcloudCmd, ...authArgs, '--no-launch-browser'],
-      { env: this.getEnvironment(), timeout: 5000 }
-    );
-
-    // Extract URL from both stdout and stderr
-    const outputText = noBrowserResult.stderr || noBrowserResult.stdout || '';
-    const urlMatch = outputText.match(/https:\/\/accounts\.google\.com[^\s]+/);
-
-    if (urlMatch) {
-      // ALWAYS print the URL to stdout for user visibility
-      console.log(theme.gray(`  If it doesn't open automatically, visit this URL: ${theme.cyan(urlMatch[0])}\n`));
-    } else {
-      // Warn if URL extraction failed, but continue (backward compatibility)
-      console.log(theme.gray("  Note: Could not extract authentication URL from gcloud output\n"));
-    }
-
-    return execCommand([gcloudCmd, ...authArgs, '--quiet'], {
-      env: this.getEnvironment(),
-    });
-  }
-
-  private async findGlobalGcloud(): Promise<string | null> {
-    const exists = await commandExists(this.platform.gcloudBinaryName);
-    if (!exists) {
-      return null;
-    }
-
-    // Get path to gcloud
-    const result = await execCommand(
-      this.platform.isWindows
-        ? ['where', this.platform.gcloudBinaryName]
-        : ['which', this.platform.gcloudBinaryName]
-    );
-
-    if (result.success) {
-      return result.stdout.trim().split('\n')[0] || null;
-    }
-
-    return null;
-  }
-
-  private async getVersionFromPath(gcloudPath: string): Promise<string | null> {
-    const result = await execCommand([gcloudPath, 'version', '--format=json']);
-
-    if (result.success) {
-      try {
-        const versionData = JSON.parse(result.stdout);
-        return versionData['Google Cloud SDK'] || null;
-      } catch {
-        // Fallback: try to parse from text output
-        const match = result.stdout.match(/Google Cloud SDK ([\d.]+)/);
-        return match?.[1] || null;
-      }
-    }
-
-    return null;
-  }
-
-  private isVersionValid(current: string, minimum: string): boolean {
-    const currentParts = current.split('.').map(Number);
-    const minimumParts = minimum.split('.').map(Number);
-
-    for (let i = 0; i < Math.max(currentParts.length, minimumParts.length); i++) {
-      const cur = currentParts[i] || 0;
-      const min = minimumParts[i] || 0;
-
-      if (cur > min) return true;
-      if (cur < min) return false;
-    }
-
-    return true;
-  }
-
-  private async installLocal(): Promise<string | null> {
-    const sdkPath = getGcloudSdkPath();
-    const stitchDir = getStitchDir();
-
-    // Create directories
-    if (!fs.existsSync(stitchDir)) {
-      fs.mkdirSync(stitchDir, { recursive: true });
-    }
-
-    // Download gcloud
-    const downloadUrl = this.platform.gcloudDownloadUrl;
-    const downloadPath = joinPath(stitchDir, this.platform.isWindows ? 'gcloud.zip' : 'gcloud.tar.gz');
-
-    try {
-      const response = await fetch(downloadUrl);
-      if (!response.ok) {
-        return null;
-      }
-
-      const buffer = await response.arrayBuffer();
-      await fs.promises.writeFile(downloadPath, Buffer.from(buffer));
-
-      // Extract
-      if (this.platform.isWindows) {
-        // Extract ZIP
-        const zip = new AdmZip(downloadPath);
-        await new Promise<void>((resolve, reject) => {
-          zip.extractAllToAsync(stitchDir, true, false, (err: Error | null | undefined) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-        });
-      } else {
-        // Extract tar.gz
-        await execCommand(['tar', '-xzf', downloadPath, '-C', stitchDir]);
-      }
-
-      // Clean up download
-      await fs.promises.unlink(downloadPath);
-
-      // Return path to gcloud binary
-      return joinPath(sdkPath, 'bin', this.platform.gcloudBinaryName);
-    } catch {
-      return null;
-    }
-  }
-
-  private setupEnvironment(): void {
-    const sdkPath = getGcloudSdkPath();
-    const binPath = joinPath(sdkPath, 'bin');
-
-    process.env.PATH = `${binPath}:${process.env.PATH}`;
-
-    if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      return;
-    }
-
-    const configPath = getGcloudConfigPath();
-    process.env.CLOUDSDK_CONFIG = configPath;
-    process.env.CLOUDSDK_CORE_DISABLE_PROMPTS = '1';
-    process.env.CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK = '1';
-    process.env.CLOUDSDK_CORE_DISABLE_USAGE_REPORTING = 'true';
-  }
-
-  private getEnvironment(useSystem?: boolean): Record<string, string> {
-    // CHECK: If system mode is requested via flag or env var
-    if (useSystem || this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      // Return empty object to use default process.env in execCommand
-      return {};
-    }
-
-    const configPath = getGcloudConfigPath();
-    // Return only overrides
-    return {
-      CLOUDSDK_CONFIG: configPath,
-      CLOUDSDK_CORE_DISABLE_PROMPTS: '1',
-      CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK: '1',
-      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true',
-    };
-  }
-
-  private async getGcloudCommand(): Promise<string> {
-    if (this.gcloudPath) {
-      return this.gcloudPath;
-    }
-
-    // If configured to use system gcloud, prefer PATH lookup
-    if (this.useSystemGcloud || process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      return this.platform.gcloudBinaryName;
-    }
-
-    // Check if local SDK exists
-    const localSdkPath = getGcloudSdkPath();
-    const localBinaryPath = joinPath(localSdkPath, 'bin', this.platform.gcloudBinaryName);
-
-    try {
-      await fs.promises.access(localBinaryPath, fs.constants.F_OK);
-      this.gcloudPath = localBinaryPath;
-      this.setupEnvironment();
-      return localBinaryPath;
-    } catch {
-      // Fallback to command in PATH
-      return this.platform.gcloudBinaryName;
-    }
+    return this.installService.installBetaComponents();
   }
 
   async getActiveAccount(): Promise<string | null> {
-    const gcloudCmd = await this.getGcloudCommand();
-
-    // Only check bundled stitch config - we need credentials there
-    const result = await execCommand(
-      [gcloudCmd, 'auth', 'list', '--filter=status:ACTIVE', '--format=value(account)'],
-      { env: this.getEnvironment() }
-    );
-
-    if (result.success && result.stdout.trim()) {
-      return result.stdout.trim().split('\n')[0] || null;
-    }
-
-    return null;
+    return this.authService.getActiveAccount();
   }
 
   async hasADC(): Promise<boolean> {
-    // Actually verify ADC credentials work by attempting to get an access token.
-    // Just checking if the file exists is not enough - tokens can be expired or revoked.
-    const gcloudCmd = await this.getGcloudCommand();
-
-    // First, quick check if credential file exists
-    let fileExists = false;
-    if (!this.useSystemGcloud && !process.env.STITCH_USE_SYSTEM_GCLOUD) {
-      const stitchConfigPath = getGcloudConfigPath();
-      const stitchAdcPath = joinPath(stitchConfigPath, 'application_default_credentials.json');
-      try {
-        await fs.promises.access(stitchAdcPath, fs.constants.F_OK);
-        fileExists = true;
-      } catch {
-        fileExists = false;
-      }
-    } else {
-      // For system gcloud, check via gcloud info
-      try {
-        const result = await execCommand(
-          [gcloudCmd, 'info', '--format=value(config.paths.global_config_dir)'],
-          { env: this.getEnvironment() }
-        );
-
-        if (result.success && result.stdout.trim()) {
-          const configDir = result.stdout.trim();
-          const adcPath = joinPath(configDir, 'application_default_credentials.json');
-          try {
-            await fs.promises.access(adcPath, fs.constants.F_OK);
-            fileExists = true;
-          } catch {
-            fileExists = false;
-          }
-        }
-      } catch {
-        // Fallback - file doesn't exist
-      }
-    }
-
-    // If no file, definitely no ADC
-    if (!fileExists) {
-      return false;
-    }
-
-    // File exists, but verify the credentials are actually valid by trying to get a token
-    try {
-      const result = await execCommand(
-        [gcloudCmd, 'auth', 'application-default', 'print-access-token'],
-        { env: this.getEnvironment() }
-      );
-
-      // Only return true if we successfully got a token
-      return result.success && !!result.stdout.trim();
-    } catch {
-      return false;
-    }
+    return this.authService.hasADC();
   }
 }
