@@ -40,10 +40,10 @@ Break down "God Classes" into focused, domain-specific services. Use composition
     -   `StitchApiService`: Handle API enablement.
     -   `StitchConnectionService`: Handle connectivity tests.
 
-### B. Enforce Strict Input Validation (Zod) (Partially Completed: 2025-02-18)
+### B. Enforce Strict Input Validation (Zod) (Partially Completed: 2025-02-22)
 Replace `any` in `CommandDefinition` with Zod schemas. This allows automatic type inference and validation.
 
-**Implemented for:** `init`, `doctor`, `logout`.
+**Implemented for:** `init`, `doctor`, `logout`, `proxy`, `tool`, `view`.
 
 1.  **Define Schema:**
     ```typescript
