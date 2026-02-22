@@ -29,13 +29,13 @@ State management is currently done via `Context` objects passed through `Command
 ### A. Decompose Service Handlers
 Break down "God Classes" into focused, domain-specific services. Use composition over inheritance.
 
-1.  **Split `GcloudHandler`**:
+1.  **Split `GcloudHandler`** (Completed: 2025-02-18):
     -   `GcloudAuthService`: Handle `login`, `adc`, `token` fetching.
     -   `GcloudProjectService`: Handle `list`, `set`, `create`.
     -   `GcloudInstallService`: Handle binary download and version checks.
     -   *Implementation:* Create `src/services/gcloud/auth.ts`, `src/services/gcloud/projects.ts`, etc.
 
-2.  **Split `StitchHandler`**:
+2.  **Split `StitchHandler`** (Completed: 2025-02-18):
     -   `StitchIamService`: Handle IAM policy bindings.
     -   `StitchApiService`: Handle API enablement.
     -   `StitchConnectionService`: Handle connectivity tests.
