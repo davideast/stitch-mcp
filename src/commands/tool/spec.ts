@@ -30,3 +30,13 @@ export interface ToolCommandResult {
 export interface VirtualTool extends ToolInfo {
   execute: (client: StitchMCPClient, args: any) => Promise<any>;
 }
+
+// Added for CLI validation
+export const ToolOptionsSchema = z.object({
+  schema: z.boolean().default(false),
+  data: z.string().optional(),
+  dataFile: z.string().optional(),
+  output: z.enum(['json', 'pretty', 'raw']).default('pretty'),
+});
+
+export type ToolOptions = z.infer<typeof ToolOptionsSchema>;

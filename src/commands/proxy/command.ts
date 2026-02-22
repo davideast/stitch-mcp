@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { ProxyOptionsSchema, type ProxyOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, ProxyOptions> = {
   name: 'proxy',
   description: 'Start the Stitch MCP proxy server',
   options: [
@@ -11,13 +12,14 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = ProxyOptionsSchema.parse(options);
       const { ProxyCommandHandler } = await import('./handler.js');
       const handler = new ProxyCommandHandler();
 
       const result = await handler.execute({
-        transport: options.transport as 'stdio' | 'sse',
-        port: options.port,
-        debug: options.debug,
+        transport: parsedOptions.transport,
+        port: parsedOptions.port,
+        debug: parsedOptions.debug,
       });
 
       if (!result.success) {

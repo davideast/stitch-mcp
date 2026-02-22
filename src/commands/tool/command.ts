@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { ToolOptionsSchema, type ToolOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<string | undefined, ToolOptions> = {
   name: 'tool',
   arguments: '[toolName]',
   description: 'Invoke MCP tools directly',
@@ -13,14 +14,15 @@ export const command: CommandDefinition = {
   ],
   action: async (toolName, options) => {
     try {
+      const parsedOptions = ToolOptionsSchema.parse(options);
       const { ToolCommandHandler } = await import('./handler.js');
       const handler = new ToolCommandHandler();
       const result = await handler.execute({
         toolName,
-        showSchema: options.schema,
-        data: options.data,
-        dataFile: options.dataFile,
-        output: options.output,
+        showSchema: parsedOptions.schema,
+        data: parsedOptions.data,
+        dataFile: parsedOptions.dataFile,
+        output: parsedOptions.output,
       });
 
       if (!result.success) {
@@ -33,9 +35,9 @@ export const command: CommandDefinition = {
         process.exit(1);
       }
 
-      if (options.output === 'json') {
+      if (parsedOptions.output === 'json') {
         console.log(JSON.stringify(result.data));
-      } else if (options.output === 'raw') {
+      } else if (parsedOptions.output === 'raw') {
         console.log(result.data);
       } else {
         console.log(JSON.stringify(result.data, null, 2));
