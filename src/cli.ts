@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { commands } from './commands/registry.js';
+import { loadCommands } from './commands/autoload.js';
 import { theme } from './ui/theme.js';
 import { createRequire } from 'node:module';
 
@@ -13,7 +13,9 @@ program
   .description('Stitch MCP OAuth setup assistant')
   .version(pkg.version);
 
-function registerCommands() {
+async function registerCommands() {
+  const commands = await loadCommands();
+
   for (const def of commands) {
     const cmd = program.command(def.name);
     if (def.arguments) {
@@ -52,6 +54,6 @@ function registerCommands() {
   }
 }
 
-registerCommands();
+await registerCommands();
 
-program.parse();
+await program.parseAsync();
