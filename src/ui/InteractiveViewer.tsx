@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import { JsonTree } from './JsonTree.js';
-import type { NavigationResult } from './navigation-behaviors/index.js';
+import type { NavigationResult } from './navigation-behaviors/handler.js';
 
 export interface ViewerState {
   data: any;

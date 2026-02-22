@@ -60,7 +60,7 @@ Replace `any` in `CommandDefinition` with Zod schemas. This allows automatic typ
     -   Use the inferred type in `CommandDefinition<Args, InitOptions>`.
     -   Validate `options` against the schema at the start of `action`.
 
-### C. Eliminate Barrel Files
+### C. Eliminate Barrel Files (Completed: 2025-02-18)
 **Do not use `index.ts` files to re-export modules.**
 -   **Why:** It creates a central point of contention.
 -   **Action:** Delete existing `index.ts` files in `src/ui/*` and `src/services/*` (if any).
