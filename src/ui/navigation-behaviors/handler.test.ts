@@ -7,7 +7,7 @@ import {
   getNavigationTarget,
   registerNavigationHandler,
   type NavigationContext,
-} from './index.js';
+} from './handler.js';
 
 describe('screenInstanceNavigationHandler', () => {
   test('returns shouldNavigate: false for non-screenInstances paths', () => {

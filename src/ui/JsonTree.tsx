@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { spawn } from 'child_process';
-import { getHandler, type CopyResult } from './copy-behaviors/index.js';
-import { getNavigationTarget, type NavigationResult } from './navigation-behaviors/index.js';
-import { getServeHandler, type ServeResult } from './serve-behaviors/index.js';
+import { getHandler } from './copy-behaviors/registry.js';
+import type { CopyResult } from './copy-behaviors/types.js';
+import { getNavigationTarget, type NavigationResult } from './navigation-behaviors/handler.js';
+import { getServeHandler } from './serve-behaviors/registry.js';
+import type { ServeResult } from './serve-behaviors/types.js';
 
 type TreeNode = {
   id: string; // Unique path identifier
