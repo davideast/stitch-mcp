@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { LogoutOptionsSchema, type LogoutOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, LogoutOptions> = {
   name: 'logout',
   description: 'Log out of Google Cloud and revoke credentials',
   options: [
@@ -10,11 +11,12 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = LogoutOptionsSchema.parse(options);
       const { LogoutHandler } = await import('./handler.js');
       const handler = new LogoutHandler();
       const result = await handler.execute({
-        force: options.force,
-        clearConfig: options.clearConfig,
+        force: parsedOptions.force,
+        clearConfig: parsedOptions.clearConfig,
       });
 
       if (!result.success) {

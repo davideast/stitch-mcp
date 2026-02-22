@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { DoctorOptionsSchema, type DoctorOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, DoctorOptions> = {
   name: 'doctor',
   description: 'Verify configuration health',
   options: [
@@ -9,10 +10,11 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = DoctorOptionsSchema.parse(options);
       const { DoctorHandler } = await import('./handler.js');
       const handler = new DoctorHandler();
       const result = await handler.execute({
-        verbose: options.verbose,
+        verbose: parsedOptions.verbose,
       });
 
       if (!result.success) {

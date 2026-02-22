@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { InitOptionsSchema, type InitOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, InitOptions> = {
   name: 'init',
   description: 'Initialize authentication and MCP configuration',
   options: [
@@ -13,14 +14,15 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = InitOptionsSchema.parse(options);
       const { InitHandler } = await import('./handler.js');
       const handler = new InitHandler();
       const result = await handler.execute({
-        local: options.local,
-        defaults: options.defaults,
-        autoVerify: options.yes,
-        client: options.client,
-        transport: options.transport,
+        local: parsedOptions.local,
+        defaults: parsedOptions.defaults,
+        autoVerify: parsedOptions.yes,
+        client: parsedOptions.client,
+        transport: parsedOptions.transport,
       });
 
       if (!result.success) {

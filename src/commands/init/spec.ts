@@ -4,6 +4,15 @@ import { z } from 'zod';
 // INPUT SCHEMAS
 // ============================================================================
 
+export const InitOptionsSchema = z.object({
+  local: z.boolean().default(false),
+  yes: z.boolean().default(false),
+  defaults: z.boolean().default(false),
+  client: z.string().optional(),
+  transport: z.string().optional(),
+});
+export type InitOptions = z.infer<typeof InitOptionsSchema>;
+
 export const InitInputSchema = z.object({
   local: z.boolean().default(false),
   defaults: z.boolean().default(false),
