@@ -23,8 +23,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/cli.ts --outdir=dist --target=node --format=esm --external lightningcss --external vite --external @astrojs/compiler && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
-    "dev": "bun run src/cli.ts",
+    "build": "vite build && tsc -p tsconfig.build.json && bun scripts/generate-bin.ts",
+    "dev": "vite-node src/cli.ts",
     "test": "bun test --preload ./tests/setup.ts",
     "prepublishOnly": "bun run build",
     "verify-pack": "bun scripts/verify-pack.ts",
@@ -71,6 +71,7 @@
     "react-devtools-core": "^6.1.2",
     "signal-exit": "^4.1.0",
     "typescript": "^5.7.3",
+    "vite-node": "^5.3.0",
     "vitest": "^4.0.18"
   },
   "engines": {
