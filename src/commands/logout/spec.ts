@@ -4,6 +4,12 @@ import { z } from 'zod';
 // INPUT SCHEMAS
 // ============================================================================
 
+export const LogoutOptionsSchema = z.object({
+  force: z.boolean().default(false),
+  clearConfig: z.boolean().default(false),
+});
+export type LogoutOptions = z.infer<typeof LogoutOptionsSchema>;
+
 export const LogoutInputSchema = z.object({
   force: z.boolean().default(false),
   clearConfig: z.boolean().default(false),
