@@ -4,10 +4,12 @@ import { mockExecCommand } from '../../../tests/mocks/shell.js';
 import type { ShellResult } from '../../platform/shell.js';
 import fs from 'node:fs';
 
+const mockCommandExists = mock(async () => false);
+
 // Mock external dependencies
 mock.module('../../platform/shell.js', () => ({
   execCommand: mockExecCommand,
-  commandExists: mock(async () => false),
+  commandExists: mockCommandExists,
 }));
 
 // Mock node:fs
@@ -75,6 +77,9 @@ describe('GcloudHandler', () => {
     mockExecCommand.mockReset();
     mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'Unexpected exec call', exitCode: 1 });
 
+    mockCommandExists.mockReset();
+    mockCommandExists.mockImplementation(async () => false);
+
     mockAdmZip.mockClear();
     mockExtractAllToAsync.mockClear();
 
@@ -87,7 +92,7 @@ describe('GcloudHandler', () => {
     // Pre-set gcloudPath to avoid internal resolution calls during unit tests for specific methods
     // This assumes the handler has already "found" gcloud, preventing getGcloudCommand from triggering 'which' or 'access' checks.
     // Tests that specifically test resolution (like ensureInstalled) should reset this to null.
-    (handler as any).gcloudPath = '/mock/gcloud';
+    handler.executor.setGcloudPath('/mock/gcloud', false);
   });
 
   afterEach(() => {
@@ -108,7 +113,7 @@ describe('GcloudHandler', () => {
       // Re-instantiate handler to pick up new platform detection
       handler = new GcloudHandler();
       // Ensure we test the full install flow
-      (handler as any).gcloudPath = null;
+      (handler.executor as any).gcloudPath = null;
 
       // Mock global fetch
       const originalFetch = global.fetch;
@@ -148,7 +153,7 @@ describe('GcloudHandler', () => {
   describe('Async File Check Regression', () => {
     test('should uses fs.promises.access for checking local binary', async () => {
       // Clear the pre-set path to force resolution
-      (handler as any).gcloudPath = null;
+      (handler.executor as any).gcloudPath = null;
 
       // Setup successful access call to simulate local binary existing
       (fs.promises.access as any).mockResolvedValue(undefined);
@@ -163,7 +168,7 @@ describe('GcloudHandler', () => {
 
      test('should fallback to system command if access fails', async () => {
       // Clear the pre-set path to force resolution
-      (handler as any).gcloudPath = null;
+      (handler.executor as any).gcloudPath = null;
 
       // Setup failed access call
       (fs.promises.access as any).mockRejectedValue(new Error('ENOENT'));
@@ -227,7 +232,7 @@ describe('GcloudHandler', () => {
       delete process.env.CLOUDSDK_CONFIG;
       delete process.env.STITCH_USE_SYSTEM_GCLOUD;
       // We need to test installation/setup flow, so clear the pre-set path
-      (handler as any).gcloudPath = null;
+      (handler.executor as any).gcloudPath = null;
     });
 
     test('should use isolated environment by default', async () => {
@@ -259,11 +264,10 @@ describe('GcloudHandler', () => {
 
     test('should use system environment when useSystemGcloud is true via ensureInstalled', async () => {
       (fs.existsSync as any).mockReturnValue(true);
+      mockCommandExists.mockResolvedValueOnce(true);
 
       mockExecCommand
-        // commandExists
-        .mockResolvedValueOnce({ success: true, stdout: '/usr/bin/gcloud', stderr: '', exitCode: 0 })
-        // findGlobalGcloud
+        // findGlobalGcloud (execCommand call for 'which')
         .mockResolvedValueOnce({ success: true, stdout: '/usr/bin/gcloud', stderr: '', exitCode: 0 })
         // getVersionFromPath
         .mockResolvedValueOnce({ success: true, stdout: 'Google Cloud SDK 400.0.0', stderr: '', exitCode: 0 })
