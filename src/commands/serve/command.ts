@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { ServeOptionsSchema, type ServeOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, ServeOptions> = {
   name: 'serve',
   description: 'Serve project HTML screens via local web server',
   requiredOptions: [
@@ -9,6 +10,7 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = ServeOptionsSchema.parse(options);
       const { ServeHandler } = await import('./handler.js');
       const { ServeView } = await import('./ServeView.js');
       const { StitchMCPClient } = await import('../../services/mcp-client/client.js');
@@ -17,7 +19,7 @@ export const command: CommandDefinition = {
 
       const client = new StitchMCPClient();
       const handler = new ServeHandler(client);
-      const result = await handler.execute(options.project);
+      const result = await handler.execute(parsedOptions.project);
 
       if (!result.success) {
         console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));

@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { ScreensOptionsSchema, type ScreensOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, ScreensOptions> = {
   name: 'screens',
   description: 'Explore all screens in a project',
   requiredOptions: [
@@ -9,6 +10,7 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = ScreensOptionsSchema.parse(options);
       const { ScreensHandler } = await import('./handler.js');
       const { ScreensView } = await import('./ScreensView.js');
       const { StitchMCPClient } = await import('../../services/mcp-client/client.js');
@@ -17,7 +19,7 @@ export const command: CommandDefinition = {
 
       const client = new StitchMCPClient();
       const handler = new ScreensHandler(client);
-      const result = await handler.execute(options.project);
+      const result = await handler.execute(parsedOptions.project);
 
       if (!result.success) {
         console.error(theme.red(`\n${icons.error} Failed: ${result.error}`));
