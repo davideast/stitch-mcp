@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
+import { SiteOptionsSchema, type SiteOptions } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, SiteOptions> = {
   name: 'site',
   description: 'Build a structured site from Stitch screens',
   requiredOptions: [
@@ -13,12 +14,13 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = SiteOptionsSchema.parse(options);
       const { SiteCommandHandler } = await import('./index.js');
       const handler = new SiteCommandHandler();
       await handler.execute({
-          projectId: options.project,
-          outputDir: options.output,
-          export: options.export
+          projectId: parsedOptions.project,
+          outputDir: parsedOptions.output,
+          export: parsedOptions.export
       });
       process.exit(0);
     } catch (error) {

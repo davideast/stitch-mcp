@@ -1,7 +1,8 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme } from '../../ui/theme.js';
+import { SnapshotInputSchema, type SnapshotInput } from './spec.js';
 
-export const command: CommandDefinition = {
+export const command: CommandDefinition<any, SnapshotInput> = {
   name: 'snapshot',
   description: 'Create a UI snapshot given a data state',
   options: [
@@ -11,12 +12,13 @@ export const command: CommandDefinition = {
   ],
   action: async (_args, options) => {
     try {
+      const parsedOptions = SnapshotInputSchema.parse(options);
       const { SnapshotHandler } = await import('./handler.js');
       const handler = new SnapshotHandler();
       const result = await handler.execute({
-        command: options.command,
-        data: options.data,
-        schema: options.schema,
+        command: parsedOptions.command,
+        data: parsedOptions.data,
+        schema: parsedOptions.schema,
       });
 
       if (!result.success) {
