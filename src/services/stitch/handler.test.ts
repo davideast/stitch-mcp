@@ -265,6 +265,12 @@ describe('StitchHandler', () => {
       const result = await handler.checkIAMRole(validInput);
       expect(result).toBe(false);
     });
+
+    test('should return false when execution throws an exception', async () => {
+      mockExecCommand.mockRejectedValue(new Error('Network error'));
+      const result = await handler.checkIAMRole(validInput);
+      expect(result).toBe(false);
+    });
   });
 
   describe('checkAPIEnabled', () => {
@@ -284,6 +290,12 @@ describe('StitchHandler', () => {
 
     test('should return false on command failure', async () => {
       mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: 'error', exitCode: 1 });
+      const result = await handler.checkAPIEnabled(validInput);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when execution throws an exception', async () => {
+      mockExecCommand.mockRejectedValue(new Error('Network error'));
       const result = await handler.checkAPIEnabled(validInput);
       expect(result).toBe(false);
     });
