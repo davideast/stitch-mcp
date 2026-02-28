@@ -87,12 +87,15 @@ describe("StitchMCPClient", () => {
       expect(gcloudEnsureInstalledSpy).not.toHaveBeenCalled();
       expect(gcloudGetAccessTokenSpy).not.toHaveBeenCalled();
 
-      // Trigger custom fetch to check headers
+      // Extract the customFetch function directly from the transport object.
+      // The transport object stores the options passed into the constructor in `_fetchWithInit` internally
+      // where it wraps the provided fetch. Since we mocked fetch globally, the custom fetch wraps it.
+      // To reliably test it, we can just trigger a fetch that falls within the `baseUrl`.
       const transport: any = client["transport"];
-      const customFetch = transport["_fetch"];
-      await customFetch("https://api.stitch.com/test", { method: "POST" });
+      const customFetch = transport["_fetchWithInit"] || transport["_fetch"] || global.fetch;
+      await customFetch(new Request("https://api.stitch.com/test", { method: "POST" }));
 
-      // Check the mock we created, which is called by customFetch
+      // Check the mock we created, which is called by the custom fetch
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
 
@@ -142,8 +145,8 @@ describe("StitchMCPClient", () => {
 
       // Trigger custom fetch to check headers
       const transport: any = client["transport"];
-      const customFetch = transport["_fetch"];
-      await customFetch("https://api.stitch.com/test", { method: "POST" });
+      const customFetch = transport["_fetchWithInit"] || transport["_fetch"] || global.fetch;
+      await customFetch(new Request("https://api.stitch.com/test", { method: "POST" }));
 
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
