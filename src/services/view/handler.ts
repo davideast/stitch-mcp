@@ -62,21 +62,34 @@ export class ViewHandler implements ViewSpec {
       // If it's an MCP ReadResource result, it has a 'contents' array.
       // We try to parse 'text' fields as JSON.
       if (data && data.contents && Array.isArray(data.contents)) {
-          data.contents = data.contents.map((c: any) => {
-              if (c.text) {
-                  try {
-                      // Try to parse the text as JSON
-                      const parsed = JSON.parse(c.text);
-                      // If successful, replace text with the parsed object for the viewer
-                      // or add it as a new field. Replacing makes the tree view immediate.
-                      return { ...c, text: undefined, data: parsed };
-                  } catch {
-                      // Not JSON, keep as is
-                      return c;
+          const contents = data.contents;
+          const chunkSize = 1000;
+          const results = [];
+
+          for (let i = 0; i < contents.length; i += chunkSize) {
+              const chunk = contents.slice(i, i + chunkSize).map((c: any) => {
+                  if (c.text) {
+                      try {
+                          // Try to parse the text as JSON
+                          const parsed = JSON.parse(c.text);
+                          // If successful, replace text with the parsed object for the viewer
+                          // or add it as a new field. Replacing makes the tree view immediate.
+                          return { ...c, text: undefined, data: parsed };
+                      } catch {
+                          // Not JSON, keep as is
+                          return c;
+                      }
                   }
+                  return c;
+              });
+              results.push(...chunk);
+
+              // Yield to the event loop between chunks
+              if (i + chunkSize < contents.length) {
+                  await new Promise(resolve => setImmediate(resolve));
               }
-              return c;
-          });
+          }
+          data.contents = results;
       }
 
       return {
