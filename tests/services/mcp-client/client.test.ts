@@ -87,16 +87,22 @@ describe("StitchMCPClient", () => {
       expect(gcloudEnsureInstalledSpy).not.toHaveBeenCalled();
       expect(gcloudGetAccessTokenSpy).not.toHaveBeenCalled();
 
-      // Trigger fetch to check headers
-      await fetch("https://api.stitch.com/test");
+      // Extract the customFetch function directly from the transport object.
+      // The transport object stores the options passed into the constructor in `_fetchWithInit` internally
+      // where it wraps the provided fetch. Since we mocked fetch globally, the custom fetch wraps it.
+      // To reliably test it, we can just trigger a fetch that falls within the `baseUrl`.
+      const transport: any = client["transport"];
+      const customFetch = transport["_fetchWithInit"] || transport["_fetch"] || global.fetch;
+      await customFetch(new Request("https://api.stitch.com/test", { method: "POST" }));
 
-      // Check the mock we created, which is wrapped by the interceptor
+      // Check the mock we created, which is called by the custom fetch
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
 
       expect(headers.get("X-Goog-Api-Key")).toBe("test-key");
       expect(headers.get("Authorization")).toBeNull();
       expect(headers.get("X-Goog-User-Project")).toBeNull();
+      expect(headers.get("Content-Type")).toBe("application/json");
     });
   });
 
@@ -137,8 +143,10 @@ describe("StitchMCPClient", () => {
       // Should check token info
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("tokeninfo"));
 
-      // Trigger fetch to check headers
-      await fetch("https://api.stitch.com/test");
+      // Trigger custom fetch to check headers
+      const transport: any = client["transport"];
+      const customFetch = transport["_fetchWithInit"] || transport["_fetch"] || global.fetch;
+      await customFetch(new Request("https://api.stitch.com/test", { method: "POST" }));
 
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
@@ -146,6 +154,7 @@ describe("StitchMCPClient", () => {
       expect(headers.get("Authorization")).toBe("Bearer valid-token");
       expect(headers.get("X-Goog-User-Project")).toBe("test-project");
       expect(headers.get("X-Goog-Api-Key")).toBeNull();
+      expect(headers.get("Content-Type")).toBe("application/json");
     });
 
     it("should refresh token if validation fails", async () => {

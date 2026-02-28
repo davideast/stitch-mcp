@@ -83,15 +83,25 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     }
   }
 
-  /**
-   * Monkey-patches global fetch to ensure headers are ALWAYS present.
-   * This fixes issues where SDK layers might drop headers on redirects or retries.
-   */
-  private installNetworkInterceptor() {
-    const originalFetch = globalThis.fetch;
-    if ((originalFetch as any).__stitchPatched) return;
+  async connect() {
+    if (this.isConnected) return;
 
-    globalThis.fetch = (async (input: any, init?: RequestInit) => {
+    // Resolve projectId via GcloudHandler if not set (for OAuth flow)
+    if (!this.config.apiKey && !this.config.projectId) {
+      const gcloudHandler = new GcloudHandler();
+      await gcloudHandler.ensureInstalled({ minVersion: '400.0.0', forceLocal: false });
+      const projectId = await gcloudHandler.getProjectId();
+      if (projectId) {
+        this.config.projectId = projectId;
+      }
+    }
+
+    if (!this.config.apiKey) {
+      await this.validateToken(); // OAuth only
+    }
+
+    // Prepare headers for the custom fetch implementation
+    const customFetch = async (input: any, init?: RequestInit) => {
       let url = input.toString();
       if (input instanceof Request) url = input.url;
 
@@ -114,7 +124,8 @@ export class StitchMCPClient implements StitchMCPClientSpec {
         newHeaders.set("Accept", "application/json, text/event-stream");
 
         // Ensure Content-Type for POST
-        if (!newHeaders.has("Content-Type") && (init?.method === "POST" || (input instanceof Request && input.method === "POST"))) {
+        const isPost = init?.method === "POST" || (input instanceof Request && input.method === "POST");
+        if (!newHeaders.has("Content-Type") && isPost) {
           newHeaders.set("Content-Type", "application/json");
         }
 
@@ -125,33 +136,17 @@ export class StitchMCPClient implements StitchMCPClientSpec {
           newInit.method = input.method;
         }
 
-        return originalFetch(url, newInit);
+        // We use the global fetch here since we've decorated the headers
+        // for this specific transport instance
+        return fetch(input, newInit);
       }
-      return originalFetch(input, init);
-    }) as any;
-    (globalThis.fetch as any).__stitchPatched = true;
-  }
+      return fetch(input, init);
+    };
 
-  async connect() {
-    if (this.isConnected) return;
-
-    // Resolve projectId via GcloudHandler if not set (for OAuth flow)
-    if (!this.config.apiKey && !this.config.projectId) {
-      const gcloudHandler = new GcloudHandler();
-      await gcloudHandler.ensureInstalled({ minVersion: '400.0.0', forceLocal: false });
-      const projectId = await gcloudHandler.getProjectId();
-      if (projectId) {
-        this.config.projectId = projectId;
-      }
-    }
-
-    if (!this.config.apiKey) {
-      await this.validateToken(); // OAuth only
-    }
-    this.installNetworkInterceptor();
-
-    // Transport gets the URL; headers are handled by interceptor
-    this.transport = new StreamableHTTPClientTransport(new URL(this.config.baseUrl));
+    // Transport gets the URL; headers are injected securely via the custom fetch option
+    this.transport = new StreamableHTTPClientTransport(new URL(this.config.baseUrl), {
+      fetch: customFetch
+    });
 
     this.transport.onerror = (err) => {
       console.error("Stitch Transport Error:", err);
