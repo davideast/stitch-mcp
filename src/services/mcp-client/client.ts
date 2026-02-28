@@ -83,55 +83,6 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     }
   }
 
-  /**
-   * Monkey-patches global fetch to ensure headers are ALWAYS present.
-   * This fixes issues where SDK layers might drop headers on redirects or retries.
-   */
-  private installNetworkInterceptor() {
-    const originalFetch = globalThis.fetch;
-    if ((originalFetch as any).__stitchPatched) return;
-
-    globalThis.fetch = (async (input: any, init?: RequestInit) => {
-      let url = input.toString();
-      if (input instanceof Request) url = input.url;
-
-      // Only intercept Stitch calls
-      if (url.startsWith(this.config.baseUrl)) {
-        const newHeaders = new Headers(init?.headers);
-
-        if (this.config.apiKey) {
-          newHeaders.set("X-Goog-Api-Key", this.config.apiKey);
-          // No X-Goog-User-Project for API key auth
-        } else {
-          if (this.config.accessToken) {
-            newHeaders.set("Authorization", `Bearer ${this.config.accessToken}`);
-          }
-          if (this.config.projectId) {
-            newHeaders.set("X-Goog-User-Project", this.config.projectId);
-          }
-        }
-
-        newHeaders.set("Accept", "application/json, text/event-stream");
-
-        // Ensure Content-Type for POST
-        if (!newHeaders.has("Content-Type") && (init?.method === "POST" || (input instanceof Request && input.method === "POST"))) {
-          newHeaders.set("Content-Type", "application/json");
-        }
-
-        const newInit: RequestInit = { ...init, headers: newHeaders };
-
-        // Preserve method if it was in the Request object but not in init
-        if (input instanceof Request && !newInit.method) {
-          newInit.method = input.method;
-        }
-
-        return originalFetch(url, newInit);
-      }
-      return originalFetch(input, init);
-    }) as any;
-    (globalThis.fetch as any).__stitchPatched = true;
-  }
-
   async connect() {
     if (this.isConnected) return;
 
@@ -148,10 +99,47 @@ export class StitchMCPClient implements StitchMCPClientSpec {
     if (!this.config.apiKey) {
       await this.validateToken(); // OAuth only
     }
-    this.installNetworkInterceptor();
 
-    // Transport gets the URL; headers are handled by interceptor
-    this.transport = new StreamableHTTPClientTransport(new URL(this.config.baseUrl));
+    // Prepare headers for the custom fetch implementation
+    const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const newHeaders = new Headers(init?.headers);
+
+      if (this.config.apiKey) {
+        newHeaders.set("X-Goog-Api-Key", this.config.apiKey);
+        // No X-Goog-User-Project for API key auth
+      } else {
+        if (this.config.accessToken) {
+          newHeaders.set("Authorization", `Bearer ${this.config.accessToken}`);
+        }
+        if (this.config.projectId) {
+          newHeaders.set("X-Goog-User-Project", this.config.projectId);
+        }
+      }
+
+      newHeaders.set("Accept", "application/json, text/event-stream");
+
+      // Ensure Content-Type for POST
+      const isPost = init?.method === "POST" || (input instanceof Request && input.method === "POST");
+      if (!newHeaders.has("Content-Type") && isPost) {
+        newHeaders.set("Content-Type", "application/json");
+      }
+
+      const newInit: RequestInit = { ...init, headers: newHeaders };
+
+      // Preserve method if it was in the Request object but not in init
+      if (input instanceof Request && !newInit.method) {
+        newInit.method = input.method;
+      }
+
+      // We use the global fetch here since we've decorated the headers
+      // for this specific transport instance
+      return fetch(input, newInit);
+    };
+
+    // Transport gets the URL; headers are injected securely via the custom fetch option
+    this.transport = new StreamableHTTPClientTransport(new URL(this.config.baseUrl), {
+      fetch: customFetch
+    });
 
     this.transport.onerror = (err) => {
       console.error("Stitch Transport Error:", err);

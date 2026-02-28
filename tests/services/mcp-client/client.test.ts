@@ -87,16 +87,19 @@ describe("StitchMCPClient", () => {
       expect(gcloudEnsureInstalledSpy).not.toHaveBeenCalled();
       expect(gcloudGetAccessTokenSpy).not.toHaveBeenCalled();
 
-      // Trigger fetch to check headers
-      await fetch("https://api.stitch.com/test");
+      // Trigger custom fetch to check headers
+      const transport: any = client["transport"];
+      const customFetch = transport["_fetch"];
+      await customFetch("https://api.stitch.com/test", { method: "POST" });
 
-      // Check the mock we created, which is wrapped by the interceptor
+      // Check the mock we created, which is called by customFetch
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
 
       expect(headers.get("X-Goog-Api-Key")).toBe("test-key");
       expect(headers.get("Authorization")).toBeNull();
       expect(headers.get("X-Goog-User-Project")).toBeNull();
+      expect(headers.get("Content-Type")).toBe("application/json");
     });
   });
 
@@ -137,8 +140,10 @@ describe("StitchMCPClient", () => {
       // Should check token info
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("tokeninfo"));
 
-      // Trigger fetch to check headers
-      await fetch("https://api.stitch.com/test");
+      // Trigger custom fetch to check headers
+      const transport: any = client["transport"];
+      const customFetch = transport["_fetch"];
+      await customFetch("https://api.stitch.com/test", { method: "POST" });
 
       const lastCall = fetchMock.mock.lastCall;
       const headers = lastCall[1].headers;
@@ -146,6 +151,7 @@ describe("StitchMCPClient", () => {
       expect(headers.get("Authorization")).toBe("Bearer valid-token");
       expect(headers.get("X-Goog-User-Project")).toBe("test-project");
       expect(headers.get("X-Goog-Api-Key")).toBeNull();
+      expect(headers.get("Content-Type")).toBe("application/json");
     });
 
     it("should refresh token if validation fails", async () => {
