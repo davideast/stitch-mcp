@@ -21,6 +21,8 @@ mock.module('node:fs', () => ({
     promises: {
       access: mock(() => Promise.reject(new Error('ENOENT'))),
       writeFile: mock(() => Promise.resolve()),
+      mkdir: mock(() => Promise.resolve()),
+      unlink: mock(() => Promise.resolve()),
     },
     constants: {
       F_OK: 0,

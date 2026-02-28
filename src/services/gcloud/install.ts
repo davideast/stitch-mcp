@@ -206,9 +206,7 @@ export class GcloudInstallService {
     const stitchDir = getStitchDir();
 
     // Create directories
-    if (!fs.existsSync(stitchDir)) {
-      fs.mkdirSync(stitchDir, { recursive: true });
-    }
+    await fs.promises.mkdir(stitchDir, { recursive: true });
 
     // Download gcloud
     const downloadUrl = this.executor.platform.gcloudDownloadUrl;
