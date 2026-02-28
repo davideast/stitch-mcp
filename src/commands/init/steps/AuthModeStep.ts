@@ -30,21 +30,22 @@ export class AuthModeStep implements CommandStep<InitContext> {
         const envContent = `\nSTITCH_API_KEY=${inputKey}\n`;
 
         try {
-          if (fs.existsSync(envPath)) {
-            fs.appendFileSync(envPath, envContent);
-          } else {
-            fs.writeFileSync(envPath, envContent);
-          }
+          // fs.promises.appendFile creates the file if it does not exist
+          await fs.promises.appendFile(envPath, envContent);
 
           // Handle .gitignore
           const gitignorePath = path.join(process.cwd(), '.gitignore');
-          if (fs.existsSync(gitignorePath)) {
-            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+          try {
+            const gitignoreContent = await fs.promises.readFile(gitignorePath, 'utf8');
             if (!gitignoreContent.includes('.env')) {
-              fs.appendFileSync(gitignorePath, '\n.env\n');
+              await fs.promises.appendFile(gitignorePath, '\n.env\n');
             }
-          } else {
-            fs.writeFileSync(gitignorePath, '.env\n');
+          } catch (err: any) {
+            if (err.code === 'ENOENT') {
+              await fs.promises.writeFile(gitignorePath, '.env\n');
+            } else {
+              throw err;
+            }
           }
         } catch (e) {
             context.ui.warn(`Warning: Failed to update .env or .gitignore: ${e instanceof Error ? e.message : String(e)}`);
