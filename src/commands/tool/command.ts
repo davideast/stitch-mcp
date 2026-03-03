@@ -1,5 +1,5 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
-import { theme, icons } from '../../ui/theme.js';
+import { theme } from '../../ui/theme.js';
 import { ToolOptionsSchema, type ToolOptions } from './spec.js';
 
 export const command: CommandDefinition<string | undefined, ToolOptions> = {
