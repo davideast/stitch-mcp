@@ -30,8 +30,8 @@ export class AuthModeStep implements CommandStep<InitContext> {
         const envContent = `\nSTITCH_API_KEY=${inputKey}\n`;
 
         try {
-          // fs.promises.appendFile creates the file if it does not exist
-          await fs.promises.appendFile(envPath, envContent);
+          // fs.promises.writeFile with mode 0o600 creates the file with restricted permissions
+          await fs.promises.writeFile(envPath, envContent, { flag: 'a', mode: 0o600 });
 
           // Handle .gitignore
           const gitignorePath = path.join(process.cwd(), '.gitignore');
