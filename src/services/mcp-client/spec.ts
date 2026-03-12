@@ -4,7 +4,7 @@ export const StitchConfigSchema = z.object({
   accessToken: z.string().optional(),
   apiKey: z.string().optional(),
   projectId: z.string().optional(),
-  baseUrl: z.string().default('https://stitch.googleapis.com/mcp'),
+  baseUrl: z.string().optional().transform(v => v ?? process.env.STITCH_HOST ?? 'https://stitch.googleapis.com/mcp'),
   timeout: z.number().optional(),
 });
 

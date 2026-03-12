@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach, spyOn, afterEach } from "bun:test";
 import { StitchMCPClient } from "../../../src/services/mcp-client/client.js";
+import { StitchConfigSchema } from "../../../src/services/mcp-client/spec.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { GcloudHandler } from "../../../src/services/gcloud/handler.js";
@@ -71,6 +72,54 @@ describe("StitchMCPClient", () => {
       expect(client["config"].apiKey).toBe("test-key");
       expect(client["config"].projectId).toBe("test-project");
       expect(client["config"].baseUrl).toBe("https://custom.url");
+    });
+
+    it("should use STITCH_HOST env var as default baseUrl", () => {
+      const original = process.env.STITCH_HOST;
+      try {
+        process.env.STITCH_HOST = "https://staging-stitch.sandbox.googleapis.com/mcp";
+        const config = StitchConfigSchema.parse({});
+        expect(config.baseUrl).toBe("https://staging-stitch.sandbox.googleapis.com/mcp");
+      } finally {
+        if (original === undefined) {
+          delete process.env.STITCH_HOST;
+        } else {
+          process.env.STITCH_HOST = original;
+        }
+      }
+    });
+
+    it("should allow explicit baseUrl to override STITCH_HOST", () => {
+      const original = process.env.STITCH_HOST;
+      try {
+        process.env.STITCH_HOST = "https://staging-stitch.sandbox.googleapis.com/mcp";
+        const client = new StitchMCPClient({
+          apiKey: "test-key",
+          baseUrl: "https://explicit-override.url"
+        });
+        expect(client["config"].baseUrl).toBe("https://explicit-override.url");
+      } finally {
+        if (original === undefined) {
+          delete process.env.STITCH_HOST;
+        } else {
+          process.env.STITCH_HOST = original;
+        }
+      }
+    });
+
+    it("should default to production URL when STITCH_HOST is not set", () => {
+      const original = process.env.STITCH_HOST;
+      try {
+        delete process.env.STITCH_HOST;
+        const config = StitchConfigSchema.parse({});
+        expect(config.baseUrl).toBe("https://stitch.googleapis.com/mcp");
+      } finally {
+        if (original === undefined) {
+          delete process.env.STITCH_HOST;
+        } else {
+          process.env.STITCH_HOST = original;
+        }
+      }
     });
   });
 
