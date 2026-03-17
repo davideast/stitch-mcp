@@ -8,10 +8,6 @@ const screens = [
 ];
 const mockStitch = createMockStitch(createMockProject('proj-1', screens));
 
-mock.module('@google/stitch-sdk', () => ({
-  stitch: mockStitch
-}));
-
 describe('build_site virtual tool (SDK)', () => {
   let mockClient: any;
 
@@ -24,7 +20,7 @@ describe('build_site virtual tool (SDK)', () => {
     const result = await buildSiteTool.execute(mockClient, {
       projectId: 'proj-1',
       routes: [{ screenId: 'home', route: '/' }, { screenId: 'about', route: '/about' }],
-    });
+    }, mockStitch as any);
 
     expect(result.success).toBe(true);
     expect(mockStitch.project).toHaveBeenCalledWith('proj-1');
@@ -35,7 +31,7 @@ describe('build_site virtual tool (SDK)', () => {
       buildSiteTool.execute(mockClient, {
         projectId: 'proj-1',
         routes: [{ screenId: 'nonexistent', route: '/' }],
-      })
+      }, mockStitch as any)
     ).rejects.toThrow("Screen IDs not found in project: nonexistent");
   });
 
@@ -44,7 +40,7 @@ describe('build_site virtual tool (SDK)', () => {
       buildSiteTool.execute(mockClient, {
         projectId: '123',
         routes: [],
-      })
+      }, mockStitch as any)
     ).rejects.toThrow("non-empty array");
   });
 
@@ -53,7 +49,7 @@ describe('build_site virtual tool (SDK)', () => {
       buildSiteTool.execute(mockClient, {
         projectId: "123",
         routes: "not-an-array",
-      })
+      }, mockStitch as any)
     ).rejects.toThrow("routes must be an array");
   });
 
@@ -65,7 +61,7 @@ describe('build_site virtual tool (SDK)', () => {
           { screenId: "screen-1", route: "/" },
           { screenId: "screen-2", route: "/" },
         ],
-      })
+      }, mockStitch as any)
     ).rejects.toThrow("Duplicate route paths found: /");
   });
 
@@ -77,7 +73,7 @@ describe('build_site virtual tool (SDK)', () => {
      const fetchMock = mock(async () => {
        calls++;
        if (calls < 3) {
-         throw new Error("Too Many Requests (429)");
+         return new Response(null, { status: 429, statusText: 'Too Many Requests' });
        }
        return new Response("<html>Success</html>", { status: 200 });
      });
@@ -86,7 +82,7 @@ describe('build_site virtual tool (SDK)', () => {
      const result = await buildSiteTool.execute(mockClient, {
          projectId: 'proj-1',
          routes: [{ screenId: 'home', route: '/' }]
-     });
+     }, mockStitch as any);
 
      expect(calls).toBe(3);
      expect(result.pages[0].html).toBe("<html>Success</html>");

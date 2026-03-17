@@ -24,13 +24,14 @@ describe('ServeHandler (SDK)', () => {
     expect(stitch.project).toHaveBeenCalledWith('proj-1');
     expect(project.screens).toHaveBeenCalled();
     expect(result.screens).toHaveLength(2); // About and Home
-    expect(result.screens[0].screenId).toBe('about'); // sorted alphabetically
-    expect(result.screens[1].screenId).toBe('home');
-    expect(result.screens[1].codeUrl).toBe('https://cdn.example.com/html/screen-1');
+    expect(result.screens[0]?.screenId).toBe('about'); // sorted alphabetically
+    expect(result.screens[1]?.screenId).toBe('home');
+    expect(result.screens[1]?.codeUrl).toBe('https://cdn.example.com/html/screen-1');
   });
 
   it('returns projectTitle from SDK project', async () => {
     const project = createMockProject('proj-1', []);
+    (project as any).data = { title: 'Mock Project' };
     const stitch = createMockStitch(project);
     const handler = new ServeHandler(stitch as any);
     const result = await handler.execute('proj-1');

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from 'ink';
 import { stitch } from '@google/stitch-sdk';
+import type { Stitch } from '@google/stitch-sdk';
 import { SiteBuilder } from './ui/SiteBuilder.js';
 import { SiteService } from '../../lib/services/site/SiteService.js';
 import { AssetGateway } from '../../lib/server/AssetGateway.js';
@@ -14,7 +15,7 @@ interface SiteCommandOptions {
 }
 
 export class SiteCommandHandler {
-  constructor(private client: any = stitch) {}
+  constructor(private client: Stitch = stitch) {}
 
   async execute(options: SiteCommandOptions) {
     if (options.export) {

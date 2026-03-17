@@ -172,13 +172,10 @@ export class SnapshotHandler implements SnapshotCommand {
           const { SiteBuilder } = await import('../site/ui/SiteBuilder.js');
           const { createMockStitch, createMockProject, createMockScreen } = await import('../../services/stitch-sdk/MockStitchSDK.js');
 
-          // Need an actual mock function from bun:test to conform to Mock<(...args: any[]) => any>
-          const { mock } = await import('bun:test');
-
           const mockScreens = (data.screens || []).map((s: any) => createMockScreen({
             screenId: s.name,
             title: s.title,
-            getHtml: mock(() => Promise.resolve(s.htmlCode?.downloadUrl || null)),
+            getHtml: (() => Promise.resolve(s.htmlCode?.downloadUrl || null)) as any,
           }));
           const mockClient = createMockStitch(createMockProject(data.inputArgs?.projectId || 'mock-project', mockScreens));
 

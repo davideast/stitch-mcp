@@ -5,10 +5,12 @@ import pLimit from 'p-limit';
 
 export type HydrationStatus = 'idle' | 'downloading' | 'ready' | 'error';
 
+export type FetchContentFn = (url: string) => Promise<string>;
+
 export function useProjectHydration(
   screens: UIScreen[],
   server: StitchViteServer | null,
-  syncer: any,
+  fetchContent: FetchContentFn,
   activeScreenId?: string
 ) {
   const [hydrationStatus, setHydrationStatus] = useState<HydrationStatus>('idle');
@@ -64,7 +66,7 @@ export function useProjectHydration(
           if (!screen.downloadUrl) return;
 
           try {
-            const html = await syncer.fetchContent(screen.downloadUrl);
+            const html = await fetchContent(screen.downloadUrl);
             if (mounted) {
               contentCache.current.set(screen.id, html);
               server.mount(`/_preview/${screen.id}`, html);
@@ -91,7 +93,7 @@ export function useProjectHydration(
     hydrate();
 
     return () => { mounted = false; };
-  }, [screens, server, syncer, activeScreenId]);
+  }, [screens, server, fetchContent, activeScreenId]);
 
   return { hydrationStatus, progress, htmlContent };
 }

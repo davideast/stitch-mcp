@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { StitchToolClient } from '@google/stitch-sdk';
+import type { StitchToolClient, Stitch } from '@google/stitch-sdk';
 
 export const ToolCommandInputSchema = z.object({
   toolName: z.string().optional(),   // undefined = list tools
@@ -28,7 +28,7 @@ export interface ToolCommandResult {
 }
 
 export interface VirtualTool extends ToolInfo {
-  execute: (client: StitchToolClient, args: any) => Promise<any>;
+  execute: (client: StitchToolClient, args: any, stitch?: Stitch) => Promise<any>;
 }
 
 // Added for CLI validation

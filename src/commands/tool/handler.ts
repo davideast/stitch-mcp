@@ -1,4 +1,5 @@
-import { StitchToolClient } from '@google/stitch-sdk';
+import { StitchToolClient, stitch as defaultStitch } from '@google/stitch-sdk';
+import type { Stitch } from '@google/stitch-sdk';
 import type { CommandStep } from '../../framework/CommandStep.js';
 import { runSteps } from '../../framework/StepRunner.js';
 import type { ToolCommandInput, ToolCommandResult, VirtualTool } from './spec.js';
@@ -22,11 +23,13 @@ export const deps = {
 
 export class ToolCommandHandler {
   private client: StitchToolClient;
+  private stitchInstance: Stitch;
   private tools: VirtualTool[];
   private steps: CommandStep<ToolContext>[];
 
-  constructor(client?: any, tools?: VirtualTool[]) {
+  constructor(client?: StitchToolClient, tools?: VirtualTool[], stitchInstance?: Stitch) {
     this.client = client || new StitchToolClient();
+    this.stitchInstance = stitchInstance || defaultStitch;
     this.tools = tools || defaultVirtualTools;
     this.steps = [
       new deps.ListToolsStep(),
@@ -41,6 +44,7 @@ export class ToolCommandHandler {
     const context: ToolContext = {
       input,
       client: this.client,
+      stitch: this.stitchInstance,
       virtualTools: this.tools,
     };
 

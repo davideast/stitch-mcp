@@ -1,6 +1,6 @@
+import type { StitchToolClient, Stitch } from '@google/stitch-sdk';
 import { downloadText } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
-import { stitch } from '@google/stitch-sdk';
 
 export const getScreenCodeTool: VirtualTool = {
   name: 'get_screen_code',
@@ -19,10 +19,11 @@ export const getScreenCodeTool: VirtualTool = {
     },
     required: ['projectId', 'screenId'],
   },
-  execute: async (client: any, args: any) => {
+  execute: async (client: StitchToolClient, args: any, stitch?: Stitch) => {
+    if (!stitch) throw new Error('get_screen_code requires a Stitch instance');
     const { projectId, screenId } = args;
 
-    // 1. Get the screen details using the SDK
+    // 1. Get the screen details using the injected SDK instance
     const screen = await stitch.project(projectId).getScreen(screenId);
 
     // 2. Fetch HTML Code

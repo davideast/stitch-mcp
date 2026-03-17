@@ -1,6 +1,5 @@
-import { downloadImage } from '../../../ui/copy-behaviors/clipboard.js';
+import type { StitchToolClient, Stitch } from '@google/stitch-sdk';
 import type { VirtualTool } from '../spec.js';
-import { stitch } from '@google/stitch-sdk';
 
 export const getScreenImageTool: VirtualTool = {
   name: 'get_screen_image',
@@ -19,10 +18,11 @@ export const getScreenImageTool: VirtualTool = {
     },
     required: ['projectId', 'screenId'],
   },
-  execute: async (client: any, args: any) => {
+  execute: async (client: StitchToolClient, args: any, stitch?: Stitch) => {
+    if (!stitch) throw new Error('get_screen_image requires a Stitch instance');
     const { projectId, screenId } = args;
 
-    // 1. Get the screen details using the SDK
+    // 1. Get the screen details using the injected SDK instance
     const screen = await stitch.project(projectId).getScreen(screenId);
 
     // 2. Fetch Image Content
@@ -30,8 +30,6 @@ export const getScreenImageTool: VirtualTool = {
     try {
       const imageUrl = await screen.getImage();
       if (imageUrl) {
-        // downloadImage doesn't take arguments in the current implementation, it grabs from clipboard
-        // Actually, this file was passing a URL to downloadImage, but let's just fetch it as a buffer
         const response = await fetch(imageUrl);
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -41,7 +39,7 @@ export const getScreenImageTool: VirtualTool = {
       console.error(`Error downloading screenshot: ${e}`);
     }
 
-    // 3. Return screen with image content (as base64 or raw buffer, adjusting for specific agent uses)
+    // 3. Return screen with image content
     return {
       screenId: screen.screenId,
       projectId: screen.projectId,

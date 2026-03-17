@@ -1,14 +1,36 @@
 import { StitchProxy } from '@google/stitch-sdk';
+import type { StitchProxy as StitchProxyType } from '@google/stitch-sdk';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
+interface ProxyCommandInput {
+  port?: number;
+  debug?: boolean;
+}
+
+interface ProxyCommandResult {
+  success: boolean;
+  data?: { status: string };
+  error?: { code: string; message: string; recoverable: boolean };
+}
+
 export class ProxyCommandHandler {
-  async execute(input: any): Promise<any> {
+  private createProxy: (opts: { apiKey?: string }) => StitchProxyType;
+  private createTransport: () => StdioServerTransport;
+
+  constructor(deps?: {
+    createProxy?: (opts: { apiKey?: string }) => StitchProxyType;
+    createTransport?: () => StdioServerTransport;
+  }) {
+    this.createProxy = deps?.createProxy ?? ((opts) => new StitchProxy(opts));
+    this.createTransport = deps?.createTransport ?? (() => new StdioServerTransport());
+  }
+
+  async execute(input: ProxyCommandInput): Promise<ProxyCommandResult> {
     try {
-      const proxy = new StitchProxy({
+      const proxy = this.createProxy({
         apiKey: process.env.STITCH_API_KEY,
-        // STITCH_ACCESS_TOKEN + GOOGLE_CLOUD_PROJECT read automatically
       });
-      const transport = new StdioServerTransport();
+      const transport = this.createTransport();
       await proxy.start(transport);
       return { success: true, data: { status: 'stopped' } };
     } catch (e: any) {

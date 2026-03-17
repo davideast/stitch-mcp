@@ -1,3 +1,6 @@
+import type { Stitch } from '@google/stitch-sdk';
+import pLimit from 'p-limit';
+
 interface CodeScreen {
   screenId: string;
   title: string;
@@ -15,19 +18,21 @@ type ServeHandlerResult = {
 };
 
 export class ServeHandler {
-  constructor(private readonly stitch: any) {} // Actually StitchSDK but imported as any since typing the singleton directly fails easily
+  constructor(private readonly stitch: Stitch) {}
 
   async execute(projectId: string): Promise<ServeHandlerResult> {
     try {
       const project = this.stitch.project(projectId);
       const screens = await project.screens();
 
+      // Throttle concurrent API calls
+      const limit = pLimit(3);
       const withHtml = await Promise.all(
-        screens.map(async (s: any) => ({
+        screens.map((s: any) => limit(async () => ({
           screenId: s.screenId,
           title: s.title ?? s.screenId,
           codeUrl: await s.getHtml(),
-        }))
+        })))
       );
 
       const filtered = withHtml.filter(s => s.codeUrl !== null);
@@ -38,7 +43,7 @@ export class ServeHandler {
       return {
         success: true,
         projectId,
-        projectTitle: project.title ?? projectId,
+        projectTitle: project.data?.title ?? projectId,
         screens: filtered,
       };
     } catch (e: any) {

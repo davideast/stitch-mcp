@@ -48,7 +48,8 @@ export function createMockStitch(project: MockProject) {
   return {
     project: mock((_id: string) => project),
     projects: mock(() => Promise.resolve([project])),
+    createProject: mock((_title?: string) => Promise.resolve(project)),
     callTool: mock(() => Promise.resolve({})),
     listTools: mock(() => Promise.resolve({ tools: [] })),
-  };
+  } as any;
 }

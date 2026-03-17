@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import Spinner from 'ink-spinner';
 import TextInput from 'ink-text-input';
@@ -6,13 +6,15 @@ import { SiteService } from '../../../lib/services/site/SiteService.js';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { openUrl } from '../../../platform/browser.js';
 import { SiteManifest } from '../utils/SiteManifest.js';
+import { fetchWithRetry } from '../utils/fetchWithRetry.js';
 import { ScreenList } from './ScreenList.js';
 import { useProjectHydration } from '../hooks/useProjectHydration.js';
 import type { UIScreen, SiteConfig } from '../../../lib/services/site/types.js';
+import type { Stitch } from '@google/stitch-sdk';
 
 interface SiteBuilderProps {
   projectId: string;
-  client: any;
+  client: Stitch;
   onExit: (config: SiteConfig | null, htmlContent?: Map<string, string>) => void;
 }
 
@@ -119,21 +121,10 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const activeItem = displayList[activeIndex];
   const activeScreenId = activeItem?.screen.id;
 
-  // Provide a dummy syncer shim for hydration since we deleted ProjectSyncer
-  // Site generation and hydration uses URL fetching anyway.
-  const dummySyncer = useMemo(() => ({
-      fetchContent: async (url: string) => {
-          const { fetchWithRetry } = await import('../utils/fetchWithRetry.js').catch(() => ({ fetchWithRetry: null }));
-          if (fetchWithRetry) {
-             return fetchWithRetry(url);
-          }
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.text();
-      }
-  }), []);
+  // Stable fetchContent reference using fetchWithRetry directly
+  const fetchContent = useCallback((url: string) => fetchWithRetry(url), []);
 
-  const { hydrationStatus, progress, htmlContent } = useProjectHydration(screens, server, dummySyncer as any, activeScreenId);
+  const { hydrationStatus, progress, htmlContent } = useProjectHydration(screens, server, fetchContent, activeScreenId);
 
   // Navigate effect (Follow Mode)
   useEffect(() => {

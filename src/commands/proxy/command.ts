@@ -17,13 +17,12 @@ export const command: CommandDefinition<any, ProxyOptions> = {
       const handler = new ProxyCommandHandler();
 
       const result = await handler.execute({
-        transport: parsedOptions.transport,
         port: parsedOptions.port,
         debug: parsedOptions.debug,
       });
 
       if (!result.success) {
-        console.error(theme.red(`\n${icons.error} Proxy server error: ${result.error.message}`));
+        console.error(theme.red(`\n${icons.error} Proxy server error: ${result.error?.message}`));
         process.exit(1);
       }
       process.exit(0);

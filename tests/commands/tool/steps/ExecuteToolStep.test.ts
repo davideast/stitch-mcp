@@ -1,6 +1,9 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ExecuteToolStep } from "../../../../src/commands/tool/steps/ExecuteToolStep.js";
 import type { ToolContext } from "../../../../src/commands/tool/context.js";
+import { createMockStitch, createMockProject } from "../../../../src/services/stitch-sdk/MockStitchSDK.js";
+
+const mockStitch = createMockStitch(createMockProject('test-proj', []));
 
 describe("ExecuteToolStep", () => {
   let step: ExecuteToolStep;
@@ -17,6 +20,7 @@ describe("ExecuteToolStep", () => {
     return {
       input: { toolName: "some_tool", showSchema: false, output: "pretty" },
       client: mockClient,
+      stitch: mockStitch as any,
       virtualTools: [],
       ...overrides,
     };
@@ -52,7 +56,7 @@ describe("ExecuteToolStep", () => {
       await step.run(context);
 
       expect(context.result).toEqual({ success: true, data: { virtual: true } });
-      expect(mockExecute).toHaveBeenCalledWith(mockClient, { key: "val" });
+      expect(mockExecute).toHaveBeenCalledWith(mockClient, { key: "val" }, mockStitch as any);
       expect(mockClient.callTool).not.toHaveBeenCalled();
     });
 

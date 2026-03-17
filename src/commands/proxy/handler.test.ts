@@ -1,4 +1,4 @@
-import { describe, it, expect, spyOn, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test';
 import { StitchProxy } from '@google/stitch-sdk';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ProxyCommandHandler } from './handler.js';
@@ -25,7 +25,7 @@ describe('ProxyCommandHandler (SDK)', () => {
 
   it('starts StitchProxy with a StdioServerTransport', async () => {
     const handler = new ProxyCommandHandler();
-    const result = await handler.execute({ port: undefined });
+    const result = await handler.execute({});
 
     expect(result.success).toBe(true);
     expect(startSpy).toHaveBeenCalledTimes(1);
@@ -34,7 +34,6 @@ describe('ProxyCommandHandler (SDK)', () => {
   });
 
   it('passes STITCH_API_KEY env var to StitchProxy', async () => {
-    const constructorSpy = spyOn(StitchProxy.prototype, 'constructor' as any);
     process.env.STITCH_API_KEY = 'test-key';
     const handler = new ProxyCommandHandler();
     const result = await handler.execute({});
@@ -42,14 +41,21 @@ describe('ProxyCommandHandler (SDK)', () => {
     expect(result.success).toBe(true);
   });
 
+  it('returns error when proxy start fails', async () => {
+    startSpy.mockRejectedValue(new Error('Connection refused'));
+    const handler = new ProxyCommandHandler();
+    const result = await handler.execute({});
+    expect(result.success).toBe(false);
+    expect(result.error?.code).toBe('PROXY_START_ERROR');
+    expect(result.error?.message).toBe('Connection refused');
+  });
+
   it.skip('writes debug log to ~/.stitch/proxy-debug.log when --debug is passed', async () => {
     // TODO: Confirm StitchProxy exposes an event/hook for debug logging.
     // If not, wrap proxy.start() with the existing FileStream setup before delegating.
-    // Gap #2 in gap list.
   });
 
   it.skip('respects STITCH_USE_SYSTEM_GCLOUD env var via pre-obtained access token', async () => {
     // TODO: Confirm StitchProxy reads STITCH_ACCESS_TOKEN when STITCH_USE_SYSTEM_GCLOUD=1.
-    // Gap #3 in gap list.
   });
 });

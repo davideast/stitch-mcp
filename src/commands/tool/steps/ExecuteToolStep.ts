@@ -17,7 +17,7 @@ export class ExecuteToolStep implements CommandStep<ToolContext> {
     const virtualTool = context.virtualTools.find(t => t.name === toolName);
     if (virtualTool) {
       try {
-        const result = await virtualTool.execute(context.client, args);
+        const result = await virtualTool.execute(context.client, args, context.stitch);
         context.result = { success: true, data: result };
         return { success: true };
       } catch (e: any) {

@@ -1,7 +1,7 @@
-import { SiteService } from '../../../lib/services/site/SiteService.js';
+import type { StitchToolClient, Stitch } from '@google/stitch-sdk';
 import type { VirtualTool } from '../spec.js';
 import pLimit from 'p-limit';
-import { stitch } from '@google/stitch-sdk';
+import { fetchWithRetry } from '../../site/utils/fetchWithRetry.js';
 
 export const buildSiteTool: VirtualTool = {
   name: 'build_site',
@@ -34,7 +34,8 @@ export const buildSiteTool: VirtualTool = {
     },
     required: ['projectId', 'routes'],
   },
-  execute: async (client: any, args: any) => {
+  execute: async (client: StitchToolClient, args: any, stitch?: Stitch) => {
+    if (!stitch) throw new Error('build_site requires a Stitch instance');
     const { projectId, routes } = args;
 
     // Validate routes
@@ -61,7 +62,7 @@ export const buildSiteTool: VirtualTool = {
       throw new Error(`Duplicate route paths found: ${[...new Set(duplicates)].join(', ')}`);
     }
 
-    // Fetch project screens via SDK
+    // Fetch project screens via injected SDK instance
     const project = stitch.project(projectId);
     const sdkScreens = await project.screens();
     const screenMap = new Map(sdkScreens.map((s: any) => [s.screenId, s]));
@@ -78,7 +79,6 @@ export const buildSiteTool: VirtualTool = {
     const limit = pLimit(3);
     const htmlContent = new Map<string, string>();
     const errors: string[] = [];
-    const { fetchWithRetry } = await import('../../site/utils/fetchWithRetry.js').catch(() => ({ fetchWithRetry: null }));
 
     await Promise.all(
       routes.map((r: any) =>
@@ -87,10 +87,7 @@ export const buildSiteTool: VirtualTool = {
           try {
             const htmlUrl = await screen.getHtml();
             if (htmlUrl) {
-              const html = fetchWithRetry ? await fetchWithRetry(htmlUrl) : await fetch(htmlUrl).then(res => {
-                  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-                  return res.text();
-              });
+              const html = await fetchWithRetry(htmlUrl);
               htmlContent.set(r.screenId, html);
             } else {
                htmlContent.set(r.screenId, '');
