@@ -1,4 +1,3 @@
-import type { StitchSDK } from '@google/stitch-sdk';
 import { downloadImage } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
 import { stitch } from '@google/stitch-sdk';
@@ -31,7 +30,11 @@ export const getScreenImageTool: VirtualTool = {
     try {
       const imageUrl = await screen.getImage();
       if (imageUrl) {
-        const buffer = await downloadImage(imageUrl);
+        // downloadImage doesn't take arguments in the current implementation, it grabs from clipboard
+        // Actually, this file was passing a URL to downloadImage, but let's just fetch it as a buffer
+        const response = await fetch(imageUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         imageContent = buffer.toString('base64');
       }
     } catch (e) {

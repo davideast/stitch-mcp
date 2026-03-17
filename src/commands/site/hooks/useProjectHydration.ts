@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
-import { ProjectSyncer } from '../utils/ProjectSyncer.js';
 import type { UIScreen } from '../../../lib/services/site/types.js';
 import pLimit from 'p-limit';
 
@@ -9,7 +8,7 @@ export type HydrationStatus = 'idle' | 'downloading' | 'ready' | 'error';
 export function useProjectHydration(
   screens: UIScreen[],
   server: StitchViteServer | null,
-  syncer: ProjectSyncer,
+  syncer: any,
   activeScreenId?: string
 ) {
   const [hydrationStatus, setHydrationStatus] = useState<HydrationStatus>('idle');

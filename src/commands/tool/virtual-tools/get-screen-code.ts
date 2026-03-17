@@ -1,4 +1,3 @@
-import type { StitchSDK } from '@google/stitch-sdk';
 import { downloadText } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
 import { stitch } from '@google/stitch-sdk';

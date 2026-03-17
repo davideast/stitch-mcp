@@ -1,9 +1,8 @@
 import { StitchProxy } from '@google/stitch-sdk';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { StartProxyInput, ProxyResult } from '../../services/proxy/spec.js';
 
 export class ProxyCommandHandler {
-  async execute(input: StartProxyInput): Promise<ProxyResult> {
+  async execute(input: any): Promise<any> {
     try {
       const proxy = new StitchProxy({
         apiKey: process.env.STITCH_API_KEY,

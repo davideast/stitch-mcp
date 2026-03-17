@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import type { StitchMCPClient } from '../../services/mcp-client/client.js';
 import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
 import clipboard from 'clipboardy';
 import { StitchViteServer } from '../../lib/server/vite/StitchViteServer.js';
@@ -18,10 +17,9 @@ interface ScreensViewProps {
   projectId: string;
   projectTitle: string;
   screens: Screen[];
-  client: StitchMCPClient;
 }
 
-export function ScreensView({ projectId, projectTitle, screens, client }: ScreensViewProps) {
+export function ScreensView({ projectId, projectTitle, screens }: ScreensViewProps) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [windowStart, setWindowStart] = useState(0);

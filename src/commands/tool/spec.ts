@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { StitchMCPClient } from '../../services/mcp-client/client.js';
+import type { StitchToolClient } from '@google/stitch-sdk';
 
 export const ToolCommandInputSchema = z.object({
   toolName: z.string().optional(),   // undefined = list tools
@@ -28,7 +28,7 @@ export interface ToolCommandResult {
 }
 
 export interface VirtualTool extends ToolInfo {
-  execute: (client: StitchMCPClient, args: any) => Promise<any>;
+  execute: (client: StitchToolClient, args: any) => Promise<any>;
 }
 
 // Added for CLI validation

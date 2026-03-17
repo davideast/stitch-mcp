@@ -1,5 +1,3 @@
-import type { StitchSDK } from '@google/stitch-sdk';
-
 interface CodeScreen {
   screenId: string;
   title: string;

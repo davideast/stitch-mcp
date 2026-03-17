@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import Spinner from 'ink-spinner';
 import TextInput from 'ink-text-input';
-import { StitchMCPClient } from '../../../services/mcp-client/client.js';
 import { SiteService } from '../../../lib/services/site/SiteService.js';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { openUrl } from '../../../platform/browser.js';
@@ -122,10 +121,9 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
 
   // Provide a dummy syncer shim for hydration since we deleted ProjectSyncer
   // Site generation and hydration uses URL fetching anyway.
-  const { fetchWithRetry } = await import('../utils/fetchWithRetry.js').catch(() => ({ fetchWithRetry: null }));
-
   const dummySyncer = useMemo(() => ({
       fetchContent: async (url: string) => {
+          const { fetchWithRetry } = await import('../utils/fetchWithRetry.js').catch(() => ({ fetchWithRetry: null }));
           if (fetchWithRetry) {
              return fetchWithRetry(url);
           }
@@ -133,7 +131,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
           if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
           return res.text();
       }
-  }), [fetchWithRetry]);
+  }), []);
 
   const { hydrationStatus, progress, htmlContent } = useProjectHydration(screens, server, dummySyncer as any, activeScreenId);
 
