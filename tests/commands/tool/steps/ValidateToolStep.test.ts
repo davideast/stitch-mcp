@@ -8,7 +8,7 @@ describe("ValidateToolStep", () => {
 
   beforeEach(() => {
     mockClient = {
-      getCapabilities: mock(),
+      listTools: mock(),
     };
     step = new ValidateToolStep();
   });
@@ -44,7 +44,7 @@ describe("ValidateToolStep", () => {
   describe("run", () => {
     it("should pass when tool name matches a server tool", async () => {
       const serverTools = [{ name: "some_tool", description: "desc" }];
-      mockClient.getCapabilities.mockResolvedValue({ tools: serverTools });
+      mockClient.listTools.mockResolvedValue({ tools: serverTools });
 
       const context = makeContext({ parsedArgs: {} });
       const result = await step.run(context);
@@ -54,7 +54,7 @@ describe("ValidateToolStep", () => {
     });
 
     it("should pass when tool name matches a virtual tool", async () => {
-      mockClient.getCapabilities.mockResolvedValue({ tools: [] });
+      mockClient.listTools.mockResolvedValue({ tools: [] });
       const virtualTool = { name: "some_tool", execute: mock() } as any;
 
       const context = makeContext({ parsedArgs: {}, virtualTools: [virtualTool] });
@@ -66,7 +66,7 @@ describe("ValidateToolStep", () => {
 
     it("should fail with helpful error when tool name is not found", async () => {
       const serverTools = [{ name: "get_screens", description: "Gets screens" }];
-      mockClient.getCapabilities.mockResolvedValue({ tools: serverTools });
+      mockClient.listTools.mockResolvedValue({ tools: serverTools });
       const virtualTool = { name: "build_site", execute: mock() } as any;
 
       const context = makeContext({
@@ -87,7 +87,7 @@ describe("ValidateToolStep", () => {
     });
 
     it("should handle empty tools list", async () => {
-      mockClient.getCapabilities.mockResolvedValue({ tools: undefined });
+      mockClient.listTools.mockResolvedValue({});
 
       const context = makeContext({ parsedArgs: {}, inputOverrides: { toolName: "anything" } });
       const result = await step.run(context);

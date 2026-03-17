@@ -1,6 +1,7 @@
-import type { StitchMCPClient } from '../../../services/mcp-client/client.js';
+import type { StitchSDK } from '@google/stitch-sdk';
 import { downloadText } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
+import { stitch } from '@google/stitch-sdk';
 
 export const getScreenCodeTool: VirtualTool = {
   name: 'get_screen_code',
@@ -19,25 +20,27 @@ export const getScreenCodeTool: VirtualTool = {
     },
     required: ['projectId', 'screenId'],
   },
-  execute: async (client: StitchMCPClient, args: any) => {
+  execute: async (client: any, args: any) => {
     const { projectId, screenId } = args;
 
-    // 1. Get the screen details
-    const screen = await client.callTool('get_screen', { projectId, screenId }) as any;
+    // 1. Get the screen details using the SDK
+    const screen = await stitch.project(projectId).getScreen(screenId);
 
     // 2. Fetch HTML Code
     let htmlContent: string | null = null;
-    if (screen.htmlCode?.downloadUrl) {
-      try {
-        htmlContent = await downloadText(screen.htmlCode.downloadUrl);
-      } catch (e) {
-        console.error(`Error downloading HTML code: ${e}`);
+    try {
+      const htmlUrl = await screen.getHtml();
+      if (htmlUrl) {
+        htmlContent = await downloadText(htmlUrl);
       }
+    } catch (e) {
+      console.error(`Error downloading HTML code: ${e}`);
     }
 
     // 3. Return screen with code content
     return {
-      ...screen,
+      screenId: screen.screenId,
+      projectId: screen.projectId,
       htmlContent,
     };
   },

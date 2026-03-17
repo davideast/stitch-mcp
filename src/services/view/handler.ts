@@ -1,8 +1,8 @@
 import { type ViewSpec, type ViewInput, type ViewResult } from './spec.js';
-import { StitchMCPClient } from '../mcp-client/client.js';
+import { StitchToolClient } from '@google/stitch-sdk';
 
 export class ViewHandler implements ViewSpec {
-  constructor(private client: StitchMCPClient = new StitchMCPClient()) {}
+  constructor(private readonly client = new StitchToolClient()) {}
 
   async execute(input: ViewInput): Promise<ViewResult> {
     try {

@@ -13,12 +13,11 @@ export const command: CommandDefinition<any, ServeOptions> = {
       const parsedOptions = ServeOptionsSchema.parse(options);
       const { ServeHandler } = await import('./handler.js');
       const { ServeView } = await import('./ServeView.js');
-      const { StitchMCPClient } = await import('../../services/mcp-client/client.js');
+      const { stitch } = await import('@google/stitch-sdk');
       const { render } = await import('ink');
       const React = await import('react');
 
-      const client = new StitchMCPClient();
-      const handler = new ServeHandler(client);
+      const handler = new ServeHandler(stitch);
       const result = await handler.execute(parsedOptions.project);
 
       if (!result.success) {

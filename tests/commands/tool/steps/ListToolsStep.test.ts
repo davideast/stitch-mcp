@@ -1,14 +1,16 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ListToolsStep } from "../../../../src/commands/tool/steps/ListToolsStep.js";
 import type { ToolContext } from "../../../../src/commands/tool/context.js";
+import { StitchToolClient } from '@google/stitch-sdk';
 
-describe("ListToolsStep", () => {
+describe("ListToolsStep (SDK)", () => {
   let step: ListToolsStep;
   let mockClient: any;
 
   beforeEach(() => {
     mockClient = {
-      getCapabilities: mock(),
+      listTools: mock(),
+      callTool: mock(),
     };
     step = new ListToolsStep();
   });
@@ -36,13 +38,14 @@ describe("ListToolsStep", () => {
   });
 
   describe("run", () => {
-    it("should combine virtual and server tools", async () => {
+    it("calls listTools() on StitchToolClient (not getCapabilities())", async () => {
       const serverTools = [{ name: "server_tool", description: "desc" }];
-      mockClient.getCapabilities.mockResolvedValue({ tools: serverTools });
+      mockClient.listTools.mockResolvedValue({ tools: serverTools });
 
       const context = makeContext();
       await step.run(context);
 
+      expect(mockClient.listTools).toHaveBeenCalled();
       expect(context.result).toBeDefined();
       expect(context.result!.success).toBe(true);
       expect(context.result!.data).toContainEqual(expect.objectContaining({ name: "virtual1" }));
@@ -50,13 +53,17 @@ describe("ListToolsStep", () => {
     });
 
     it("should handle empty server tools", async () => {
-      mockClient.getCapabilities.mockResolvedValue({ tools: undefined });
+      mockClient.listTools.mockResolvedValue({ tools: undefined });
 
       const context = makeContext();
       await step.run(context);
 
       expect(context.result!.success).toBe(true);
       expect(context.result!.data).toHaveLength(1); // just the virtual tool
+    });
+
+    it.skip('StitchToolClient auto-connects on first callTool() call', async () => {
+      // TODO: Verify StitchToolClient auto-connects vs. requires explicit .connect().
     });
   });
 });

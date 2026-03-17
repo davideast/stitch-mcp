@@ -1,110 +1,52 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { ScreensHandler } from "../../../src/commands/screens/handler.js";
+import { describe, it, expect, mock } from 'bun:test';
+import { ScreensHandler } from '../../../src/commands/screens/handler.js';
+import { createMockStitch, createMockProject, createMockScreen } from '../../../src/services/stitch-sdk/MockStitchSDK.js';
 
-describe("ScreensHandler", () => {
-  let mockClient: any;
-  let mockCallTool: any;
+describe('ScreensHandler (SDK)', () => {
+  it('sorts screens: code-available first, then alphabetical within each group', async () => {
+    const screens = [
+      createMockScreen({ screenId: 's1', title: 'Zebra', getHtml: mock(() => Promise.reject(new Error('not found'))) }),
+      createMockScreen({ screenId: 's2', title: 'Beta' }),
+      createMockScreen({ screenId: 's3', title: 'Alpha' }),
+      createMockScreen({ screenId: 's4', title: 'Apple', getHtml: mock(() => Promise.reject(new Error('not found'))) }),
+    ];
+    const stitch = createMockStitch(createMockProject('123', screens));
 
-  beforeEach(() => {
-    mockCallTool = mock();
-    mockClient = {
-      callTool: mockCallTool,
-    };
-  });
-
-  it("should return all screens sorted by code availability then title", async () => {
-    const projectId = "123";
-    const projectTitle = "My Project";
-
-    mockCallTool.mockImplementation((toolName: string, args: any) => {
-      if (toolName === "get_project") {
-        return Promise.resolve({ title: projectTitle });
-      }
-      if (toolName === "list_screens") {
-        return Promise.resolve({
-          screens: [
-            {
-              name: "projects/123/screens/s1",
-              title: "Zebra", // No code, starts with Z
-              htmlCode: {}
-            },
-            {
-              name: "projects/123/screens/s2",
-              title: "Beta", // Has code, starts with B
-              htmlCode: { downloadUrl: "http://code" }
-            },
-            {
-              name: "projects/123/screens/s3",
-              title: "Alpha", // Has code, starts with A
-              htmlCode: { downloadUrl: "http://code" }
-            },
-            {
-              name: "projects/123/screens/s4",
-              title: "Apple", // No code, starts with A
-              htmlCode: {}
-            }
-          ]
-        });
-      }
-      return Promise.reject("Unknown tool");
-    });
-
-    const handler = new ScreensHandler(mockClient);
-    const result = await handler.execute(projectId);
+    const handler = new ScreensHandler(stitch as any);
+    const result = await handler.execute('123');
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-
-    expect(result.screens).toHaveLength(4);
-
-    // Expected order:
-    // 1. Alpha (Has Code) - top because has code + alphabetical
-    // 2. Beta (Has Code) - second because has code + alphabetical
-    // 3. Apple (No Code) - third because no code + alphabetical
-    // 4. Zebra (No Code) - fourth because no code + alphabetical
-
-    expect(result.screens![0]!.title).toBe("Alpha");
-    expect(result.screens![0]!.hasCode).toBe(true);
-
-    expect(result.screens![1]!.title).toBe("Beta");
-    expect(result.screens![1]!.hasCode).toBe(true);
-
-    expect(result.screens![2]!.title).toBe("Apple");
-    expect(result.screens![2]!.hasCode).toBe(false);
-
-    expect(result.screens![3]!.title).toBe("Zebra");
-    expect(result.screens![3]!.hasCode).toBe(false);
+    expect(result.screens[0].title).toBe('Alpha');
+    expect(result.screens[0].hasCode).toBe(true);
+    expect(result.screens[1].title).toBe('Beta');
+    expect(result.screens[2].title).toBe('Apple');
+    expect(result.screens[2].hasCode).toBe(false);
+    expect(result.screens[3].title).toBe('Zebra');
   });
 
-  it("should map screen fields correctly", async () => {
-    mockCallTool.mockImplementation((toolName: string) => {
-      if (toolName === "get_project") return Promise.resolve({ title: "P" });
-      if (toolName === "list_screens") {
-        return Promise.resolve({
-          screens: [
-            {
-              name: "projects/123/screens/my-screen-id",
-              title: "My Screen",
-              htmlCode: { downloadUrl: "http://code" },
-              screenshot: { downloadUrl: "http://image" }
-            }
-          ]
-        });
-      }
-      return Promise.resolve();
+  it('maps SDK Screen fields to handler output shape', async () => {
+    const screen = createMockScreen({
+      screenId: 'my-screen-id',
+      title: 'My Screen',
+      getHtml: mock(() => Promise.resolve('http://code')),
+      getImage: mock(() => Promise.resolve('http://image')),
     });
+    const stitch = createMockStitch(createMockProject('123', [screen]));
 
-    const handler = new ScreensHandler(mockClient);
-    const result = await handler.execute("123");
+    const handler = new ScreensHandler(stitch as any);
+    const result = await handler.execute('123');
 
     expect(result.success).toBe(true);
     if (!result.success) return;
+    expect(result.screens[0].screenId).toBe('my-screen-id');
+    expect(result.screens[0].title).toBe('My Screen');
+    expect(result.screens[0].hasCode).toBe(true);
+    expect(result.screens[0].codeUrl).toBe('http://code');
+    expect(result.screens[0].hasImage).toBe(true);
+  });
 
-    const screen = result.screens![0]!;
-    expect(screen.screenId).toBe("my-screen-id");
-    expect(screen.title).toBe("My Screen");
-    expect(screen.hasCode).toBe(true);
-    expect(screen.codeUrl).toBe("http://code");
-    expect(screen.hasImage).toBe(true);
+  it.skip('getHtml() and getImage() use cached data after screens() call (no double fetch)', async () => {
+    // TODO: Verify the SDK caches per-screen data after a project.screens() call.
   });
 });

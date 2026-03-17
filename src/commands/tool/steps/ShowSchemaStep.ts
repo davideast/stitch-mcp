@@ -14,7 +14,7 @@ export class ShowSchemaStep implements CommandStep<ToolContext> {
     const toolName = context.input.toolName!;
 
     // Get all tools to find the one we need
-    const result = await context.client.getCapabilities();
+    const result = await context.client.listTools();
     const serverTools = result.tools || [];
     const allTools = [...context.virtualTools, ...serverTools];
     const tool = allTools.find(t => t.name === toolName);

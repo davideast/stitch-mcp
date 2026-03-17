@@ -1,53 +1,51 @@
 import { expect, test, describe, beforeEach, spyOn, mock } from "bun:test";
 import { ViewHandler } from "../../../src/services/view/handler.js";
-import { StitchMCPClient } from "../../../src/services/mcp-client/client.js";
 
-describe("ViewHandler", () => {
-  let mockClient: any;
+describe("ViewHandler (SDK)", () => {
+  let mockStitch: any;
   let handler: ViewHandler;
 
   beforeEach(() => {
-    mockClient = {
-      connect: mock(() => Promise.resolve()),
+    mockStitch = {
       close: mock(() => Promise.resolve()),
       callTool: mock(() => Promise.resolve({})),
     };
 
-    handler = new ViewHandler(mockClient as unknown as StitchMCPClient);
+    handler = new ViewHandler(mockStitch as any);
   });
 
   test("handles --projects flag", async () => {
     await handler.execute({ projects: true });
-    expect(mockClient.callTool).toHaveBeenCalledWith("list_projects", {});
+    expect(mockStitch.callTool).toHaveBeenCalledWith("list_projects", {});
   });
 
   test("handles --name flag for project", async () => {
     await handler.execute({ projects: false, name: "projects/123" });
-    expect(mockClient.callTool).toHaveBeenCalledWith("get_project", { name: "projects/123" });
+    expect(mockStitch.callTool).toHaveBeenCalledWith("get_project", { name: "projects/123" });
   });
 
   test("handles --name flag for screen", async () => {
     await handler.execute({ projects: false, name: "projects/1/screens/2" });
-    expect(mockClient.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
+    expect(mockStitch.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
   });
 
   test("handles --sourceScreen flag", async () => {
     await handler.execute({ projects: false, sourceScreen: "projects/1/screens/2" });
-    expect(mockClient.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
+    expect(mockStitch.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
   });
 
   test("handles --project and --screen flags", async () => {
     await handler.execute({ projects: false, project: "1", screen: "2" });
-    expect(mockClient.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
+    expect(mockStitch.callTool).toHaveBeenCalledWith("get_screen", { projectId: "1", screenId: "2" });
   });
 
   test("handles --project flag only", async () => {
     await handler.execute({ projects: false, project: "1" });
-    expect(mockClient.callTool).toHaveBeenCalledWith("get_project", { name: "projects/1" });
+    expect(mockStitch.callTool).toHaveBeenCalledWith("get_project", { name: "projects/1" });
   });
 
   test("returns data from callTool", async () => {
-    mockClient.callTool.mockResolvedValue({ key: "value" });
+    mockStitch.callTool.mockResolvedValue({ key: "value" });
 
     const result = await handler.execute({ projects: false, name: "projects/123" });
 

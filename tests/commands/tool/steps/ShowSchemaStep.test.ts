@@ -8,7 +8,7 @@ describe("ShowSchemaStep", () => {
 
   beforeEach(() => {
     mockClient = {
-      getCapabilities: mock(),
+      listTools: mock(),
     };
     step = new ShowSchemaStep();
   });
@@ -52,7 +52,7 @@ describe("ShowSchemaStep", () => {
           required: ["title"],
         },
       };
-      mockClient.getCapabilities.mockResolvedValue({ tools: [tool] });
+      mockClient.listTools.mockResolvedValue({ tools: [tool] });
 
       const context = makeContext({ toolName: "create_project", showSchema: true });
       await step.run(context);
@@ -69,7 +69,7 @@ describe("ShowSchemaStep", () => {
     });
 
     it("should return error if tool not found", async () => {
-      mockClient.getCapabilities.mockResolvedValue({ tools: [] });
+      mockClient.listTools.mockResolvedValue({ tools: [] });
 
       const context = makeContext({ toolName: "unknown_tool", showSchema: true });
       await step.run(context);
@@ -89,7 +89,7 @@ describe("ShowSchemaStep", () => {
         },
         execute: mock(),
       };
-      mockClient.getCapabilities.mockResolvedValue({ tools: [] });
+      mockClient.listTools.mockResolvedValue({ tools: [] });
 
       const context = makeContext({ toolName: "get_screen_code", showSchema: true });
       context.virtualTools = [virtualTool as any];

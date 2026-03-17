@@ -6,7 +6,6 @@ import { StitchMCPClient } from '../../../services/mcp-client/client.js';
 import { SiteService } from '../../../lib/services/site/SiteService.js';
 import { StitchViteServer } from '../../../lib/server/vite/StitchViteServer.js';
 import { openUrl } from '../../../platform/browser.js';
-import { ProjectSyncer } from '../utils/ProjectSyncer.js';
 import { SiteManifest } from '../utils/SiteManifest.js';
 import { ScreenList } from './ScreenList.js';
 import { useProjectHydration } from '../hooks/useProjectHydration.js';
@@ -14,7 +13,7 @@ import type { UIScreen, SiteConfig } from '../../../lib/services/site/types.js';
 
 interface SiteBuilderProps {
   projectId: string;
-  client: StitchMCPClient;
+  client: any;
   onExit: (config: SiteConfig | null, htmlContent?: Map<string, string>) => void;
 }
 
@@ -39,8 +38,6 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [server, setServer] = useState<StitchViteServer | null>(null);
 
-  const syncer = useMemo(() => new ProjectSyncer(client), [client]);
-
   // Initialize
   useEffect(() => {
     let mounted = true;
@@ -54,10 +51,19 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
         if (mounted) setServerUrl(url);
 
         // Fetch screens
-        const remoteScreens = await syncer.fetchManifest(projectId);
+        const project = client.project(projectId);
+        const sdkScreens = await project.screens();
 
         // Convert to UIScreen
-        const uiScreens = SiteService.toUIScreens(remoteScreens);
+        const uiScreens = await Promise.all(
+          sdkScreens.map(async (s: any) => ({
+            id: s.screenId,
+            title: s.title ?? s.screenId,
+            status: 'ignored' as const,
+            route: '',
+            downloadUrl: await s.getHtml().catch(() => null)
+          }))
+        ) as UIScreen[];
 
         // Load saved screen state (status + routes)
         const saved = await siteManifest.load();
@@ -82,7 +88,7 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
       mounted = false;
       srv.stop();
     };
-  }, [projectId, syncer]);
+  }, [projectId, client]);
 
   // Derived display list
   const displayList = useMemo(() => {
@@ -114,7 +120,22 @@ export const SiteBuilder: React.FC<SiteBuilderProps> = ({ projectId, client, onE
   const activeItem = displayList[activeIndex];
   const activeScreenId = activeItem?.screen.id;
 
-  const { hydrationStatus, progress, htmlContent } = useProjectHydration(screens, server, syncer, activeScreenId);
+  // Provide a dummy syncer shim for hydration since we deleted ProjectSyncer
+  // Site generation and hydration uses URL fetching anyway.
+  const { fetchWithRetry } = await import('../utils/fetchWithRetry.js').catch(() => ({ fetchWithRetry: null }));
+
+  const dummySyncer = useMemo(() => ({
+      fetchContent: async (url: string) => {
+          if (fetchWithRetry) {
+             return fetchWithRetry(url);
+          }
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          return res.text();
+      }
+  }), [fetchWithRetry]);
+
+  const { hydrationStatus, progress, htmlContent } = useProjectHydration(screens, server, dummySyncer as any, activeScreenId);
 
   // Navigate effect (Follow Mode)
   useEffect(() => {

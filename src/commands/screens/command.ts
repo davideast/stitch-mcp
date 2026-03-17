@@ -13,12 +13,11 @@ export const command: CommandDefinition<any, ScreensOptions> = {
       const parsedOptions = ScreensOptionsSchema.parse(options);
       const { ScreensHandler } = await import('./handler.js');
       const { ScreensView } = await import('./ScreensView.js');
-      const { StitchMCPClient } = await import('../../services/mcp-client/client.js');
+      const { stitch } = await import('@google/stitch-sdk');
       const { render } = await import('ink');
       const React = await import('react');
 
-      const client = new StitchMCPClient();
-      const handler = new ScreensHandler(client);
+      const handler = new ScreensHandler(stitch);
       const result = await handler.execute(parsedOptions.project);
 
       if (!result.success) {
@@ -31,7 +30,6 @@ export const command: CommandDefinition<any, ScreensOptions> = {
         projectId: result.projectId,
         projectTitle: result.projectTitle,
         screens: result.screens,
-        client,
       }));
       await instance.waitUntilExit();
       process.exit(0);

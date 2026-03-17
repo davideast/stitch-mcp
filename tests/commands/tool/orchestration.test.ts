@@ -1,9 +1,17 @@
-import { describe, it, expect, mock, spyOn, afterEach } from "bun:test";
+import { describe, it, expect, mock, spyOn, afterEach, beforeEach } from "bun:test";
 
 import { ToolCommandHandler, deps } from "../../../src/commands/tool/handler.js";
 
 describe("ToolCommandHandler Orchestration", () => {
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+    process.env.STITCH_API_KEY = 'dummy-key';
+  });
+
   afterEach(() => {
+    process.env = originalEnv;
     (deps.runSteps as any).mockRestore?.();
     (deps.ListToolsStep as any).mockRestore?.();
     (deps.ShowSchemaStep as any).mockRestore?.();
@@ -40,7 +48,7 @@ describe("ToolCommandHandler Orchestration", () => {
   it("should call runSteps with initialized steps and context", async () => {
     const runStepsSpy = spyOn(deps, 'runSteps').mockResolvedValue({ completed: true, results: [] });
 
-    const mockClient = {} as any;
+    const mockClient = { close: mock() } as any;
     const mockTools = [{ name: 'test-tool' }] as any;
     const handler = new ToolCommandHandler(mockClient, mockTools);
 
@@ -64,7 +72,7 @@ describe("ToolCommandHandler Orchestration", () => {
       return { completed: false, results: [], stoppedAt: { step: 'some-step', result: { success: true } } };
     });
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler({ close: mock() } as any);
     const result = await handler.execute({ toolName: 'test-tool' });
 
     expect(result).toBe(expectedResult as any);
@@ -73,7 +81,7 @@ describe("ToolCommandHandler Orchestration", () => {
   it("should return failure if no step produces a result", async () => {
     spyOn(deps, 'runSteps').mockResolvedValue({ completed: true, results: [] });
 
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler({ close: mock() } as any);
     const result = await handler.execute({ toolName: 'test-tool' });
 
     expect(result.success).toBe(false);
@@ -82,7 +90,7 @@ describe("ToolCommandHandler Orchestration", () => {
 
   it("onAfterStep should return true if context.result is set", async () => {
     const runStepsSpy = spyOn(deps, 'runSteps').mockResolvedValue({ completed: true, results: [] });
-    const handler = new ToolCommandHandler();
+    const handler = new ToolCommandHandler({ close: mock() } as any);
     await handler.execute({ toolName: 'test-tool' });
 
     const callbacks = runStepsSpy.mock.calls[0][2];

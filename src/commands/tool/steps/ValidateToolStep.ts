@@ -15,7 +15,7 @@ export class ValidateToolStep implements CommandStep<ToolContext> {
   async run(context: ToolContext): Promise<StepResult> {
     const toolName = context.input.toolName!;
 
-    const result = await context.client.getCapabilities();
+    const result = await context.client.listTools();
     const serverTools = result.tools || [];
     const allTools = [...context.virtualTools, ...serverTools];
     const found = allTools.find(t => t.name === toolName);

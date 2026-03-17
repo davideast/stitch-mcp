@@ -1,10 +1,11 @@
-import type { StitchMCPClient } from '../../../services/mcp-client/client.js';
+import type { StitchSDK } from '@google/stitch-sdk';
 import { downloadImage } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
+import { stitch } from '@google/stitch-sdk';
 
 export const getScreenImageTool: VirtualTool = {
   name: 'get_screen_image',
-  description: '(Virtual) Retrieves a screen and downloads its screenshot image as base64.',
+  description: '(Virtual) Retrieves a screen and downloads its screenshot image content.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -19,27 +20,29 @@ export const getScreenImageTool: VirtualTool = {
     },
     required: ['projectId', 'screenId'],
   },
-  execute: async (client: StitchMCPClient, args: any) => {
+  execute: async (client: any, args: any) => {
     const { projectId, screenId } = args;
 
-    // 1. Get the screen details
-    const screen = await client.callTool('get_screen', { projectId, screenId }) as any;
+    // 1. Get the screen details using the SDK
+    const screen = await stitch.project(projectId).getScreen(screenId);
 
-    // 2. Fetch Screenshot (as base64)
-    let screenshotBase64: string | null = null;
-    if (screen.screenshot?.downloadUrl) {
-      try {
-        const buffer = await downloadImage(screen.screenshot.downloadUrl);
-        screenshotBase64 = Buffer.from(buffer).toString('base64');
-      } catch (e) {
-        console.error(`Error downloading screenshot: ${e}`);
+    // 2. Fetch Image Content
+    let imageContent: string | null = null;
+    try {
+      const imageUrl = await screen.getImage();
+      if (imageUrl) {
+        const buffer = await downloadImage(imageUrl);
+        imageContent = buffer.toString('base64');
       }
+    } catch (e) {
+      console.error(`Error downloading screenshot: ${e}`);
     }
 
-    // 3. Return screen with image content
+    // 3. Return screen with image content (as base64 or raw buffer, adjusting for specific agent uses)
     return {
-      ...screen,
-      screenshotBase64,
+      screenId: screen.screenId,
+      projectId: screen.projectId,
+      imageContent,
     };
   },
 };

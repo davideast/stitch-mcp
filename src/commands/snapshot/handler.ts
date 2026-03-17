@@ -170,10 +170,14 @@ export class SnapshotHandler implements SnapshotCommand {
         }
         case 'site': {
           const { SiteBuilder } = await import('../site/ui/SiteBuilder.js');
-          const { MockStitchMCPClient } = await import('../../services/mcp-client/MockStitchMCPClient.js');
+          const { createMockStitch, createMockProject, createMockScreen } = await import('../../services/stitch-sdk/MockStitchSDK.js');
 
-          const mockScreens = data.screens || [];
-          const mockClient = new MockStitchMCPClient(mockScreens);
+          const mockScreens = (data.screens || []).map((s: any) => createMockScreen({
+            screenId: s.name,
+            title: s.title,
+            getHtml: () => Promise.resolve(s.htmlCode?.downloadUrl || null),
+          }));
+          const mockClient = createMockStitch(createMockProject(data.inputArgs?.projectId || 'mock-project', mockScreens));
 
           // Use ink-testing-library to render and snapshot the UI
           try {

@@ -11,7 +11,7 @@ export class ListToolsStep implements CommandStep<ToolContext> {
   }
 
   async run(context: ToolContext): Promise<StepResult> {
-    const result = await context.client.getCapabilities();
+    const result = await context.client.listTools();
     const serverTools = result.tools || [];
     const tools = [...context.virtualTools, ...serverTools];
     context.result = { success: true, data: tools };

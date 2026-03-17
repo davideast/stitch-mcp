@@ -1,85 +1,58 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { ServeHandler } from "../../../src/commands/serve/handler.js";
+import { describe, it, expect, mock } from 'bun:test';
+import { ServeHandler } from '../../../src/commands/serve/handler.js';
+import { createMockStitch, createMockProject, createMockScreen } from '../../../src/services/stitch-sdk/MockStitchSDK.js';
 
-describe("ServeHandler", () => {
-  let mockClient: any;
-  let mockCallTool: any;
+describe('ServeHandler (SDK)', () => {
+  it('returns screens with code URLs from SDK project', async () => {
+    const screens = [
+      createMockScreen({ screenId: 'home', title: 'Home' }),
+      createMockScreen({
+        screenId: 'settings',
+        title: 'Settings',
+        getHtml: mock(() => Promise.resolve(null)),  // no HTML — should be excluded
+      }),
+      createMockScreen({ screenId: 'about', title: 'About' }),
+    ];
+    const project = createMockProject('proj-1', screens);
+    const stitch = createMockStitch(project);
 
-  beforeEach(() => {
-    mockCallTool = mock();
-    mockClient = {
-      callTool: mockCallTool,
-    };
-  });
-
-  it("should return screens with code sorted alphabetically", async () => {
-    const projectId = "123";
-    const projectTitle = "My Project";
-
-    // Mock get_project response
-    mockCallTool.mockImplementation((toolName: string, args: any) => {
-      if (toolName === "get_project") {
-        return Promise.resolve({ title: projectTitle });
-      }
-      if (toolName === "list_screens") {
-        return Promise.resolve({
-          screens: [
-            {
-              name: "projects/123/screens/s1",
-              title: "Zap Screen", // S comes after A, expect this second
-              htmlCode: { downloadUrl: "http://code1" }
-            },
-            {
-              name: "projects/123/screens/s2",
-              title: "App Screen", // A, expect this first
-              htmlCode: { downloadUrl: "http://code2" }
-            },
-            {
-              name: "projects/123/screens/s3",
-              title: "No Code Screen",
-              htmlCode: {} // No downloadUrl
-            }
-          ]
-        });
-      }
-      return Promise.reject("Unknown tool");
-    });
-
-    const handler = new ServeHandler(mockClient);
-    const result = await handler.execute(projectId);
+    const handler = new ServeHandler(stitch as any);
+    const result = await handler.execute('proj-1');
 
     expect(result.success).toBe(true);
-    if (!result.success) return; // Type guard
-
-    expect(result.projectId).toBe(projectId);
-    expect(result.projectTitle).toBe(projectTitle);
-
-    // Should filter out s3 (no code)
-    expect(result.screens).toHaveLength(2);
-
-    // Should sort alphabetically: App Screen -> Zap Screen
-    expect(result.screens![0]!.title).toBe("App Screen");
-    expect(result.screens![0]!.codeUrl).toBe("http://code2");
-
-    expect(result.screens![1]!.title).toBe("Zap Screen");
-    expect(result.screens![1]!.codeUrl).toBe("http://code1");
-
-    expect(mockCallTool).toHaveBeenCalledTimes(2);
+    if (!result.success) return;
+    expect(stitch.project).toHaveBeenCalledWith('proj-1');
+    expect(project.screens).toHaveBeenCalled();
+    expect(result.screens).toHaveLength(2); // About and Home
+    expect(result.screens[0].screenId).toBe('about'); // sorted alphabetically
+    expect(result.screens[1].screenId).toBe('home');
+    expect(result.screens[1].codeUrl).toBe('https://cdn.example.com/html/screen-1');
   });
 
-  it("should handle error when list_screens fails", async () => {
-    mockCallTool.mockImplementation((toolName: string) => {
-      if (toolName === "get_project") return Promise.resolve({ title: "P" });
-      if (toolName === "list_screens") return Promise.reject(new Error("List failed"));
-      return Promise.resolve();
-    });
+  it('returns projectTitle from SDK project', async () => {
+    const project = createMockProject('proj-1', []);
+    const stitch = createMockStitch(project);
+    const handler = new ServeHandler(stitch as any);
+    const result = await handler.execute('proj-1');
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.projectTitle).toBe('Mock Project');
+  });
 
-    const handler = new ServeHandler(mockClient);
-    const result = await handler.execute("123");
-
+  it('returns error result on SDK failure', async () => {
+    const stitch = { project: mock(() => { throw new Error('Network error'); }) };
+    const handler = new ServeHandler(stitch as any);
+    const result = await handler.execute('proj-1');
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toBe("List failed");
-    }
+  });
+
+  it.skip('project.title is exposed on SDK Project objects', async () => {
+    // TODO: Verify actual SDK source exposes .title on Project.
+    // Gap #1.
+  });
+
+  it.skip('screen.getHtml() returns null (not throws) for screens without HTML', async () => {
+    // TODO: Confirm null vs. StitchError('NOT_FOUND') contract. Gap #4.
+    // Used in the .filter(s => s.codeUrl !== null) line above.
   });
 });

@@ -1,12 +1,11 @@
 import React from 'react';
 import { render } from 'ink';
-import { StitchMCPClient } from '../../services/mcp-client/client.js';
+import { stitch } from '@google/stitch-sdk';
 import { SiteBuilder } from './ui/SiteBuilder.js';
 import { SiteService } from '../../lib/services/site/SiteService.js';
 import { AssetGateway } from '../../lib/server/AssetGateway.js';
-import { ProjectSyncer } from './utils/ProjectSyncer.js';
 import { SiteManifest } from './utils/SiteManifest.js';
-import type { SiteConfig } from '../../lib/services/site/types.js';
+import type { SiteConfig, UIScreen } from '../../lib/services/site/types.js';
 
 interface SiteCommandOptions {
   projectId: string;
@@ -15,25 +14,34 @@ interface SiteCommandOptions {
 }
 
 export class SiteCommandHandler {
-  constructor(private client?: StitchMCPClient) {}
+  constructor(private client: any = stitch) {}
 
   async execute(options: SiteCommandOptions) {
-    const client = this.client || new StitchMCPClient();
-
     if (options.export) {
-      const syncer = new ProjectSyncer(client);
-      const remoteScreens = await syncer.fetchManifest(options.projectId);
-      const uiScreens = SiteService.toUIScreens(remoteScreens);
+      const project = this.client.project(options.projectId);
+      const sdkScreens = await project.screens();
+
+      const uiScreens = await Promise.all(
+        sdkScreens.map(async (s: any) => ({
+          id: s.screenId,
+          title: s.title ?? s.screenId,
+          status: 'ignored' as const,
+          route: '',
+          downloadUrl: await s.getHtml().catch(() => null)
+        }))
+      ) as UIScreen[];
+
+      const validScreens = uiScreens.filter(s => !!s.downloadUrl);
 
       const siteManifest = new SiteManifest(options.projectId);
       const saved = await siteManifest.load();
-      for (const screen of uiScreens) {
+      for (const screen of validScreens) {
         const state = saved.get(screen.id);
         if (state?.status) screen.status = state.status;
         if (state?.route) screen.route = state.route;
       }
 
-      const included = uiScreens.filter(s => s.status === 'included');
+      const included = validScreens.filter(s => s.status === 'included');
       const exportData = {
         projectId: options.projectId,
         routes: included.map(s => ({
@@ -51,7 +59,7 @@ export class SiteCommandHandler {
     const { waitUntilExit } = render(
       <SiteBuilder
         projectId={options.projectId}
-        client={client}
+        client={this.client}
         onExit={(config, html) => {
           resultConfig = config;
           resultHtml = html;

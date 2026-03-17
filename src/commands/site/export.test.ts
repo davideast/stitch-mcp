@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { createMockStitch, createMockProject, createMockScreen } from '../../services/stitch-sdk/MockStitchSDK.js';
 
 // Mock Ink to prevent WASM load issues in CI
 mock.module('ink', () => ({
@@ -20,24 +21,19 @@ mock.module('ink', () => ({
 // Use dynamic imports to ensure mock.module applies before imports
 const { SiteCommandHandler } = await import('./index.js');
 const { SiteManifest } = await import('./utils/SiteManifest.js');
-import type { RemoteScreen } from '../../lib/services/site/types.js';
 
 const TEST_PROJECT_ID = 'test-export-project';
 const baseDir = path.join(os.homedir(), '.stitch-mcp', 'site', TEST_PROJECT_ID);
 
-function makeClient(screens: RemoteScreen[]) {
-  return {
-    callTool: async (_name: string, _args: Record<string, any>) => ({
-      screens,
-    }),
-  } as any;
-}
-
-const remoteScreens: RemoteScreen[] = [
-  { name: 'screen-a', title: 'Home', htmlCode: { downloadUrl: 'https://example.com/a.html' } },
-  { name: 'screen-b', title: 'About', htmlCode: { downloadUrl: 'https://example.com/b.html' } },
-  { name: 'screen-c', title: 'Contact', htmlCode: { downloadUrl: 'https://example.com/c.html' } },
+const remoteScreens = [
+  createMockScreen({ screenId: 'screen-a', title: 'Home', getHtml: mock(() => Promise.resolve('https://example.com/a.html')) }),
+  createMockScreen({ screenId: 'screen-b', title: 'About', getHtml: mock(() => Promise.resolve('https://example.com/b.html')) }),
+  createMockScreen({ screenId: 'screen-c', title: 'Contact', getHtml: mock(() => Promise.resolve('https://example.com/c.html')) }),
 ];
+
+function makeClient(screens: any[]) {
+  return createMockStitch(createMockProject(TEST_PROJECT_ID, screens)) as any;
+}
 
 describe('site --export', () => {
   let originalLog: typeof console.log;
@@ -108,10 +104,10 @@ describe('site --export', () => {
     ]);
   });
 
-  it('skips screens without htmlCode', async () => {
-    const screensWithMissing: RemoteScreen[] = [
-      { name: 'screen-a', title: 'Home', htmlCode: { downloadUrl: 'https://example.com/a.html' } },
-      { name: 'screen-no-html', title: 'No HTML' } as RemoteScreen,
+  it('skips screens without getHtml resolving', async () => {
+    const screensWithMissing = [
+      createMockScreen({ screenId: 'screen-a', title: 'Home', getHtml: mock(() => Promise.resolve('https://example.com/a.html')) }),
+      createMockScreen({ screenId: 'screen-no-html', title: 'No HTML', getHtml: mock(() => Promise.reject(new Error('no code'))) }),
     ];
 
     const manifest = new SiteManifest(TEST_PROJECT_ID);
@@ -124,7 +120,6 @@ describe('site --export', () => {
     await handler.execute({ projectId: TEST_PROJECT_ID, export: true });
 
     const output = JSON.parse(logged[0]);
-    // screen-no-html is filtered out by toUIScreens since it has no htmlCode
     expect(output.routes).toEqual([
       { screenId: 'screen-a', route: '/' },
     ]);
@@ -132,8 +127,6 @@ describe('site --export', () => {
 
   it('does not launch interactive UI when export is true', async () => {
     const handler = new SiteCommandHandler(makeClient(remoteScreens));
-    // If it tried to render, it would hang or throw because there's no TTY.
-    // A clean return means the interactive path was skipped.
     await handler.execute({ projectId: TEST_PROJECT_ID, export: true });
     expect(logged.length).toBe(1);
   });

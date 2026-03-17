@@ -1,5 +1,3 @@
-import { StitchMCPClient } from '../../services/mcp-client/client.js';
-
 interface Screen {
   screenId: string;
   title: string;
@@ -8,7 +6,7 @@ interface Screen {
   hasImage: boolean;
 }
 
-type ScreensHandlerResult = {
+type ScreensResult = {
   success: true;
   projectId: string;
   projectTitle: string;
@@ -19,56 +17,33 @@ type ScreensHandlerResult = {
 };
 
 export class ScreensHandler {
-  constructor(private client: StitchMCPClient) { }
+  constructor(private readonly stitch: any) {}
 
-  async execute(projectId: string): Promise<ScreensHandlerResult> {
+  async execute(projectId: string): Promise<ScreensResult> {
     try {
-      // Fetch project details
-      const project = await this.client.callTool('get_project', {
-        name: `projects/${projectId}`
-      }) as any;
+      const project = this.stitch.project(projectId);
+      const screens = await project.screens();
 
-      // Fetch screens for the project
-      const screensResult = await this.client.callTool('list_screens', {
-        projectId
-      }) as any;
-
-      const screens: Screen[] = (screensResult.screens || []).map((screen: any) => {
-        // Extract screen ID from the name (projects/{projectId}/screens/{screenId})
-        const screenId = screen.name?.split('/screens/')[1] || screen.name;
-
+      const mapped = await Promise.all(screens.map(async (s: any) => {
+        const codeUrl = await s.getHtml().catch(() => null);
+        const imageUrl = await s.getImage().catch(() => null);
         return {
-          screenId,
-          title: screen.title || screenId,
-          hasCode: !!screen.htmlCode?.downloadUrl,
-          codeUrl: screen.htmlCode?.downloadUrl || null,
-          hasImage: !!screen.screenshot?.downloadUrl,
+          screenId: s.screenId,
+          title: s.title ?? s.screenId,
+          hasCode: codeUrl !== null,
+          codeUrl,
+          hasImage: imageUrl !== null,
         };
-      });
+      }));
 
-      // Sort: screens with HTML first, then alphabetically by title
-      screens.sort((a, b) => {
-        if (a.hasCode !== b.hasCode) {
-          return a.hasCode ? -1 : 1;
-        }
+      const sorted = mapped.sort((a, b) => {
+        if (a.hasCode !== b.hasCode) return a.hasCode ? -1 : 1;
         return a.title.localeCompare(b.title);
       });
 
-      return {
-        success: true,
-        projectId,
-        projectTitle: project.title || projectId,
-        screens,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || String(error),
-      };
+      return { success: true, projectId, projectTitle: project.title ?? projectId, screens: sorted };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
-  }
-
-  getClient(): StitchMCPClient {
-    return this.client;
   }
 }
