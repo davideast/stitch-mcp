@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ShowSchemaStep } from "../../../../src/commands/tool/steps/ShowSchemaStep.js";
 import type { ToolContext } from "../../../../src/commands/tool/context.js";
+import { createMockStitch, createMockProject } from '../../../../src/services/stitch-sdk/MockStitchSDK.js';
 
 describe("ShowSchemaStep", () => {
   let step: ShowSchemaStep;
@@ -17,6 +18,7 @@ describe("ShowSchemaStep", () => {
     return {
       input: { showSchema: false, output: "pretty", ...overrides },
       client: mockClient,
+      stitch: createMockStitch(createMockProject('test-proj', [])),
       virtualTools: [],
     };
   }
@@ -61,6 +63,7 @@ describe("ShowSchemaStep", () => {
       expect(context.result!.data).toEqual({
         name: "create_project",
         description: "Creates a project",
+        virtual: false,
         arguments: {
           title: "string (required) - Project title",
         },
@@ -82,6 +85,7 @@ describe("ShowSchemaStep", () => {
       const virtualTool = {
         name: "get_screen_code",
         description: "(Virtual) Gets code",
+        virtual: true,
         inputSchema: {
           type: "object",
           properties: { projectId: { type: "string" } },
@@ -97,6 +101,7 @@ describe("ShowSchemaStep", () => {
 
       expect(context.result!.success).toBe(true);
       expect(context.result!.data.name).toBe("get_screen_code");
+      expect(context.result!.data.virtual).toBe(true);
     });
   });
 });

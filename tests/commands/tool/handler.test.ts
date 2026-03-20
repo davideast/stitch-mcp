@@ -59,6 +59,7 @@ describe("ToolCommandHandler (integration)", () => {
     expect(result.data).toEqual({
       name: "create_project",
       description: "Creates a project",
+      virtual: false,
       arguments: { title: "string (required) - Project title" },
       example: `stitch-mcp tool create_project -d '{"title":"<title>"}'`,
     });

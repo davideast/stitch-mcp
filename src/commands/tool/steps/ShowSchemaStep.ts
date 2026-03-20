@@ -42,6 +42,7 @@ export class ShowSchemaStep implements CommandStep<ToolContext> {
     return {
       name: tool.name,
       description: tool.description,
+      virtual: tool.virtual ?? false,
       arguments: args,
       example: this.generateExample(tool),
     };

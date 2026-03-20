@@ -14,6 +14,7 @@ export type ToolCommandInput = z.infer<typeof ToolCommandInputSchema>;
 export interface ToolInfo {
   name: string;
   description?: string;
+  virtual?: boolean;
   inputSchema?: {
     type: string;
     properties?: Record<string, any>;

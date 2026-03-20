@@ -13,7 +13,10 @@ export class ListToolsStep implements CommandStep<ToolContext> {
   async run(context: ToolContext): Promise<StepResult> {
     const result = await context.client.listTools();
     const serverTools = result.tools || [];
-    const tools = [...context.virtualTools, ...serverTools];
+    const tools = [
+      ...context.virtualTools.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, virtual: true as const })),
+      ...serverTools.map(t => ({ ...t, virtual: false as const })),
+    ];
     context.result = { success: true, data: tools };
     return { success: true };
   }
