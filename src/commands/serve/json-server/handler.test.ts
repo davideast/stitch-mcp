@@ -13,16 +13,17 @@ mock.module('../../../lib/server/vite/StitchViteServer.js', () => ({
   },
 }));
 
-mock.module('../../../ui/copy-behaviors/clipboard.js', () => ({
-  downloadText: mock((url: string) => Promise.resolve(`<html>content for ${url}</html>`)),
-}));
-
 const { JsonServerHandler } = await import('./handler.js');
 
 const PROJECT_ID = 'proj_abc';
+const mockDownloadHtml = mock((url: string) => Promise.resolve(`<html>content for ${url}</html>`));
 
 function makeClient(screens: any[]) {
   return createMockStitch(createMockProject(PROJECT_ID, screens));
+}
+
+function makeHandler(client: any) {
+  return new JsonServerHandler(client, mockDownloadHtml);
 }
 
 describe('JsonServerHandler', () => {
@@ -30,6 +31,7 @@ describe('JsonServerHandler', () => {
     mockStart.mockClear();
     mockMount.mockClear();
     mockStop.mockClear();
+    mockDownloadHtml.mockClear();
   });
 
   it('returns ready result with url and screen urls', async () => {
@@ -37,8 +39,7 @@ describe('JsonServerHandler', () => {
       createMockScreen({ screenId: 'scr_1', title: 'Home', getHtml: mock(() => Promise.resolve('https://cdn.example.com/home.html')) }),
     ]);
 
-    const handler = new JsonServerHandler(client);
-    const result = await handler.execute({ projectId: PROJECT_ID });
+    const result = await makeHandler(client).execute({ projectId: PROJECT_ID });
 
     expect(result.success).toBe(true);
     if (!result.success) return;
@@ -57,8 +58,7 @@ describe('JsonServerHandler', () => {
       createMockScreen({ screenId: 'scr_1', title: 'Home', getHtml: mock(() => Promise.resolve('https://cdn.example.com/home.html')) }),
     ]);
 
-    const handler = new JsonServerHandler(client);
-    const result = await handler.execute({ projectId: PROJECT_ID });
+    const result = await makeHandler(client).execute({ projectId: PROJECT_ID });
 
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -72,8 +72,7 @@ describe('JsonServerHandler', () => {
       data: null,
     }));
 
-    const handler = new JsonServerHandler(client);
-    const result = await handler.execute({ projectId: PROJECT_ID });
+    const result = await makeHandler(client).execute({ projectId: PROJECT_ID });
 
     expect(result.success).toBe(false);
     if (result.success) return;

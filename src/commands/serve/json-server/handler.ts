@@ -5,7 +5,10 @@ import { downloadText } from '../../../ui/copy-behaviors/clipboard.js';
 import type { JsonServerSpec, JsonServerInput, JsonServerResult } from './spec.js';
 
 export class JsonServerHandler implements JsonServerSpec {
-  constructor(private readonly client: Stitch) {}
+  constructor(
+    private readonly client: Stitch,
+    private readonly downloadHtml: (url: string) => Promise<string> = downloadText,
+  ) {}
 
   async execute(input: JsonServerInput): Promise<JsonServerResult> {
     let sdkScreens: any[];
@@ -41,7 +44,7 @@ export class JsonServerHandler implements JsonServerSpec {
         try {
           const codeUrl = await s.getHtml();
           if (codeUrl) {
-            const html = await downloadText(codeUrl);
+            const html = await this.downloadHtml(codeUrl);
             server.mount(`/screens/${s.screenId}`, html);
           }
           screens.push({

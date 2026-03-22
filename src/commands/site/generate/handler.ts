@@ -6,7 +6,10 @@ import { AssetGateway } from '../../../lib/server/AssetGateway.js';
 import { fetchWithRetry } from '../utils/fetchWithRetry.js';
 
 export class GenerateHandler implements GenerateSpec {
-  constructor(private readonly client: Stitch) {}
+  constructor(
+    private readonly client: Stitch,
+    private readonly fetchHtml: (url: string) => Promise<string> = fetchWithRetry,
+  ) {}
 
   async execute(input: GenerateInput): Promise<GenerateResult> {
     try {
@@ -41,7 +44,7 @@ export class GenerateHandler implements GenerateSpec {
           const screen = screenMap.get(r.screenId)!;
           try {
             const htmlUrl = await screen.getHtml();
-            const html = htmlUrl ? await fetchWithRetry(htmlUrl) : '';
+            const html = htmlUrl ? await this.fetchHtml(htmlUrl) : '';
             htmlContent.set(r.screenId, html);
           } catch (e: any) {
             errors.push(`${r.screenId}: ${e.message}`);

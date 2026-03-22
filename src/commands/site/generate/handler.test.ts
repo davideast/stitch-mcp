@@ -11,12 +11,14 @@ mock.module('../../../lib/services/site/SiteService.js', () => ({
   SiteService: { generateSite: mockGenerateSite },
 }));
 
-mock.module('../utils/fetchWithRetry.js', () => ({
-  fetchWithRetry: mock((url: string) => Promise.resolve(`<html>content for ${url}</html>`)),
-}));
+const mockFetchHtml = mock((url: string) => Promise.resolve(`<html>content for ${url}</html>`));
 
 function makeClient(screens: any[]) {
   return createMockStitch(createMockProject(PROJECT_ID, screens));
+}
+
+function makeHandler(client: any) {
+  return new GenerateHandler(client, mockFetchHtml);
 }
 
 function makeInput(overrides: Partial<GenerateInput> = {}): GenerateInput {
@@ -34,6 +36,7 @@ function makeInput(overrides: Partial<GenerateInput> = {}): GenerateInput {
 describe('GenerateHandler', () => {
   beforeEach(() => {
     mockGenerateSite.mockClear();
+    mockFetchHtml.mockClear();
   });
 
   it('returns success with pages when all screens resolve', async () => {
@@ -42,8 +45,7 @@ describe('GenerateHandler', () => {
       createMockScreen({ screenId: 'scr_2', title: 'About', getHtml: mock(() => Promise.resolve('https://cdn.example.com/about.html')) }),
     ]);
 
-    const handler = new GenerateHandler(client);
-    const result = await handler.execute(makeInput());
+    const result = await makeHandler(client).execute(makeInput());
 
     expect(result.success).toBe(true);
     if (!result.success) return;
@@ -61,8 +63,7 @@ describe('GenerateHandler', () => {
       // scr_2 is missing
     ]);
 
-    const handler = new GenerateHandler(client);
-    const result = await handler.execute(makeInput());
+    const result = await makeHandler(client).execute(makeInput());
 
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -76,8 +77,7 @@ describe('GenerateHandler', () => {
       createMockScreen({ screenId: 'scr_2', title: 'About', getHtml: mock(() => Promise.resolve('https://cdn.example.com/about.html')) }),
     ]);
 
-    const handler = new GenerateHandler(client);
-    const result = await handler.execute(makeInput());
+    const result = await makeHandler(client).execute(makeInput());
 
     expect(result.success).toBe(false);
     if (result.success) return;
