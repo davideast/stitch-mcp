@@ -10,7 +10,9 @@ export const command: CommandDefinition<any, SiteOptions> = {
   ],
   options: [
     { flags: '-o, --output <dir>', description: 'Output directory', defaultValue: '.' },
-    { flags: '-e, --export', description: 'Export screen-to-route config as build_site JSON', defaultValue: false }
+    { flags: '-e, --export', description: 'Export screen-to-route config as build_site JSON', defaultValue: false },
+    { flags: '-l, --list-screens', description: 'List all screens with suggested routes as JSON', defaultValue: false },
+    { flags: '-r, --routes <json>', description: 'JSON array of {screenId,route} mappings — generates site without TUI' },
   ],
   action: async (_args, options) => {
     try {
@@ -18,9 +20,11 @@ export const command: CommandDefinition<any, SiteOptions> = {
       const { SiteCommandHandler } = await import('./index.js');
       const handler = new SiteCommandHandler();
       await handler.execute({
-          projectId: parsedOptions.project,
-          outputDir: parsedOptions.output,
-          export: parsedOptions.export
+        projectId: parsedOptions.project,
+        outputDir: parsedOptions.output,
+        export: parsedOptions.export,
+        listScreens: parsedOptions.listScreens,
+        routes: parsedOptions.routes,
       });
       process.exit(0);
     } catch (error) {

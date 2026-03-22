@@ -6,18 +6,50 @@ import { SiteBuilder } from './ui/SiteBuilder.js';
 import { SiteService } from '../../lib/services/site/SiteService.js';
 import { AssetGateway } from '../../lib/server/AssetGateway.js';
 import { SiteManifest } from './utils/SiteManifest.js';
+import { ListScreensHandler } from './list-screens/handler.js';
+import { ListScreensInputSchema } from './list-screens/spec.js';
+import { GenerateHandler } from './generate/handler.js';
+import { GenerateInputSchema } from './generate/spec.js';
 import type { SiteConfig, UIScreen } from '../../lib/services/site/types.js';
 
 interface SiteCommandOptions {
   projectId: string;
   outputDir?: string;
   export?: boolean;
+  listScreens?: boolean;
+  routes?: string;
 }
 
 export class SiteCommandHandler {
   constructor(private client: Stitch = stitch) {}
 
   async execute(options: SiteCommandOptions) {
+    if (options.listScreens) {
+      const input = ListScreensInputSchema.safeParse({ projectId: options.projectId });
+      if (!input.success) {
+        console.log(JSON.stringify({ success: false, error: { code: 'INVALID_INPUT', message: input.error.issues[0]?.message } }, null, 2));
+        return;
+      }
+      const result = await new ListScreensHandler(this.client).execute(input.data);
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    if (options.routes !== undefined) {
+      const input = GenerateInputSchema.safeParse({
+        projectId: options.projectId,
+        routesJson: options.routes,
+        outputDir: options.outputDir,
+      });
+      if (!input.success) {
+        console.log(JSON.stringify({ success: false, error: { code: 'INVALID_INPUT', message: input.error.issues[0]?.message } }, null, 2));
+        return;
+      }
+      const result = await new GenerateHandler(this.client).execute(input.data);
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
     if (options.export) {
       const project = this.client.project(options.projectId);
       const sdkScreens = await project.screens();
