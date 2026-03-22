@@ -63,6 +63,24 @@ describe('McpConfigHandler (API Key)', () => {
     }
   });
 
+  it('should generate Claude Code STDIO instructions with API key', async () => {
+    const input = {
+      client: 'claude-code' as const,
+      projectId: 'test-project',
+      accessToken: 'ignored',
+      transport: 'stdio' as const,
+      apiKey: 'test-api-key',
+    };
+
+    const result = await handler.generateConfig(input);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.instructions).toContain('-e STITCH_API_KEY=test-api-key');
+      expect(result.data.instructions).not.toContain('STITCH_PROJECT_ID');
+    }
+  });
+
   it('should generate Antigravity configuration with API key', async () => {
     const input = {
       client: 'antigravity' as const,
