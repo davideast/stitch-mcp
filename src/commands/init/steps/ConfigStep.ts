@@ -130,8 +130,8 @@ export class ConfigStep implements CommandStep<InitContext> {
                 },
              };
              // Ensure optional deletion of other headers if they were there
-             if (config.mcpServers.stitch.headers['Authorization']) delete config.mcpServers.stitch.headers['Authorization'];
-             if (config.mcpServers.stitch.headers['X-Goog-User-Project']) delete config.mcpServers.stitch.headers['X-Goog-User-Project'];
+             delete config.mcpServers.stitch.headers['Authorization'];
+             delete config.mcpServers.stitch.headers['X-Goog-User-Project'];
 
              await fs.promises.writeFile(extensionPath, JSON.stringify(config, null, 4));
              spinner.succeed(`Stitch extension configured for HTTP with API Key`);
