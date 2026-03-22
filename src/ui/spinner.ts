@@ -1,5 +1,5 @@
 import ora, { type Ora } from 'ora';
-import { theme, icons } from './theme.js';
+import { icons } from './theme.js';
 
 /**
  * Wrapper for ora spinner with consistent styling
