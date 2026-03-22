@@ -308,11 +308,18 @@ export class McpConfigHandler implements McpConfigService {
 
       case 'claude-code':
         if (transport === 'stdio') {
+          let envHint = '';
+          if (apiKey) {
+            envHint = `${theme.blue(`  -e STITCH_API_KEY=${apiKey} \\`)}\n`;
+          } else if (projectId) {
+            envHint = `${theme.blue(`  -e STITCH_PROJECT_ID=${projectId} \\`)}\n`;
+          }
           return (
             transportNote +
             `\n${theme.green('Setup Claude Code:')}\n\n` +
             `Run the following command to add the Stitch MCP server:\n\n` +
             `${theme.blue('claude mcp add stitch \\')}\n` +
+            envHint +
             `${theme.blue('  -- npx @_davideast/stitch-mcp proxy')}`
           );
         } else {
