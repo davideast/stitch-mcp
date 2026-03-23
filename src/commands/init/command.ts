@@ -11,6 +11,7 @@ export const command: CommandDefinition<any, InitOptions> = {
     { flags: '--defaults', description: 'Use default values for prompts', defaultValue: false },
     { flags: '-c, --client <client>', description: 'MCP client to configure' },
     { flags: '-t, --transport <transport>', description: 'Transport type (http or stdio)' },
+    { flags: '--json', description: 'Output result as JSON', defaultValue: false },
   ],
   action: async (_args, options) => {
     try {
@@ -23,12 +24,17 @@ export const command: CommandDefinition<any, InitOptions> = {
         autoVerify: parsedOptions.yes,
         client: parsedOptions.client,
         transport: parsedOptions.transport,
+        json: parsedOptions.json,
       });
 
       if (!result.success) {
-        console.error(theme.red(`\n${icons.error} Setup failed: ${result.error.message}`));
-        if (result.error.suggestion) {
-          console.error(theme.gray(`  ${result.error.suggestion}`));
+        if (parsedOptions.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.error(theme.red(`\n${icons.error} Setup failed: ${result.error.message}`));
+          if (result.error.suggestion) {
+            console.error(theme.gray(`  ${result.error.suggestion}`));
+          }
         }
         process.exit(1);
       }

@@ -55,27 +55,41 @@ export class DoctorHandler implements DoctorCommand {
       checks: []
     };
 
-    console.log(`\n${theme.blue('Stitch Doctor')}\n`);
+    if (!input.json) console.log(`\n${theme.blue('Stitch Doctor')}\n`);
 
     try {
       let spinner: ReturnType<typeof createSpinner>;
       await runSteps(this.steps, context, {
         onBeforeStep: (step) => {
+          if (input.json) return;
           spinner = createSpinner();
           spinner.start(step.name);
         },
         onAfterStep: (_step, result) => {
-          if (result.success) {
-            spinner.succeed(result.detail || 'Passed');
-          } else {
-            spinner.fail(result.error?.message || 'Failed');
+          if (!input.json) {
+            if (result.success) {
+              spinner.succeed(result.detail || 'Passed');
+            } else {
+              spinner.fail(result.error?.message || 'Failed');
+            }
           }
           return false; // always continue
         },
       });
 
-      // Summary
       const allPassed = context.checks.every((c) => c.passed);
+
+      const result = {
+        success: true as const,
+        data: { checks: context.checks, allPassed },
+      };
+
+      if (input.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return result;
+      }
+
+      // Human output
       console.log(`\n${theme.blue('─'.repeat(60))}\n`);
       console.log(theme.blue('Health Check Summary\n'));
 
@@ -87,7 +101,6 @@ export class DoctorHandler implements DoctorCommand {
         }
       }
 
-      // Show full error details for failed checks if verbose is enabled
       if (input.verbose) {
         const failedChecksWithDetails = context.checks.filter(c => !c.passed && c.details);
         if (failedChecksWithDetails.length > 0) {
@@ -104,13 +117,7 @@ export class DoctorHandler implements DoctorCommand {
         `\n${allPassed ? theme.green('All checks passed!') : theme.yellow('Some checks failed')}\n`
       );
 
-      return {
-        success: true,
-        data: {
-          checks: context.checks,
-          allPassed,
-        },
-      };
+      return result;
 
     } catch (error) {
       return {

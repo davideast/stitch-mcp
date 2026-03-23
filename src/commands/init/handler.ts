@@ -71,7 +71,7 @@ export class InitHandler implements InitCommand {
       animationDelayMs: 100,
     });
 
-    console.log(`\n${theme.blue('🧵 Stitch MCP Setup')}\n`);
+    if (!input.json) console.log(`\n${theme.blue('🧵 Stitch MCP Setup')}\n`);
 
     const context: InitContext = {
       input,
@@ -84,18 +84,18 @@ export class InitHandler implements InitCommand {
 
     try {
       const { stoppedAt } = await runSteps(this.steps, context, {
-        onBeforeStep: (step) => this.updateStep(step.id, 'IN_PROGRESS'),
+        onBeforeStep: (step) => { if (!input.json) this.updateStep(step.id, 'IN_PROGRESS'); },
         onAfterStep: (step, result) => {
           if (!result.success) {
             const message = result.error?.message || result.detail || 'Failed';
-            this.updateStep(step.id, 'FAILED', message);
+            if (!input.json) this.updateStep(step.id, 'FAILED', message);
             return true; // stop on failure
           }
           const status = (result.status as ChecklistItemStateType) || 'COMPLETE';
-          this.updateStep(step.id, status, result.detail, result.reason);
+          if (!input.json) this.updateStep(step.id, status, result.detail, result.reason);
           return false;
         },
-        onSkippedStep: (step) => this.updateStep(step.id, 'SKIPPED', 'Not required'),
+        onSkippedStep: (step) => { if (!input.json) this.updateStep(step.id, 'SKIPPED', 'Not required'); },
       });
 
       if (stoppedAt) {
@@ -110,7 +110,21 @@ export class InitHandler implements InitCommand {
         };
       }
 
-      // Final Summary
+      const result = {
+        success: true as const,
+        data: {
+          projectId: context.projectId || 'ignored',
+          mcpConfig: context.finalConfig || '',
+          instructions: context.instructions || '',
+        },
+      };
+
+      if (input.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return result;
+      }
+
+      // Human output
       const { percent } = this.checklist.getProgress();
       const barWidth = 40;
       const filled = Math.round((percent / 100) * barWidth);
@@ -122,17 +136,10 @@ export class InitHandler implements InitCommand {
       }
 
       if (context.instructions) {
-          console.log(context.instructions);
+        console.log(context.instructions);
       }
 
-      return {
-        success: true,
-        data: {
-          projectId: context.projectId || 'ignored',
-          mcpConfig: context.finalConfig || '',
-          instructions: context.instructions || '',
-        },
-      };
+      return result;
 
     } catch (error) {
       return {

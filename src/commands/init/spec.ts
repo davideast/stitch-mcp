@@ -10,6 +10,7 @@ export const InitOptionsSchema = z.object({
   defaults: z.boolean().default(false),
   client: z.string().optional(),
   transport: z.string().optional(),
+  json: z.boolean().default(false),
 });
 export type InitOptions = z.infer<typeof InitOptionsSchema>;
 
@@ -19,6 +20,7 @@ export const InitInputSchema = z.object({
   autoVerify: z.boolean().default(false),
   client: z.string().optional(),
   transport: z.string().optional(),
+  json: z.boolean().default(false),
 });
 export type InitInput = z.infer<typeof InitInputSchema>;
 

@@ -140,6 +140,52 @@ describe('InitHandler', () => {
     expect(mockStitchService.enableAPI).not.toHaveBeenCalled();
   });
 
+  test('when json: true, outputs only JSON and no human text', async () => {
+    const mockGcloudService: any = {
+      ensureInstalled: mock(() => Promise.resolve({
+        success: true,
+        data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' }
+      })),
+      setProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project' } })),
+      installBetaComponents: mock(() => Promise.resolve({ success: true })),
+      getAccessToken: mock(() => Promise.resolve('test-token')),
+      getActiveAccount: mock(() => Promise.resolve('test@example.com')),
+      hasADC: mock(() => Promise.resolve(true)),
+      getProjectId: mock(() => Promise.resolve(null)),
+    };
+    const mockProjectService: any = {
+      selectProject: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
+      getProjectDetails: mock(() => Promise.resolve({ success: true, data: { projectId: 'test-project', name: 'Test Project' } })),
+    };
+    const mockStitchService: any = {
+      configureIAM: mock(() => Promise.resolve({ success: true, data: { role: 'roles/serviceusage.serviceUsageConsumer' } })),
+      enableAPI: mock(() => Promise.resolve({ success: true, data: { api: 'stitch.googleapis.com' } })),
+      testConnection: mock(() => Promise.resolve({ success: true, data: { statusCode: 200, url: 'https://stitch.googleapis.com/mcp' } })),
+      checkIAMRole: mock(() => Promise.resolve(true)),
+      checkAPIEnabled: mock(() => Promise.resolve(true)),
+    };
+    const mockMcpConfigService: any = {
+      generateConfig: mock(() => Promise.resolve({
+        success: true,
+        data: { config: '{ "mcp": "config" }', instructions: 'Instructions' }
+      })),
+    };
+
+    const logged: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: any[]) => logged.push(args.map(String).join(' '));
+
+    const handler = new InitHandler(mockGcloudService, mockMcpConfigService, mockProjectService, mockStitchService);
+    await handler.execute({ local: false, defaults: false, autoVerify: true, json: true });
+
+    console.log = originalLog;
+
+    expect(logged.length).toBe(1);
+    const parsed = JSON.parse(logged[0]!);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data.projectId).toBe('test-project');
+  });
+
   test('should fail if no authenticated account after checklist', async () => {
     const mockGcloudService: any = {
       ensureInstalled: mock(() => Promise.resolve({

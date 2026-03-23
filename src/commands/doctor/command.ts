@@ -7,6 +7,7 @@ export const command: CommandDefinition<any, DoctorOptions> = {
   description: 'Verify configuration health',
   options: [
     { flags: '--verbose', description: 'Show detailed error information', defaultValue: false },
+    { flags: '--json', description: 'Output results as JSON', defaultValue: false },
   ],
   action: async (_args, options) => {
     try {
@@ -15,6 +16,7 @@ export const command: CommandDefinition<any, DoctorOptions> = {
       const handler = new DoctorHandler();
       const result = await handler.execute({
         verbose: parsedOptions.verbose,
+        json: parsedOptions.json,
       });
 
       if (!result.success) {

@@ -22,6 +22,14 @@ describe('DoctorCommand', () => {
 
 
 
+    it('should default json to false', () => {
+      const result = DoctorInputSchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.json).toBe(false);
+      }
+    });
+
     it('should fail with invalid input type for verbose', () => {
       const input = {
         verbose: 'true',

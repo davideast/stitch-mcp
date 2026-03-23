@@ -6,11 +6,13 @@ import { z } from 'zod';
 
 export const DoctorOptionsSchema = z.object({
   verbose: z.boolean().default(false),
+  json: z.boolean().default(false),
 });
 export type DoctorOptions = z.infer<typeof DoctorOptionsSchema>;
 
 export const DoctorInputSchema = z.object({
   verbose: z.boolean().default(false),
+  json: z.boolean().default(false),
 });
 export type DoctorInput = z.infer<typeof DoctorInputSchema>;
 

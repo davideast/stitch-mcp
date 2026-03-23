@@ -132,6 +132,45 @@ describe('DoctorHandler', () => {
     });
   });
 
+  describe('json mode', () => {
+    it('outputs only JSON to stdout and no human text when json: true', async () => {
+      process.env.STITCH_API_KEY = 'AIzaSyTestKey123';
+      mockTestConnectionWithApiKey.mockResolvedValue({
+        success: true,
+        data: { connected: true, statusCode: 200, url: 'https://stitch.googleapis.com/mcp' },
+      });
+
+      const mockGcloudService: any = {
+        ensureInstalled: mockEnsureInstalled,
+        authenticate: mockAuthenticate,
+        authenticateADC: mockAuthenticateADC,
+        listProjects: mockListProjects,
+        getProjectId: mockGetProjectId,
+        getAccessToken: mockGetAccessToken,
+      };
+      const mockStitchService: any = {
+        testConnection: mockTestConnection,
+        testConnectionWithApiKey: mockTestConnectionWithApiKey,
+      };
+
+      const logged: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: any[]) => logged.push(args.map(String).join(' '));
+
+      const handler = new DoctorHandler(mockGcloudService, mockStitchService);
+      const result = await handler.execute({ verbose: false, json: true });
+
+      console.log = originalLog;
+
+      // All console output must be valid JSON
+      expect(logged.length).toBe(1);
+      const parsed = JSON.parse(logged[0]!);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data.allPassed).toBe(true);
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('API key auth mode', () => {
     it('should pass all checks when API key is set and connectivity passes', async () => {
       process.env.STITCH_API_KEY = 'AIzaSyTestKey123';
