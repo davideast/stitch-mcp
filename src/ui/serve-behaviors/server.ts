@@ -2,6 +2,7 @@
  * In-memory HTTP server using node:http for cross-runtime compatibility.
  */
 import { createServer, type Server } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { openUrl } from '../../platform/browser.js';
 
 export interface ServeInstance {
@@ -18,13 +19,25 @@ export async function serveHtmlInMemory(
 
   return new Promise((resolve, reject) => {
     const server: Server = createServer((req, res) => {
+      const nonce = randomBytes(16).toString('base64');
+      const csp = [
+        "default-src 'self' data: https:;",
+        `script-src 'self' 'nonce-${nonce}';`,
+        "style-src 'self' 'unsafe-inline';",
+        "object-src 'none';",
+        "base-uri 'self';",
+      ].join(' ');
+
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:;",
+        'Content-Security-Policy': csp,
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
       });
-      res.end(html);
+
+      // Inject nonce into all script tags in the HTML
+      const htmlWithNonces = html.replace(/<script(\b[^>]*)>/gi, `<script$1 nonce="${nonce}">`);
+      res.end(htmlWithNonces);
     });
 
     server.listen(0, '127.0.0.1', () => {
