@@ -78,7 +78,7 @@ export class AssetGateway {
     }
   }
 
-  rewriteCssUrls(css: string, baseUrl: string): string {
+  async rewriteCssUrls(css: string, baseUrl: string): Promise<string> {
     const discovered: string[] = [];
 
     // First pass: rewrite bare-string @import (not @import url() which is handled below)
@@ -153,9 +153,7 @@ export class AssetGateway {
     );
 
     // Optimistic prefetch for discovered URLs
-    for (const url of discovered) {
-      this.fetchAsset(url).catch(() => {});
-    }
+    await Promise.all(discovered.map(url => this.fetchAsset(url).catch(() => {})));
 
     return rewritten;
   }
@@ -177,9 +175,7 @@ export class AssetGateway {
     $('script').each((_, el) => process(el, 'src'));
 
     // Optimistic fetch
-    for (const url of assets) {
-      this.fetchAsset(url).catch(console.error);
-    }
+    await Promise.all(Array.from(assets).map(url => this.fetchAsset(url).catch(console.error)));
 
     return $.html();
   }

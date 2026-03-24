@@ -103,9 +103,9 @@ export function virtualContent({ assetGateway, htmlMap }: VirtualContentOptions)
               // Buffer CSS to rewrite url() references for sub-resources (fonts, images)
               const chunks: Buffer[] = [];
               stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-              stream.on('end', () => {
+              stream.on('end', async () => {
                 const css = Buffer.concat(chunks).toString('utf-8');
-                const rewritten = assetGateway.rewriteCssUrls(css, assetUrl);
+                const rewritten = await assetGateway.rewriteCssUrls(css, assetUrl);
                 res.end(rewritten);
               });
               stream.on('error', (err) => {
