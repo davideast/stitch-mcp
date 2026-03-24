@@ -25,7 +25,8 @@ export const command: CommandDefinition<any, ProxyOptions> = {
         console.error(theme.red(`\n${icons.error} Proxy server error: ${result.error?.message}`));
         process.exit(1);
       }
-      process.exit(0);
+      // No process.exit(0) here — the proxy is a long-running server.
+      // The stdin listener keeps the event loop alive until the client disconnects.
     } catch (error) {
       console.error(theme.red(`\n${icons.error} Unexpected error:`), error);
       process.exit(1);

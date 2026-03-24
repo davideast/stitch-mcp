@@ -28,17 +28,25 @@ describe('ProxyCommandHandler (SDK)', () => {
     const result = await handler.execute({});
 
     expect(result.success).toBe(true);
+    expect(result.data?.status).toBe('running');
     expect(startSpy).toHaveBeenCalledTimes(1);
-    // First arg to start() should be a StdioServerTransport instance
     expect(startSpy.mock.calls[0][0]).toBeInstanceOf(StdioServerTransport);
   });
 
   it('passes STITCH_API_KEY env var to StitchProxy', async () => {
     process.env.STITCH_API_KEY = 'test-key';
-    const handler = new ProxyCommandHandler();
+    let receivedApiKey: string | undefined;
+
+    const handler = new ProxyCommandHandler({
+      createProxy: (opts) => {
+        receivedApiKey = opts.apiKey;
+        return { start: async () => {}, close: async () => {} } as any;
+      },
+    });
+
     const result = await handler.execute({});
-    // Proxy reads from env — confirm it doesn't throw when key is set
     expect(result.success).toBe(true);
+    expect(receivedApiKey).toBe('test-key');
   });
 
   it('returns error when proxy start fails', async () => {
