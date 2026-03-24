@@ -10,21 +10,21 @@ import type { ServeResult } from './serve-behaviors/types.js';
 type TreeNode = {
   id: string; // Unique path identifier
   key: string;
-  value: any;
+  value: unknown;
   depth: number;
   isLeaf: boolean;
   isExpanded: boolean;
   hasChildren: boolean;
 };
 
-function getType(value: any): string {
+function getType(value: unknown): string {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
   return typeof value;
 }
 
 function buildVisibleTree(
-  data: any,
+  data: unknown,
   expandedIds: Set<string>,
   prefix: string = '',
   depth: number = 0,
@@ -52,15 +52,16 @@ function buildVisibleTree(
     return nodes;
   }
 
-  if (type === 'object' || type === 'array') {
-    const keys = Object.keys(data);
+  if ((type === 'object' || type === 'array') && data !== null) {
+    const record = data as Record<string, unknown>;
+    const keys = Object.keys(record);
 
     for (const key of keys) {
-      const value = data[key];
+      const value = record[key];
       const id = prefix ? `${prefix}.${key}` : key;
       const valueType = getType(value);
       const isLeaf = valueType !== 'object' && valueType !== 'array';
-      const hasChildren = !isLeaf && Object.keys(value).length > 0;
+      const hasChildren = !isLeaf && value !== null && Object.keys(value as object).length > 0;
       const isExpanded = expandedIds.has(id);
 
       nodes.push({
@@ -83,7 +84,7 @@ function buildVisibleTree(
 }
 
 interface JsonTreeProps {
-  data: any;
+  data: unknown;
   /** Optional label for root object - when set, root is selectable for copying */
   rootLabel?: string;
   /** Called when user navigates into a resource (Enter on screenInstances) */
@@ -201,15 +202,15 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
         // We're somewhere inside a project in the list view
         // Need to find the actual project name from the data
         const projectIndex = parseInt(projectsMatch[1], 10);
-        const project = data.projects?.[projectIndex];
+        const project = (data as any).projects?.[projectIndex];
         if (project?.name) {
           projectId = project.name.replace('projects/', '');
         }
       }
 
       // Check if we're in a single project/resource view
-      if (!projectId && typeof node.value === 'object' && node.value?.name) {
-        const nameMatch = node.value.name.match(/projects\/(\d+)/);
+      if (!projectId && typeof node.value === 'object' && node.value !== null && (node.value as any).name) {
+        const nameMatch = (node.value as any).name.match(/projects\/(\d+)/);
         if (nameMatch) {
           projectId = nameMatch[1];
         }
@@ -225,7 +226,7 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
 
       // Check if rootLabel is 'screen' or 'resource' and data has a name
       if (!projectId && (rootLabel === 'screen' || rootLabel === 'resource')) {
-        const nameMatch = data.name?.match(/projects\/(\d+)/);
+        const nameMatch = (data as any).name?.match(/projects\/(\d+)/);
         if (nameMatch) {
           projectId = nameMatch[1];
         }
@@ -350,9 +351,10 @@ export const JsonTree = ({ data, rootLabel, onNavigate, onBack }: JsonTreeProps)
             else valueDisplay = String(node.value);
           } else {
             const type = Array.isArray(node.value) ? '[]' : '{}';
-            const itemCount = Object.keys(node.value).length;
+            const itemCount = node.value !== null ? Object.keys(node.value as object).length : 0;
             // Try to show a meaningful label for objects (title, name, id, etc.)
-            const label = node.value.title || node.value.name || node.value.displayName || node.value.id || null;
+            const valAsAny = node.value as any;
+            const label = valAsAny?.title || valAsAny?.name || valAsAny?.displayName || valAsAny?.id || null;
             if (label && typeof label === 'string') {
               valueDisplay = `${type} "${label}" (${itemCount})`;
             } else {

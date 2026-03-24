@@ -15,7 +15,7 @@ export async function copyText(text: string): Promise<void> {
 /**
  * Copy JSON-serialized value to clipboard
  */
-export async function copyJson(value: any): Promise<void> {
+export async function copyJson(value: unknown): Promise<void> {
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   await clipboard.write(text);
 }

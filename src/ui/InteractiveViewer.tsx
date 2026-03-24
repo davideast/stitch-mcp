@@ -8,18 +8,18 @@ import { JsonTree } from './JsonTree.js';
 import type { NavigationResult } from './navigation-behaviors/handler.js';
 
 export interface ViewerState {
-  data: any;
+  data: unknown;
   rootLabel?: string;
   resourcePath?: string;
 }
 
 interface InteractiveViewerProps {
-  initialData: any;
+  initialData: unknown;
   initialRootLabel?: string;
   /** Pre-populated navigation history (for back navigation from deep links) */
   initialHistory?: ViewerState[];
   /** Fetch function to load new resource data */
-  onFetch: (resourceName: string) => Promise<any>;
+  onFetch: (resourceName: string) => Promise<unknown>;
   /** Called when exiting the viewer */
   onExit?: () => void;
 }
