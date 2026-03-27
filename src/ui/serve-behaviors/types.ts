@@ -4,7 +4,7 @@
 
 export interface ServeContext {
   key: string;
-  value: any;
+  value: unknown;
   path: string;
   onProgress?: (message: string) => void;
 }

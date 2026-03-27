@@ -7,7 +7,7 @@ export interface CopyContext {
   /** The key name of the property */
   key: string;
   /** The value of the property */
-  value: any;
+  value: unknown;
   /** Full dot-notation path (e.g., "projects.0.thumbnailScreenshot.downloadUrl") */
   path: string;
   /** Optional callback to show progress during async operations */

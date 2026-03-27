@@ -7,7 +7,7 @@ export interface NavigationContext {
   /** Current selected path */
   path: string;
   /** Current node value */
-  value: any;
+  value: unknown;
   /** The key of the node */
   key: string;
 }
@@ -34,10 +34,10 @@ export function screenInstanceNavigationHandler(ctx: NavigationContext): Navigat
   }
 
   // If value is an object with sourceScreen, use that
-  if (ctx.value && typeof ctx.value === 'object' && ctx.value.sourceScreen) {
+  if (ctx.value && typeof ctx.value === 'object' && (ctx.value as any).sourceScreen) {
     return {
       shouldNavigate: true,
-      target: ctx.value.sourceScreen,
+      target: (ctx.value as any).sourceScreen,
       type: 'screen',
     };
   }
