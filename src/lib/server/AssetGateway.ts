@@ -116,7 +116,7 @@ export class AssetGateway {
     }
   }
 
-  async rewriteCssUrls(css: string, baseUrl: string): Promise<string> {
+  rewriteCssUrls(css: string, baseUrl: string): string {
     const discovered: string[] = [];
 
     // First pass: rewrite bare-string @import (not @import url() which is handled below)
@@ -190,8 +190,10 @@ export class AssetGateway {
       },
     );
 
-    // Optimistic prefetch for discovered URLs
-    await Promise.all(discovered.map(url => this.fetchAsset(url).catch(() => {})));
+    // Optimistic prefetch: fire-and-forget parallel cache warming.
+    // rewriteCssUrls is synchronous; prefetching is a side-effect that does
+    // not need to complete before the rewritten CSS is returned.
+    Promise.all(discovered.map(url => this.fetchAsset(url).catch(() => {})));
 
     return rewritten;
   }
