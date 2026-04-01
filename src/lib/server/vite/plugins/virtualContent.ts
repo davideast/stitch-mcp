@@ -211,4 +211,3 @@ export function virtualContent({ assetGateway, htmlMap }: VirtualContentOptions)
     }
   };
 }
-

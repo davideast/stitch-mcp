@@ -9,6 +9,38 @@ import { is, serialize } from '@astrojs/compiler/utils';
 export class AssetGateway {
   private cacheDir: string;
 
+  /**
+   * Allowlist of hostname patterns for asset fetching.
+   * Only HTTPS URLs matching these patterns are permitted.
+   * Expand as needed for additional CDNs used in Stitch designs.
+   */
+  private static ALLOWED_HOST_PATTERNS: RegExp[] = [
+    /\.googleapis\.com$/,
+    /\.googleusercontent\.com$/,
+    /\.gstatic\.com$/,
+    /^cdnjs\.cloudflare\.com$/,
+  ];
+
+  /**
+   * Validates that a URL is safe to fetch:
+   * - Must be HTTPS
+   * - Hostname must match the allowlist
+   */
+  static validateAssetUrl(url: string): boolean {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return false;
+    }
+
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    return AssetGateway.ALLOWED_HOST_PATTERNS.some(pattern => pattern.test(parsed.hostname));
+  }
+
   constructor(projectRoot: string = process.cwd()) {
     this.cacheDir = path.join(projectRoot, '.stitch-mcp', 'cache');
   }
@@ -23,6 +55,12 @@ export class AssetGateway {
 
   async fetchAsset(url: string): Promise<{ stream: Readable; contentType?: string } | null> {
     await this.init();
+
+    if (!AssetGateway.validateAssetUrl(url)) {
+      console.warn(`Blocked asset fetch for disallowed URL: ${url}`);
+      return null;
+    }
+
     const hash = this.getHash(url);
     const cachePath = path.join(this.cacheDir, hash);
     const metadataPath = cachePath + '.meta.json';
