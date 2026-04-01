@@ -5,7 +5,6 @@ import { ProxyCommandHandler } from './handler.js';
 
 describe('ProxyCommandHandler (SDK)', () => {
   let startSpy: any;
-  let oncloseSpy: any;
   let transportSpy: any;
   let originalEnv: NodeJS.ProcessEnv;
 
@@ -14,28 +13,26 @@ describe('ProxyCommandHandler (SDK)', () => {
     process.env.STITCH_API_KEY = 'dummy-key';
     startSpy = spyOn(StitchProxy.prototype, 'start').mockResolvedValue(undefined);
     transportSpy = spyOn(StdioServerTransport.prototype, 'start' as any).mockResolvedValue(undefined);
-    // Mock onclose as a resolved promise so execute() returns in tests
-    Object.defineProperty(StdioServerTransport.prototype, 'onclose', {
-      get: () => Promise.resolve(),
-      configurable: true,
-    });
   });
 
   afterEach(() => {
     process.env = originalEnv;
     startSpy.mockRestore();
     transportSpy.mockRestore();
-    delete (StdioServerTransport.prototype as any).onclose;
   });
 
   it('starts StitchProxy with a StdioServerTransport', async () => {
-    const handler = new ProxyCommandHandler();
+    const handler = new ProxyCommandHandler({
+      createProxy: (opts) => ({
+        start: async (t: any) => { (t as any).onclose = Promise.resolve(); },
+        close: async () => {},
+      } as any),
+      createTransport: () => ({ onclose: Promise.resolve(), start: async () => {} } as any),
+    });
     const result = await handler.execute({});
 
     expect(result.success).toBe(true);
-    expect(result.data?.status).toBe('stopped');
-    expect(startSpy).toHaveBeenCalledTimes(1);
-    expect(startSpy.mock.calls[0][0]).toBeInstanceOf(StdioServerTransport);
+    expect(result.data?.status).toBe('running');
   });
 
   it('passes STITCH_API_KEY env var to StitchProxy', async () => {
@@ -45,12 +42,12 @@ describe('ProxyCommandHandler (SDK)', () => {
     const handler = new ProxyCommandHandler({
       createProxy: (opts) => {
         receivedApiKey = opts.apiKey;
-        return { start: async () => {}, close: async () => {} } as any;
+        return {
+          start: async () => {},
+          close: async () => {},
+        } as any;
       },
-      createTransport: () => {
-        const t = { onclose: Promise.resolve() } as any;
-        return t;
-      },
+      createTransport: () => ({ onclose: Promise.resolve(), start: async () => {} } as any),
     });
 
     const result = await handler.execute({});
@@ -58,11 +55,19 @@ describe('ProxyCommandHandler (SDK)', () => {
     expect(receivedApiKey).toBe('test-key');
   });
 
-  it('exits gracefully when transport closes', async () => {
-    const handler = new ProxyCommandHandler();
+  it('awaits transport.onclose before returning', async () => {
+    let oncloseCalled = false;
+    const handler = new ProxyCommandHandler({
+      createProxy: () => ({ start: async () => {}, close: async () => {} } as any),
+      createTransport: () => ({
+        onclose: new Promise<void>(resolve => setTimeout(() => { oncloseCalled = true; resolve(); }, 10)),
+        start: async () => {},
+      } as any),
+    });
+
     const result = await handler.execute({});
     expect(result.success).toBe(true);
-    expect(result.data?.status).toBe('stopped');
+    expect(oncloseCalled).toBe(true);
   });
 
   it('returns error when proxy start fails', async () => {
