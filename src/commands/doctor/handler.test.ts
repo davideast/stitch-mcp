@@ -3,7 +3,6 @@ import { DoctorHandler } from './handler.js';
 import { GcloudHandler } from '../../services/gcloud/handler.js';
 import { StitchHandler } from '../../services/stitch/handler.js';
 
-// Mock dotenv to prevent loading .env file
 mock.module('dotenv', () => ({
   default: {
     config: mock(() => ({})),
@@ -11,7 +10,6 @@ mock.module('dotenv', () => ({
   config: mock(() => ({})),
 }));
 
-// Create mocks for the class methods
 const mockEnsureInstalled = mock();
 const mockAuthenticate = mock();
 const mockAuthenticateADC = mock();
@@ -21,13 +19,10 @@ const mockTestConnection = mock();
 const mockTestConnectionWithApiKey = mock();
 const mockGetProjectId = mock();
 
-// Mocks removed as we use DI now
-
 describe('DoctorHandler', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    // Reset mocks before each test
     process.env = { ...originalEnv };
     delete process.env.STITCH_API_KEY;
     mockEnsureInstalled.mockClear();
@@ -46,7 +41,6 @@ describe('DoctorHandler', () => {
 
   describe('execute', () => {
     it('should return all checks passed when services are healthy', async () => {
-      // Arrange: Set up successful mock return values
       mockEnsureInstalled.mockResolvedValue({
         success: true,
         data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' },
@@ -63,7 +57,6 @@ describe('DoctorHandler', () => {
         data: { statusCode: 200 },
       });
 
-      // Mock objects (with just the necessary methods typed as any)
       const mockGcloudService: any = {
         ensureInstalled: mockEnsureInstalled,
         authenticate: mockAuthenticate,
@@ -78,21 +71,18 @@ describe('DoctorHandler', () => {
         testConnectionWithApiKey: mockTestConnectionWithApiKey,
       };
 
-      // Act
       const handler = new DoctorHandler(mockGcloudService, mockStitchService);
       const result = await handler.execute({ verbose: false });
 
-      // Assert
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.allPassed).toBe(true);
         expect(result.data.checks.every((c) => c.passed)).toBe(true);
-        expect(result.data.checks.length).toBe(5); // Ensure all 5 checks were performed
+        expect(result.data.checks.length).toBe(6); // gcloud CLI, auth, ADC, ADC quota project, project, stitch API
       }
     });
 
     it('should return checks failed when gcloud is not installed', async () => {
-      // Arrange: Mock gcloud not installed
       mockEnsureInstalled.mockResolvedValue({
         success: false,
         error: { code: 'GCLOUD_NOT_FOUND', message: 'gcloud not found' },
@@ -112,17 +102,14 @@ describe('DoctorHandler', () => {
         testConnectionWithApiKey: mockTestConnectionWithApiKey,
       };
 
-      // Mock other calls to prevent crash (doctor generally tries to continue)
       mockAuthenticate.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
       mockAuthenticateADC.mockResolvedValue({ success: false, error: { message: 'Skipped' } });
       mockGetProjectId.mockResolvedValue(null);
       mockGetAccessToken.mockResolvedValue(null);
 
-      // Act
       const handler = new DoctorHandler(mockGcloudService, mockStitchService);
       const result = await handler.execute({ verbose: false });
 
-      // Assert
       expect(result.success).toBe(true);
       if (result.success) {
         const gcloudCheck = result.data.checks.find((c) => c.name === 'Google Cloud CLI');
@@ -162,7 +149,6 @@ describe('DoctorHandler', () => {
 
       console.log = originalLog;
 
-      // All console output must be valid JSON
       expect(logged.length).toBe(1);
       const parsed = JSON.parse(logged[0]!);
       expect(parsed.success).toBe(true);
@@ -207,7 +193,6 @@ describe('DoctorHandler', () => {
         expect(result.data.checks[1].passed).toBe(true);
       }
 
-      // gcloud mocks should NOT have been called
       expect(mockEnsureInstalled).not.toHaveBeenCalled();
       expect(mockAuthenticate).not.toHaveBeenCalled();
       expect(mockAuthenticateADC).not.toHaveBeenCalled();
@@ -257,8 +242,6 @@ describe('DoctorHandler', () => {
     });
 
     it('should run gcloud checks when no API key is set (existing behavior)', async () => {
-      // No STITCH_API_KEY set
-
       mockEnsureInstalled.mockResolvedValue({
         success: true,
         data: { location: 'system', version: '450.0.0', path: '/usr/bin/gcloud' },
@@ -294,11 +277,10 @@ describe('DoctorHandler', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.checks.length).toBe(5);
+        expect(result.data.checks.length).toBe(6); // gcloud CLI, auth, ADC, ADC quota project, project, stitch API
         expect(result.data.allPassed).toBe(true);
       }
 
-      // API key method should NOT have been called
       expect(mockTestConnectionWithApiKey).not.toHaveBeenCalled();
     });
   });
