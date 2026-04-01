@@ -32,7 +32,8 @@ export class ProxyCommandHandler {
       });
       const transport = this.createTransport();
       await proxy.start(transport);
-      return { success: true, data: { status: 'running' } };
+      await transport.onclose;
+      return { success: true, data: { status: 'stopped' } };
     } catch (e: any) {
       return { success: false, error: { code: 'PROXY_START_ERROR', message: e.message, recoverable: false } };
     }

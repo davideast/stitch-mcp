@@ -5,22 +5,27 @@ import { ProxyCommandHandler } from './handler.js';
 
 describe('ProxyCommandHandler (SDK)', () => {
   let startSpy: any;
+  let oncloseSpy: any;
   let transportSpy: any;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
     originalEnv = { ...process.env };
-    // Provide a dummy API key so the constructor doesn't throw auth failed error.
     process.env.STITCH_API_KEY = 'dummy-key';
     startSpy = spyOn(StitchProxy.prototype, 'start').mockResolvedValue(undefined);
-    // StdioServerTransport constructor — just ensure it's instantiated
     transportSpy = spyOn(StdioServerTransport.prototype, 'start' as any).mockResolvedValue(undefined);
+    // Mock onclose as a resolved promise so execute() returns in tests
+    Object.defineProperty(StdioServerTransport.prototype, 'onclose', {
+      get: () => Promise.resolve(),
+      configurable: true,
+    });
   });
 
   afterEach(() => {
     process.env = originalEnv;
     startSpy.mockRestore();
     transportSpy.mockRestore();
+    delete (StdioServerTransport.prototype as any).onclose;
   });
 
   it('starts StitchProxy with a StdioServerTransport', async () => {
@@ -28,7 +33,7 @@ describe('ProxyCommandHandler (SDK)', () => {
     const result = await handler.execute({});
 
     expect(result.success).toBe(true);
-    expect(result.data?.status).toBe('running');
+    expect(result.data?.status).toBe('stopped');
     expect(startSpy).toHaveBeenCalledTimes(1);
     expect(startSpy.mock.calls[0][0]).toBeInstanceOf(StdioServerTransport);
   });
@@ -42,11 +47,22 @@ describe('ProxyCommandHandler (SDK)', () => {
         receivedApiKey = opts.apiKey;
         return { start: async () => {}, close: async () => {} } as any;
       },
+      createTransport: () => {
+        const t = { onclose: Promise.resolve() } as any;
+        return t;
+      },
     });
 
     const result = await handler.execute({});
     expect(result.success).toBe(true);
     expect(receivedApiKey).toBe('test-key');
+  });
+
+  it('exits gracefully when transport closes', async () => {
+    const handler = new ProxyCommandHandler();
+    const result = await handler.execute({});
+    expect(result.success).toBe(true);
+    expect(result.data?.status).toBe('stopped');
   });
 
   it('returns error when proxy start fails', async () => {
@@ -60,7 +76,6 @@ describe('ProxyCommandHandler (SDK)', () => {
 
   it.skip('writes debug log to ~/.stitch/proxy-debug.log when --debug is passed', async () => {
     // TODO: Confirm StitchProxy exposes an event/hook for debug logging.
-    // If not, wrap proxy.start() with the existing FileStream setup before delegating.
   });
 
   it.skip('respects STITCH_USE_SYSTEM_GCLOUD env var via pre-obtained access token', async () => {
