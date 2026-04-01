@@ -16,6 +16,7 @@ import { ApiKeyDetectedStep } from './steps/ApiKeyDetectedStep.js';
 import { GcloudCheckStep } from './steps/GcloudCheckStep.js';
 import { AuthCheckStep } from './steps/AuthCheckStep.js';
 import { AdcCheckStep } from './steps/AdcCheckStep.js';
+import { AdcProjectCheckStep } from './steps/AdcProjectCheckStep.js';
 import { ProjectCheckStep } from './steps/ProjectCheckStep.js';
 import { ApiKeyConnectionStep } from './steps/ApiKeyConnectionStep.js';
 import { ApiCheckStep } from './steps/ApiCheckStep.js';
@@ -35,6 +36,7 @@ export class DoctorHandler implements DoctorCommand {
       new GcloudCheckStep(),
       new AuthCheckStep(),
       new AdcCheckStep(),
+      new AdcProjectCheckStep(),  // NEW: Check ADC quota_project_id
       new ProjectCheckStep(),
       new ApiKeyConnectionStep(),
       new ApiCheckStep(),

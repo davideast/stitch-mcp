@@ -5,6 +5,7 @@ import * as cheerio from 'cheerio';
 import { Readable } from 'stream';
 import { parse } from '@astrojs/compiler';
 import { is, serialize } from '@astrojs/compiler/utils';
+import { validateAssetUrl } from './url-allowlist.js';
 
 export class AssetGateway {
   private cacheDir: string;
@@ -23,6 +24,14 @@ export class AssetGateway {
 
   async fetchAsset(url: string): Promise<{ stream: Readable; contentType?: string } | null> {
     await this.init();
+
+    // SSRF Protection: Validate URL against allowlist
+    const validation = validateAssetUrl(url);
+    if (!validation.valid) {
+      console.warn(`[AssetGateway] Blocked fetch: ${validation.message}`);
+      return null;
+    }
+
     const hash = this.getHash(url);
     const cachePath = path.join(this.cacheDir, hash);
     const metadataPath = cachePath + '.meta.json';

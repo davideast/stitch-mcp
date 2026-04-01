@@ -1,19 +1,9 @@
 import { StitchProxy } from '@google/stitch-sdk';
 import type { StitchProxy as StitchProxyType } from '@google/stitch-sdk';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { ProxySpec, ProxyInput, ProxyResult } from './spec.js';
 
-interface ProxyCommandInput {
-  port?: number;
-  debug?: boolean;
-}
-
-interface ProxyCommandResult {
-  success: boolean;
-  data?: { status: string };
-  error?: { code: string; message: string; recoverable: boolean };
-}
-
-export class ProxyCommandHandler {
+export class ProxyCommandHandler implements ProxySpec {
   private createProxy: (opts: { apiKey?: string }) => StitchProxyType;
   private createTransport: () => StdioServerTransport;
 
@@ -25,16 +15,36 @@ export class ProxyCommandHandler {
     this.createTransport = deps?.createTransport ?? (() => new StdioServerTransport());
   }
 
-  async execute(input: ProxyCommandInput): Promise<ProxyCommandResult> {
+  async execute(input: ProxyInput): Promise<ProxyResult> {
     try {
       const proxy = this.createProxy({
         apiKey: process.env.STITCH_API_KEY,
       });
       const transport = this.createTransport();
+
+      // Wait for transport to close before resolving.
+      // This keeps the process alive for the lifetime of the MCP connection.
+      const closed = new Promise<void>((resolve) => {
+        const originalOnClose = transport.onclose;
+        transport.onclose = () => {
+          originalOnClose?.();
+          resolve();
+        };
+      });
+
       await proxy.start(transport);
-      return { success: true, data: { status: 'running' } };
-    } catch (e: any) {
-      return { success: false, error: { code: 'PROXY_START_ERROR', message: e.message, recoverable: false } };
+      await closed;
+
+      return { success: true, data: { status: 'stopped' } };
+    } catch (e: unknown) {
+      return {
+        success: false,
+        error: {
+          code: 'PROXY_START_ERROR',
+          message: e instanceof Error ? e.message : String(e),
+          recoverable: false,
+        },
+      };
     }
   }
 }
