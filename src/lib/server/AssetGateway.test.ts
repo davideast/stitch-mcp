@@ -73,7 +73,7 @@ describe('AssetGateway', () => {
       globalThis.fetch = (async () => new Response('Not Found', { status: 404 })) as any;
 
       try {
-        const result = await gateway.fetchAsset('https://example.com/missing.png');
+        const result = await gateway.fetchAsset('https://fonts.googleapis.com/missing.png');
         expect(result).toBeNull();
       } finally {
         globalThis.fetch = originalFetch;
@@ -87,7 +87,7 @@ describe('AssetGateway', () => {
       }) as any;
 
       try {
-        const result = await gateway.fetchAsset('https://example.com/error.png');
+        const result = await gateway.fetchAsset('https://fonts.googleapis.com/error.png');
         expect(result).toBeNull();
       } finally {
         globalThis.fetch = originalFetch;
@@ -106,20 +106,35 @@ describe('AssetGateway', () => {
       }) as any;
 
       try {
-        // First fetch
-        const result1 = await gateway.fetchAsset('https://example.com/test.txt');
+        // First fetch — use allowed domain
+        const result1 = await gateway.fetchAsset('https://cdn.jsdelivr.net/test.txt');
         expect(result1).not.toBeNull();
         result1?.stream.destroy();
         expect(fetchCount).toBe(1);
 
         // Second fetch should use cache
-        const result2 = await gateway.fetchAsset('https://example.com/test.txt');
+        const result2 = await gateway.fetchAsset('https://cdn.jsdelivr.net/test.txt');
         expect(result2).not.toBeNull();
         result2?.stream.destroy();
         expect(fetchCount).toBe(1); // Still 1, used cache
       } finally {
         globalThis.fetch = originalFetch;
       }
+    });
+
+    test('returns null for URLs blocked by allowlist', async () => {
+      const result = await gateway.fetchAsset('https://evil-site.example.com/steal-data');
+      expect(result).toBeNull();
+    });
+
+    test('returns null for non-HTTPS URLs', async () => {
+      const result = await gateway.fetchAsset('http://cdn.jsdelivr.net/test.txt');
+      expect(result).toBeNull();
+    });
+
+    test('returns null for internal IP addresses', async () => {
+      const result = await gateway.fetchAsset('https://169.254.169.254/latest/meta-data');
+      expect(result).toBeNull();
     });
 
     test('includes User-Agent header for Google Fonts compatibility', async () => {
@@ -491,7 +506,8 @@ describe('AssetGateway', () => {
 
       try {
         const destPath = path.join(tempDir, 'output', 'asset.css');
-        const result = await gateway.copyAssetTo('https://example.com/missing.css', destPath);
+        // Use an allowed domain so the URL passes validation; fetch mock returns 404
+        const result = await gateway.copyAssetTo('https://cdn.jsdelivr.net/missing.css', destPath);
         expect(result).toBe(false);
       } finally {
         globalThis.fetch = originalFetch;
@@ -506,11 +522,11 @@ describe('AssetGateway', () => {
       })) as any;
 
       try {
-        // First fetch to cache
-        await gateway.fetchAsset('https://example.com/style.css');
+        // Use an allowed domain so URL passes SSRF validation
+        await gateway.fetchAsset('https://cdn.jsdelivr.net/npm/style.css');
 
         const destPath = path.join(tempDir, 'output', 'style.css');
-        const result = await gateway.copyAssetTo('https://example.com/style.css', destPath);
+        const result = await gateway.copyAssetTo('https://cdn.jsdelivr.net/npm/style.css', destPath);
 
         expect(result).toBe(true);
         expect(await fs.pathExists(destPath)).toBe(true);

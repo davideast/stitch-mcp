@@ -87,7 +87,7 @@ describe('DoctorHandler', () => {
       if (result.success) {
         expect(result.data.allPassed).toBe(true);
         expect(result.data.checks.every((c) => c.passed)).toBe(true);
-        expect(result.data.checks.length).toBe(5); // Ensure all 5 checks were performed
+        expect(result.data.checks.length).toBe(6); // 6 checks: gcloud CLI, auth, ADC, ADC quota project, project, stitch API
       }
     });
 
@@ -294,7 +294,7 @@ describe('DoctorHandler', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.checks.length).toBe(5);
+        expect(result.data.checks.length).toBe(6); // 6 checks: gcloud CLI, auth, ADC, ADC quota project, project, stitch API
         expect(result.data.allPassed).toBe(true);
       }
 
