@@ -13,6 +13,9 @@ export const command: CommandDefinition<any, SiteOptions> = {
     { flags: '-e, --export', description: 'Export screen-to-route config as build_site JSON', defaultValue: false },
     { flags: '-l, --list-screens', description: 'List all screens with suggested routes as JSON', defaultValue: false },
     { flags: '-r, --routes <json>', description: 'JSON array of {screenId,route} mappings — generates site without TUI' },
+    { flags: '--file-mode <mode>', description: 'Permission mode for downloaded assets (e.g. 0o644)' },
+    { flags: '--temp-dir <dir>', description: 'Temporary directory for asset downloads' },
+    { flags: '--assets-subdir <dir>', description: 'Subdirectory within temp-dir for assets' },
   ],
   action: async (_args, options) => {
     try {
@@ -25,6 +28,9 @@ export const command: CommandDefinition<any, SiteOptions> = {
         export: parsedOptions.export,
         listScreens: parsedOptions.listScreens,
         routes: parsedOptions.routes,
+        fileMode: parsedOptions.fileMode,
+        tempDir: parsedOptions.tempDir,
+        assetsSubdir: parsedOptions.assetsSubdir,
       });
       process.exit(0);
     } catch (error) {

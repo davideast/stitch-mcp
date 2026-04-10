@@ -13,7 +13,4 @@ export interface UIScreen {
   route: string;       // empty by default
 }
 
-export interface IAssetGateway {
-  rewriteHtmlForBuild(html: string): Promise<{ html: string; assets: { url: string; filename: string }[] }>;
-  copyAssetTo(url: string, destPath: string): Promise<boolean>;
-}
+

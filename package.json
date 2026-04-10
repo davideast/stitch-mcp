@@ -35,7 +35,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@google/stitch-sdk": "^0.0.3",
+    "@google/stitch-sdk": "0.1.1-next.0",
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "adm-zip": "^0.5.16",

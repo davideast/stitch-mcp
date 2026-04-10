@@ -5,10 +5,12 @@ import type { GenerateInput } from './spec.js';
 
 const PROJECT_ID = 'proj_abc';
 
-const mockGenerateSite = mock(() => Promise.resolve());
+const mockExecute = mock(() => Promise.resolve({ success: true, outputDir: './output', pages: [] }));
 
-mock.module('../../../lib/services/site/SiteService.js', () => ({
-  SiteService: { generateSite: mockGenerateSite },
+mock.module('../generate-site/handler.js', () => ({
+  GenerateSiteHandler: mock(() => ({
+    execute: mockExecute
+  }))
 }));
 
 const mockFetchHtml = mock((url: string) => Promise.resolve(`<html>content for ${url}</html>`));
@@ -35,8 +37,8 @@ function makeInput(overrides: Partial<GenerateInput> = {}): GenerateInput {
 
 describe('GenerateHandler', () => {
   beforeEach(() => {
-    mockGenerateSite.mockClear();
-    mockFetchHtml.mockClear();
+    (mockExecute as any).mockClear();
+    (mockFetchHtml as any).mockClear();
   });
 
   it('returns success with pages when all screens resolve', async () => {
@@ -54,7 +56,7 @@ describe('GenerateHandler', () => {
       { screenId: 'scr_1', route: '/' },
       { screenId: 'scr_2', route: '/about' },
     ]);
-    expect(mockGenerateSite).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
   it('returns SCREEN_NOT_FOUND when a screenId does not exist in the project', async () => {
@@ -71,16 +73,22 @@ describe('GenerateHandler', () => {
     expect(result.error.message).toContain('scr_2');
   });
 
-  it('returns HTML_FETCH_FAILED when getHtml rejects', async () => {
+  it('returns GENERATE_FAILED when GenerateSiteHandler fails', async () => {
     const client = makeClient([
-      createMockScreen({ screenId: 'scr_1', title: 'Home', getHtml: mock(() => Promise.reject(new Error('cdn error'))) }),
-      createMockScreen({ screenId: 'scr_2', title: 'About', getHtml: mock(() => Promise.resolve('https://cdn.example.com/about.html')) }),
+      createMockScreen({ screenId: 'scr_1', title: 'Home' }),
+      createMockScreen({ screenId: 'scr_2', title: 'About' }),
     ]);
+
+    (mockExecute as any).mockImplementationOnce(() => Promise.resolve({
+      success: false,
+      error: { code: 'GENERATE_FAILED', message: 'SDK error', recoverable: false }
+    }));
 
     const result = await makeHandler(client).execute(makeInput());
 
     expect(result.success).toBe(false);
     if (result.success) return;
-    expect(result.error.code).toBe('HTML_FETCH_FAILED');
+    expect(result.error.code).toBe('GENERATE_FAILED');
+    expect(result.error.message).toBe('SDK error');
   });
 });

@@ -56,7 +56,7 @@ describe("ToolCommandHandler Orchestration", () => {
     await handler.execute(input);
 
     expect(runStepsSpy).toHaveBeenCalled();
-    const [steps, context, callbacks] = runStepsSpy.mock.calls[0];
+    const [steps, context, callbacks] = runStepsSpy.mock.calls[0]!;
 
     expect(steps).toBe((handler as any).steps);
     expect(context.input).toBe(input);
@@ -93,7 +93,7 @@ describe("ToolCommandHandler Orchestration", () => {
     const handler = new ToolCommandHandler({ close: mock() } as any);
     await handler.execute({ toolName: 'test-tool' });
 
-    const callbacks = runStepsSpy.mock.calls[0][2];
+    const callbacks = runStepsSpy.mock.calls[0]![2];
     const onAfterStep = callbacks?.onAfterStep;
 
     expect(onAfterStep).toBeDefined();

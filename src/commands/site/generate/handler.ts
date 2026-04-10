@@ -1,8 +1,7 @@
 import type { Stitch } from '@google/stitch-sdk';
 import pLimit from 'p-limit';
 import type { GenerateSpec, GenerateInput, GenerateResult } from './spec.js';
-import { SiteService } from '../../../lib/services/site/SiteService.js';
-import { AssetGateway } from '../../../lib/server/AssetGateway.js';
+import { GenerateSiteHandler } from '../generate-site/handler.js';
 import { fetchWithRetry } from '../utils/fetchWithRetry.js';
 
 export class GenerateHandler implements GenerateSpec {
@@ -34,42 +33,25 @@ export class GenerateHandler implements GenerateSpec {
         };
       }
 
-      // Fetch HTML for each screen
-      const limit = pLimit(3);
-      const htmlContent = new Map<string, string>();
-      const errors: string[] = [];
 
-      await Promise.all(
-        input.routesJson.map(r => limit(async () => {
-          const screen = screenMap.get(r.screenId)!;
-          try {
-            const htmlUrl = await screen.getHtml();
-            const html = htmlUrl ? await this.fetchHtml(htmlUrl) : '';
-            htmlContent.set(r.screenId, html);
-          } catch (e: any) {
-            errors.push(`${r.screenId}: ${e.message}`);
-          }
-        }))
-      );
+      // Delegate to GenerateSiteHandler
+      const generateSiteHandler = new GenerateSiteHandler(this.client);
+      const result = await generateSiteHandler.execute({
+        projectId: input.projectId,
+        routes: input.routesJson,
+        outputDir: input.outputDir,
+      });
 
-      if (errors.length > 0) {
+      if (!result.success) {
         return {
           success: false,
           error: {
-            code: 'HTML_FETCH_FAILED',
-            message: `Failed to fetch HTML for screens: ${errors.join('; ')}`,
-            recoverable: false,
+            code: 'GENERATE_FAILED',
+            message: result.error.message,
+            recoverable: result.error.recoverable,
           },
         };
       }
-
-      const config = {
-        projectId: input.projectId,
-        routes: input.routesJson.map(r => ({ screenId: r.screenId, route: r.route, status: 'included' as const })),
-      };
-
-      const assetGateway = new AssetGateway();
-      await SiteService.generateSite(config, htmlContent, assetGateway, input.outputDir);
 
       return {
         success: true,

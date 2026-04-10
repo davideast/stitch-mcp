@@ -4,12 +4,12 @@ import { stitch } from '@google/stitch-sdk';
 import type { Stitch } from '@google/stitch-sdk';
 import { SiteBuilder } from './ui/SiteBuilder.js';
 import { SiteService } from '../../lib/services/site/SiteService.js';
-import { AssetGateway } from '../../lib/server/AssetGateway.js';
 import { SiteManifest } from './utils/SiteManifest.js';
 import { ListScreensHandler } from './list-screens/handler.js';
 import { ListScreensInputSchema } from './list-screens/spec.js';
 import { GenerateHandler } from './generate/handler.js';
 import { GenerateInputSchema } from './generate/spec.js';
+import { GenerateSiteHandler } from './generate-site/handler.js';
 import type { SiteConfig, UIScreen } from '../../lib/services/site/types.js';
 
 interface SiteCommandOptions {
@@ -18,6 +18,9 @@ interface SiteCommandOptions {
   export?: boolean;
   listScreens?: boolean;
   routes?: string;
+  fileMode?: string;
+  tempDir?: string;
+  assetsSubdir?: string;
 }
 
 export class SiteCommandHandler {
@@ -102,18 +105,26 @@ export class SiteCommandHandler {
 
     await waitUntilExit();
 
-    if (resultConfig && resultHtml) {
+    if (resultConfig) {
+      const config = resultConfig as unknown as SiteConfig;
       console.log('Generating site...');
-      const assetGateway = new AssetGateway();
       const outputDir = options.outputDir || '.';
 
-      await SiteService.generateSite(
-        resultConfig,
-        resultHtml,
-        assetGateway,
-        outputDir
-      );
-      console.log('Site generated successfully!');
+      const generateSiteHandler = new GenerateSiteHandler(this.client);
+      const result = await generateSiteHandler.execute({
+        projectId: config.projectId,
+        routes: config.routes.filter(r => r.status === 'included').map(r => ({ screenId: r.screenId, route: r.route })),
+        outputDir: outputDir,
+        fileMode: options.fileMode ? Number(options.fileMode) : undefined,
+        tempDir: options.tempDir,
+        assetsSubdir: options.assetsSubdir,
+      });
+
+      if (!result.success) {
+        console.error(`Generation failed: ${result.error.message}`);
+      } else {
+        console.log('Site generated successfully!');
+      }
     } else {
       // console.log('Cancelled.');
     }

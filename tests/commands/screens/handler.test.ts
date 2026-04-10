@@ -17,12 +17,12 @@ describe('ScreensHandler (SDK)', () => {
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.screens[0].title).toBe('Alpha');
-    expect(result.screens[0].hasCode).toBe(true);
-    expect(result.screens[1].title).toBe('Beta');
-    expect(result.screens[2].title).toBe('Apple');
-    expect(result.screens[2].hasCode).toBe(false);
-    expect(result.screens[3].title).toBe('Zebra');
+    expect(result.screens![0].title).toBe('Alpha');
+    expect(result.screens![0].hasCode).toBe(true);
+    expect(result.screens![1].title).toBe('Beta');
+    expect(result.screens![2].title).toBe('Apple');
+    expect(result.screens![2].hasCode).toBe(false);
+    expect(result.screens![3].title).toBe('Zebra');
   });
 
   it('maps SDK Screen fields to handler output shape', async () => {
@@ -39,11 +39,12 @@ describe('ScreensHandler (SDK)', () => {
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.screens[0].screenId).toBe('my-screen-id');
-    expect(result.screens[0].title).toBe('My Screen');
-    expect(result.screens[0].hasCode).toBe(true);
-    expect(result.screens[0].codeUrl).toBe('http://code');
-    expect(result.screens[0].hasImage).toBe(true);
+    const s0 = result.screens![0] as any;
+    expect(s0.screenId).toBe('my-screen-id');
+    expect(s0.title).toBe('My Screen');
+    expect(s0.hasCode).toBe(true);
+    expect(s0.codeUrl).toBe('http://code');
+    expect(s0.hasImage).toBe(true);
   });
 
   it.skip('getHtml() and getImage() use cached data after screens() call (no double fetch)', async () => {
