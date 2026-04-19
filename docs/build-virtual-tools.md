@@ -106,6 +106,8 @@ execute: async (client: StitchMCPClient, args: any) => {
   const screen = await client.callTool('get_screen', {
     projectId,
     screenId,
+    // Optional : to get inline CSS instead of Tailwind classes
+    inlineCss: true
   }) as any;
 
   // 2. Download the HTML content from the returned URL

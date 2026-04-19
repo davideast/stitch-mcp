@@ -56,7 +56,9 @@ Retrieves a screen and downloads its HTML code content.
 ```json
 {
   "projectId": "string (required)",
-  "screenId": "string (required)"
+  "screenId": "string (required)",
+  // Optional : to get inline CSS instead of Tailwind classes
+  "inlineCss": true
 }
 ```
 

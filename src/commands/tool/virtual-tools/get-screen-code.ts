@@ -1,4 +1,5 @@
 import type { StitchToolClient, Stitch } from '@google/stitch-sdk';
+import { makeStylesInlineFromString } from 'tailwind-to-inline'
 import { downloadText } from '../../../ui/copy-behaviors/clipboard.js';
 import type { VirtualTool } from '../spec.js';
 
@@ -16,12 +17,16 @@ export const getScreenCodeTool: VirtualTool = {
         type: 'string',
         description: 'Required. The name of screen to retrieve.',
       },
+      inlineCss: {
+        type: 'boolean',
+        description: 'Optional. Whether to transform Tailwind classes by inline CSS style attributes.',
+      }
     },
     required: ['projectId', 'screenId'],
   },
   execute: async (client: StitchToolClient, args: any, stitch?: Stitch) => {
     if (!stitch) throw new Error('get_screen_code requires a Stitch instance');
-    const { projectId, screenId } = args;
+    const { projectId, screenId, inlineCss } = args;
 
     // 1. Get the screen details using the injected SDK instance
     const screen = await stitch.project(projectId).getScreen(screenId);
@@ -35,6 +40,11 @@ export const getScreenCodeTool: VirtualTool = {
       }
     } catch (e) {
       console.error(`Error downloading HTML code: ${e}`);
+    }
+
+    // 3. (Optional) Tailwind to inline CSS
+    if (inlineCss) {
+      htmlContent = await makeStylesInlineFromString(htmlContent ?? '');
     }
 
     // 3. Return screen with code content

@@ -124,7 +124,9 @@ The user asks something like:
 ```bash
 stitch tool get_screen_code -d '{
   "projectId": "PROJECT_ID",
-  "screenId": "SCREEN_ID"
+  "screenId": "SCREEN_ID",
+  # Optional : to get inline CSS instead of Tailwind classes
+  "inlineCss": true
 }'
 ```
 
