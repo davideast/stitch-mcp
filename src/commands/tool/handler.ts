@@ -1,4 +1,4 @@
-import { StitchToolClient, stitch as defaultStitch } from '@google/stitch-sdk';
+import { StitchToolClient, stitch as defaultStitch, downloadAssetsTool } from '@google/stitch-sdk';
 import type { Stitch } from '@google/stitch-sdk';
 import type { CommandStep } from '../../framework/CommandStep.js';
 import { runSteps } from '../../framework/StepRunner.js';
@@ -28,9 +28,15 @@ export class ToolCommandHandler {
   private steps: CommandStep<ToolContext>[];
 
   constructor(client?: StitchToolClient, tools?: VirtualTool[], stitchInstance?: Stitch) {
-    this.client = client || new StitchToolClient();
+    const sdkVirtualTools = [downloadAssetsTool];
+    const cliVirtualTools = (tools || defaultVirtualTools).map(t => ({ ...t, source: 'cli' }));
+    const combinedTools = [...cliVirtualTools, ...sdkVirtualTools];
+    
+    this.client = client || new StitchToolClient({ 
+      localVirtualTools: combinedTools as any 
+    });
     this.stitchInstance = stitchInstance || defaultStitch;
-    this.tools = tools || defaultVirtualTools;
+    this.tools = combinedTools;
     this.steps = [
       new deps.ListToolsStep(),
       new deps.ShowSchemaStep(),
