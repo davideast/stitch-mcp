@@ -27,7 +27,9 @@ const mockDownloadAssets = mock(async (outputDir: string, _opts?: any) => {
   console.log('mockDownloadAssets called with', outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
   for (const r of VALID_ROUTES) {
-    const filePath = path.join(outputDir, `${r.screenId}.html`);
+    const screenDir = path.join(outputDir, r.screenId);
+    fs.mkdirSync(screenDir, { recursive: true });
+    const filePath = path.join(screenDir, 'code.html');
     console.log('Writing dummy file to', filePath);
     fs.writeFileSync(
       filePath, 
@@ -36,8 +38,13 @@ const mockDownloadAssets = mock(async (outputDir: string, _opts?: any) => {
   }
   console.log('Files in staging:', fs.readdirSync(outputDir));
 });
+
 const mockProject = mock(() => ({
   downloadAssets: mockDownloadAssets,
+  screens: mock(async () => [
+    { screenId: 'scr_1', title: 'scr_1' },
+    { screenId: 'scr_2', title: 'scr_2' },
+  ]),
 }));
 
 function makeClient() {

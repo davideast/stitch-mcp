@@ -43,6 +43,10 @@ export const GenerateSiteErrorCode = z.enum([
   'DOWNLOAD_FAILED',
   'ASTRO_REWRITE_FAILED',
   'WRITE_FAILED',
+  'VALIDATION_ERROR',
+  'NETWORK_ERROR',
+  'RATE_LIMITED',
+  'NOT_FOUND',
   'UNKNOWN_ERROR',
 ]);
 export type GenerateSiteErrorCode = z.infer<typeof GenerateSiteErrorCode>;

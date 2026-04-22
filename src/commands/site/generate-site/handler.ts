@@ -83,7 +83,7 @@ export class GenerateSiteHandler implements GenerateSiteSpec {
       return {
         success: false,
         error: {
-          code: 'UNKNOWN_ERROR',
+          code: 'VALIDATION_ERROR',
           message: parsed.error.issues.map(i => i.message).join('; '),
           recoverable: true,
         },
@@ -105,30 +105,84 @@ export class GenerateSiteHandler implements GenerateSiteSpec {
           assetsSubdir: input.assetsSubdir,
         });
       } catch (e: any) {
+        const isStitchError = e && typeof e === 'object' && 'code' in e && 'recoverable' in e;
+        let code: GenerateSiteErrorCode = 'DOWNLOAD_FAILED';
+        if (isStitchError) {
+          if (e.code === 'NOT_FOUND') code = 'NOT_FOUND';
+          if (e.code === 'NETWORK_ERROR') code = 'NETWORK_ERROR';
+          if (e.code === 'RATE_LIMITED') code = 'RATE_LIMITED';
+          if (e.code === 'VALIDATION_ERROR') code = 'VALIDATION_ERROR';
+        }
+
         return {
           success: false,
           error: {
-            code: 'DOWNLOAD_FAILED',
+            code,
             message: e instanceof Error ? e.message : String(e),
-            recoverable: false,
+            recoverable: isStitchError ? e.recoverable : false,
           },
         };
       }
 
       // ── Phase 2: Astro post-processing ───────────────────────────────────────
+      const project = this.sdk.project(input.projectId);
+      const sdkScreens = await project.screens();
+      const screenMap = new Map(sdkScreens.map((s: any) => [s.screenId, s]));
+
       const pagesDir = path.join(input.outputDir, 'src', 'pages');
       await mkdir(pagesDir, { recursive: true });
 
       for (const { screenId, route } of input.routes) {
-        const stagedHtmlPath = path.join(stagingDir, `${screenId}.html`);
-        const html = await readFile(stagedHtmlPath, 'utf-8');
+        const screen = screenMap.get(screenId);
+        const screenSlug = screen?.title 
+          ? screen.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+          : screenId;
 
-        const astroContent = await rewriteHtmlForAstro(html);
+        const stagedHtmlPath = path.join(stagingDir, screenSlug, 'code.html');
+        let html: string;
+        try {
+          html = await readFile(stagedHtmlPath, 'utf-8');
+        } catch (e: any) {
+          return {
+            success: false,
+            error: {
+              code: 'DOWNLOAD_FAILED',
+              message: `Failed to read staged HTML for ${screenId}: ${e.message}`,
+              recoverable: false,
+            },
+          };
+        }
+
+        let astroContent: string;
+        try {
+          astroContent = await rewriteHtmlForAstro(html);
+        } catch (e: any) {
+          return {
+            success: false,
+            error: {
+              code: 'ASTRO_REWRITE_FAILED',
+              message: `Failed to compile Astro HTML for ${screenId}: ${e.message}`,
+              recoverable: false,
+            },
+          };
+        }
+
         const relPagePath = routeToPagePath(route);
         const absPagePath = path.join(pagesDir, relPagePath);
  
-        await mkdir(path.dirname(absPagePath), { recursive: true });
-        await writeFile(absPagePath, astroContent, 'utf-8');
+        try {
+          await mkdir(path.dirname(absPagePath), { recursive: true });
+          await writeFile(absPagePath, astroContent, 'utf-8');
+        } catch (e: any) {
+          return {
+            success: false,
+            error: {
+              code: 'WRITE_FAILED',
+              message: `Failed to write Astro page to disk for ${screenId}: ${e.message}`,
+              recoverable: false,
+            },
+          };
+        }
       }
 
       // Clean up staging dir
