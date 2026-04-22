@@ -26,8 +26,10 @@ let mockHtmlContent: string | undefined;
 const mockDownloadAssets = mock(async (outputDir: string, _opts?: any) => {
   console.log('mockDownloadAssets called with', outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
+  const trace: any[] = [];
   for (const r of VALID_ROUTES) {
-    const screenDir = path.join(outputDir, r.screenId);
+    const randomFolder = 'folder_' + Math.random().toString(36).slice(2);
+    const screenDir = path.join(outputDir, randomFolder);
     fs.mkdirSync(screenDir, { recursive: true });
     const filePath = path.join(screenDir, 'code.html');
     console.log('Writing dummy file to', filePath);
@@ -35,8 +37,14 @@ const mockDownloadAssets = mock(async (outputDir: string, _opts?: any) => {
       filePath, 
       mockHtmlContent !== undefined ? mockHtmlContent : `<html><body>page for ${r.screenId}</body></html>`
     );
+    trace.push({
+      screenId: r.screenId,
+      screenSlug: randomFolder,
+      filePath: path.join(randomFolder, 'code.html'),
+    });
   }
   console.log('Files in staging:', fs.readdirSync(outputDir));
+  return trace;
 });
 
 const mockProject = mock(() => ({
