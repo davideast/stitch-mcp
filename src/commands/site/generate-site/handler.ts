@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import * as fs from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { parse } from '@astrojs/compiler';
 import { is, serialize } from '@astrojs/compiler/utils';
@@ -120,18 +121,12 @@ export class GenerateSiteHandler implements GenerateSiteSpec {
 
       for (const { screenId, route } of input.routes) {
         const stagedHtmlPath = path.join(stagingDir, `${screenId}.html`);
-        let html: string;
-        try {
-          html = await readFile(stagedHtmlPath, 'utf-8');
-        } catch {
-          // If the SDK didn't write this screen (e.g. it was filtered), skip it
-          continue;
-        }
+        const html = await readFile(stagedHtmlPath, 'utf-8');
 
         const astroContent = await rewriteHtmlForAstro(html);
         const relPagePath = routeToPagePath(route);
         const absPagePath = path.join(pagesDir, relPagePath);
-
+ 
         await mkdir(path.dirname(absPagePath), { recursive: true });
         await writeFile(absPagePath, astroContent, 'utf-8');
       }
