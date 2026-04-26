@@ -57,8 +57,8 @@ export class AuthStep implements CommandStep<InitContext> {
         context.ui.log(theme.cyan(`  export PATH="${gcloudBinDir}:$PATH"\n`));
 
         try {
-          const { default: clipboard } = await import('clipboardy');
-          await clipboard.write(`export PATH="${gcloudBinDir}:$PATH"`);
+          const { copyText } = await import('../../../ui/copy-behaviors/clipboard.js');
+          await copyText(`export PATH="${gcloudBinDir}:$PATH"`);
           context.ui.log(theme.gray('  (copied to clipboard)'));
         } catch { /* clipboard not available */ }
 
