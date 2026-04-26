@@ -11,6 +11,8 @@ import { ShowSchemaStep } from './steps/ShowSchemaStep.js';
 import { ParseArgsStep } from './steps/ParseArgsStep.js';
 import { ValidateToolStep } from './steps/ValidateToolStep.js';
 import { ExecuteToolStep } from './steps/ExecuteToolStep.js';
+import { LogExecuteToolStep } from './steps/LogExecuteToolStep.js';
+import { createCaptureHandler, isLogEnabled } from '../../lib/log/factory.js';
 
 export const deps = {
   runSteps,
@@ -31,12 +33,15 @@ export class ToolCommandHandler {
     this.client = client || new StitchToolClient();
     this.stitchInstance = stitchInstance || defaultStitch;
     this.tools = tools || defaultVirtualTools;
+    const executeStep: CommandStep<ToolContext> = isLogEnabled()
+      ? new LogExecuteToolStep(createCaptureHandler())
+      : new deps.ExecuteToolStep();
     this.steps = [
       new deps.ListToolsStep(),
       new deps.ShowSchemaStep(),
       new deps.ParseArgsStep(),
       new deps.ValidateToolStep(),
-      new deps.ExecuteToolStep(),
+      executeStep,
     ];
   }
 
