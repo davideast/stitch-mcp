@@ -47,9 +47,9 @@ export interface ChecklistResult {
  */
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    const { default: clipboard } = await import('clipboardy');
+    const { copyText } = await import('./copy-behaviors/clipboard.js');
     const result = await Promise.race([
-      clipboard.write(text).then(() => true),
+      copyText(text).then(() => true),
       new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 200)),
     ]);
     return result;

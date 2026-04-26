@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import { downloadText } from '../../ui/copy-behaviors/clipboard.js';
-import clipboard from 'clipboardy';
+import { downloadText, copyText } from '../../ui/copy-behaviors/clipboard.js';
 import { StitchViteServer } from '../../lib/server/vite/StitchViteServer.js';
 import { openUrl } from '../../platform/browser.js';
 
@@ -107,7 +106,7 @@ export function ScreensView({ projectId, projectTitle, screens }: ScreensViewPro
         setStatus('Copying...');
         downloadText(screen.codeUrl)
           .then(code => {
-            clipboard.write(code);
+            copyText(code);
             setStatus('HTML copied!');
           })
           .catch(() => setStatus('Failed to copy'));

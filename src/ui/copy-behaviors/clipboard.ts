@@ -1,15 +1,69 @@
 /**
- * Clipboard utilities using clipboardy for cross-platform support.
+ * Clipboard utilities using platform-native commands.
+ * Avoids bundled binaries (e.g. clipboardy's clipboard_*.exe) so the
+ * package does not trigger enterprise threat-intel scanners on Windows.
  */
-import clipboard from 'clipboardy';
 import { writeFile, unlink } from 'fs/promises';
 import { spawn } from 'child_process';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
+interface NativeWriter {
+  command: string;
+  args: string[];
+}
+
+function getTextWriters(): NativeWriter[] {
+  switch (process.platform) {
+    case 'darwin':
+      return [{ command: 'pbcopy', args: [] }];
+    case 'win32':
+      return [
+        { command: 'clip.exe', args: [] },
+        { command: 'clip', args: [] },
+      ];
+    default:
+      return [
+        { command: 'wl-copy', args: [] },
+        { command: 'xclip', args: ['-selection', 'clipboard'] },
+        { command: 'xsel', args: ['--clipboard', '--input'] },
+      ];
+  }
+}
+
+function pipeToCommand(writer: NativeWriter, text: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(writer.command, writer.args, {
+      stdio: ['pipe', 'ignore', 'ignore'],
+    });
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${writer.command} exited with code ${code}`));
+    });
+    proc.stdin.end(text, 'utf8');
+  });
+}
+
+async function writeTextToClipboard(text: string): Promise<void> {
+  const writers = getTextWriters();
+  let lastError: unknown;
+  for (const writer of writers) {
+    try {
+      await pipeToCommand(writer, text);
+      return;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error('No clipboard utility available');
+}
 
 /**
  * Copy text to clipboard
  */
 export async function copyText(text: string): Promise<void> {
-  await clipboard.write(text);
+  await writeTextToClipboard(text);
 }
 
 /**
@@ -17,7 +71,7 @@ export async function copyText(text: string): Promise<void> {
  */
 export async function copyJson(value: any): Promise<void> {
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  await clipboard.write(text);
+  await writeTextToClipboard(text);
 }
 
 /**
@@ -39,10 +93,6 @@ function spawnAndWait(command: string, args: string[]): Promise<void> {
 }
 
 /**
- * Download an image from URL and copy to clipboard.
- * Uses platform-specific commands for image clipboard.
- */
-/**
  * Download an image from URL.
  */
 export async function downloadImage(url: string): Promise<ArrayBuffer> {
@@ -59,27 +109,21 @@ export async function downloadImage(url: string): Promise<ArrayBuffer> {
  */
 export async function downloadAndCopyImage(url: string): Promise<void> {
   const buffer = await downloadImage(url);
-  const tempPath = `/tmp/stitch-clipboard-${Date.now()}.png`;
+  const tempPath = join(tmpdir(), `stitch-clipboard-${Date.now()}.png`);
 
-  // Write to temp file using Node.js fs
   await writeFile(tempPath, Buffer.from(buffer));
 
-  // Copy image to clipboard using platform command
   const platform = process.platform;
 
   try {
     if (platform === 'darwin') {
-      // macOS: use osascript to copy image
       await spawnAndWait('osascript', ['-e', `set the clipboard to (read (POSIX file "${tempPath}") as TIFF picture)`]);
     } else if (platform === 'linux') {
-      // Linux: use xclip
       await spawnAndWait('xclip', ['-selection', 'clipboard', '-t', 'image/png', '-i', tempPath]);
     } else if (platform === 'win32') {
-      // Windows: PowerShell
       await spawnAndWait('powershell', ['-command', `Set-Clipboard -Path "${tempPath}"`]);
     }
   } finally {
-    // Cleanup temp file
     try {
       await unlink(tempPath);
     } catch {
@@ -88,9 +132,6 @@ export async function downloadAndCopyImage(url: string): Promise<void> {
   }
 }
 
-/**
- * Download text content from URL and copy to clipboard.
- */
 /**
  * Download text content from URL.
  */
@@ -107,5 +148,5 @@ export async function downloadText(url: string): Promise<string> {
  */
 export async function downloadAndCopyText(url: string): Promise<void> {
   const text = await downloadText(url);
-  await clipboard.write(text);
+  await writeTextToClipboard(text);
 }
