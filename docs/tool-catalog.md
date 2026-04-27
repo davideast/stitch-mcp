@@ -77,6 +77,24 @@ Retrieves a screen and downloads its screenshot image as base64.
 
 **Returns:** The screen object with an added `screenshotBase64` field containing a base64-encoded PNG.
 
+### `generate_screen_from_json`
+
+Generates a new screen from a design prompt with live JSON data embedded. Wraps `generate_screen_from_text` with an enhanced prompt so the generated HTML renders real content instead of placeholder text.
+
+**Input schema:**
+
+```json
+{
+  "projectId": "string (required)",
+  "prompt": "string (required, design description)",
+  "jsonData": "object | array | JSON string (required, data to render inline)"
+}
+```
+
+**Returns:** An object with `generateResult` (the upstream `generate_screen_from_text` response), `dataBound` (boolean), `originalPrompt` (the unmodified design prompt), and `dataKeys` (top-level keys extracted from the data).
+
+**Size limit:** `jsonData` is capped at 100,000 characters after serialization.
+
 ### `list_tools`
 
 Lists all available tools with their descriptions and schemas.
