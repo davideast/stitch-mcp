@@ -14,7 +14,10 @@ export const command: CommandDefinition<any, ProxyOptions> = {
     try {
       const parsedOptions = ProxyOptionsSchema.parse(options);
       const { ProxyCommandHandler } = await import('./handler.js');
-      const handler = new ProxyCommandHandler();
+      const { GcloudHandler } = await import('../../services/gcloud/handler.js');
+      const handler = new ProxyCommandHandler({
+        gcloudService: new GcloudHandler(),
+      });
 
       const result = await handler.execute({
         port: parsedOptions.port,
