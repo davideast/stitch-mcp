@@ -3,6 +3,19 @@ import { DoctorHandler } from './handler.js';
 import { GcloudHandler } from '../../services/gcloud/handler.js';
 import { StitchHandler } from '../../services/stitch/handler.js';
 
+mock.module('node:fs', () => ({
+  default: {
+    promises: {
+      readFile: mock(async (path: string) => {
+        if (path.includes('application_default_credentials.json')) {
+          return JSON.stringify({ quota_project_id: 'test-project' });
+        }
+        throw new Error('ENOENT: no such file or directory');
+      }),
+    },
+  },
+}));
+
 mock.module('dotenv', () => ({
   default: {
     config: mock(() => ({})),
