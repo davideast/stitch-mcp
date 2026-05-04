@@ -17,12 +17,12 @@ export const READ_TOOLS = new Set([
   'create_project',
 ] as const);
 
-export type ToolKind = 'generative' | 'read';
+export type ToolKind = 'generative' | 'read' | 'unknown';
 
-export function kindOf(tool: string): ToolKind | null {
+export function kindOf(tool: string): ToolKind {
   if (GENERATIVE_TOOLS.has(tool as any)) return 'generative';
   if (READ_TOOLS.has(tool as any)) return 'read';
-  return null;
+  return 'unknown';
 }
 
 // --- per-screen artifact -----------------------------------------------------
@@ -70,11 +70,23 @@ export const CompletedReadPayloadSchema = z.object({
   kind: z.literal('read'),
   project_id: z.string().optional(),
   screen_ids: z.array(z.string()).optional(),
+  returned_project_ids: z.array(z.string()).optional(),
+  returned_screen_ids: z.array(z.string()).optional(),
+  result_blob: BlobRefSchema,
+});
+
+export const CompletedUnknownPayloadSchema = z.object({
+  tool: z.string(),
+  duration_ms: z.number().int().nonnegative(),
+  kind: z.literal('unknown'),
+  project_id: z.string().optional(),
+  result_blob: BlobRefSchema,
 });
 
 export const CompletedPayloadSchema = z.discriminatedUnion('kind', [
   CompletedGenerativePayloadSchema,
   CompletedReadPayloadSchema,
+  CompletedUnknownPayloadSchema,
 ]);
 
 export const FailedPayloadSchema = z.object({
