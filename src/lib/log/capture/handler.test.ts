@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BlobRef, BlobStoreSpec, GetResult, HasResult, PutResult } from '../blob-store/spec.js';
 import type { AppendResult } from '../append.js';
@@ -50,6 +51,14 @@ async function probe(name: string): Promise<{ result: any; duration_ms: number }
   return { result: raw.result, duration_ms: raw.duration_ms };
 }
 
+// Probe artifacts are real Stitch responses captured by `bun scripts/log-probe.ts`.
+// They live under .stitch-mcp/log-probe/ which is gitignored, so they're absent in
+// CI. Suites that load them are skipped automatically when the directory is
+// missing — run them locally after `bun scripts/log-probe.ts` populates fixtures.
+// Follow-up: commit a scrubbed subset to tests/fixtures/ so CI can run these too.
+const PROBE_AVAILABLE = existsSync(PROBE);
+const describeWithProbe = PROBE_AVAILABLE ? describe : describe.skip;
+
 // reusable counter-based newId
 function makeIdGen() {
   let i = 0; return () => `id${i++}`;
@@ -67,7 +76,7 @@ beforeEach(() => {
 
 // --- 1) generate_screen_from_text -------------------------------------------
 
-describe('generate_screen_from_text', () => {
+describeWithProbe('generate_screen_from_text', () => {
   test('writes call.requested + call.completed; produces 1 screen with all blobs filled', async () => {
     const { result, duration_ms } = await probe('3-generate-screen.json');
     // mock the asset URLs that the screen references
@@ -134,7 +143,7 @@ describe('generate_screen_from_text', () => {
 
 // --- 2) generate_variants ----------------------------------------------------
 
-describe('generate_variants', () => {
+describeWithProbe('generate_variants', () => {
   test('produces N screens with shared parent and sibling cross-refs', async () => {
     const { result, duration_ms } = await probe('4-generate-variants.json');
     const screens = result.structuredContent.outputComponents.find((c: any) => c.design)?.design.screens;
@@ -172,7 +181,7 @@ describe('generate_variants', () => {
 
 // --- 3) edit_screens ---------------------------------------------------------
 
-describe('edit_screens', () => {
+describeWithProbe('edit_screens', () => {
   test('produces 1 child screen with parent set and theme/designSystem captured', async () => {
     const { result, duration_ms } = await probe('5-edit-screens.json');
     const screen = result.structuredContent.outputComponents.find((c: any) => c.design)?.design.screens[0];
@@ -198,7 +207,7 @@ describe('edit_screens', () => {
 
 // --- 4) read calls -----------------------------------------------------------
 
-describe('read calls', () => {
+describeWithProbe('read calls', () => {
   test('get_screen logs read summary with project_id+screen_ids+result_blob; NO blob fetches', async () => {
     const { result, duration_ms } = await probe('6-get-screen.json');
     const r = await h.capture({
@@ -239,7 +248,7 @@ describe('read calls', () => {
 
 // --- 5) failures ------------------------------------------------------------
 
-describe('failures', () => {
+describeWithProbe('failures', () => {
   test('explicit isError → call.failed with error_text', async () => {
     const { result, duration_ms } = await probe('8-fail-bogus-screen.json');
     const r = await h.capture({
@@ -271,7 +280,7 @@ describe('failures', () => {
 
 // --- 6) robustness ----------------------------------------------------------
 
-describe('robustness', () => {
+describeWithProbe('robustness', () => {
   test('a single failed asset fetch does NOT abort capture; warning recorded', async () => {
     const { result, duration_ms } = await probe('3-generate-screen.json');
     const sc = result.structuredContent;
@@ -297,7 +306,10 @@ describe('robustness', () => {
     expect(ps.html_blob).not.toBeNull();
     expect(ps.screenshot_blob).toBeNull();        // failed; null preserved
   });
+});
 
+// Inline-only — runs in CI without probe fixtures.
+describe('unknown tools', () => {
   test('unknown tool is logged with kind="unknown" and a result_blob', async () => {
     const r = await h.capture({
       tool: 'list_design_systems',
