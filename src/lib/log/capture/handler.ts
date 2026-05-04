@@ -41,10 +41,7 @@ export class CaptureHandler implements CaptureSpec {
     if (!parsed.success) {
       return this.fail('CAPTURE_INVALID_INPUT', parsed.error.message, false);
     }
-    const kind = kindOf(input.tool);
-    if (!kind) {
-      return this.fail('CAPTURE_UNKNOWN_TOOL', `Unknown tool: ${input.tool}`, false);
-    }
+    const kind: ToolKind = kindOf(input.tool);
 
     const trace_id = this.newId();
     const warnings: string[] = [];
@@ -106,6 +103,11 @@ export class CaptureHandler implements CaptureSpec {
     }
 
     if (kind === 'read') {
+      const resultBlob = await this.blobs.put(Buffer.from(JSON.stringify(r ?? {})), 'application/json');
+      if (!resultBlob.success) {
+        return this.fail('CAPTURE_BLOB_FATAL', `result_blob: ${resultBlob.error.message}`, false);
+      }
+      const returned = extractReturnedIds(r);
       const completed: Event = {
         id: this.newId(),
         time: input.finished_at,
@@ -123,6 +125,33 @@ export class CaptureHandler implements CaptureSpec {
               : Array.isArray(input.args.selectedScreenIds)
                 ? (input.args.selectedScreenIds as string[])
                 : undefined,
+          returned_project_ids: returned.projects.length > 0 ? returned.projects : undefined,
+          returned_screen_ids: returned.screens.length > 0 ? returned.screens : undefined,
+          result_blob: resultBlob.data,
+        },
+      };
+      const cr = await this.append(completed);
+      if (!cr.success) return this.fail('CAPTURE_APPEND_FAILED', cr.error.message, true);
+      return { success: true, data: { trace_id, produced_screen_ids: [], warnings } };
+    }
+
+    if (kind === 'unknown') {
+      const resultBlob = await this.blobs.put(Buffer.from(JSON.stringify(r ?? {})), 'application/json');
+      if (!resultBlob.success) {
+        return this.fail('CAPTURE_BLOB_FATAL', `result_blob: ${resultBlob.error.message}`, false);
+      }
+      const completed: Event = {
+        id: this.newId(),
+        time: input.finished_at,
+        trace_id,
+        schema_version: 1,
+        type: 'call.completed',
+        payload: {
+          tool: input.tool,
+          duration_ms: input.duration_ms,
+          kind: 'unknown',
+          project_id: typeof input.args.projectId === 'string' ? input.args.projectId : undefined,
+          result_blob: resultBlob.data,
         },
       };
       const cr = await this.append(completed);
@@ -267,4 +296,33 @@ function pickScreens(sc: any): ScreenComponent[] {
 function pickDesignSystemComponent(sc: any): Record<string, unknown> | null {
   const c = (sc?.outputComponents ?? []).find((x: any) => x?.designSystem);
   return c?.designSystem ?? null;
+}
+
+/**
+ * Walk an MCP result and pull out any `name` fields shaped like
+ * "projects/<id>" or "screens/<id>". Used to record which entities a
+ * read-tool response actually returned so the log is queryable without
+ * re-reading the result blob.
+ */
+function extractReturnedIds(result: unknown): { projects: string[]; screens: string[] } {
+  const projects = new Set<string>();
+  const screens = new Set<string>();
+  const seen = new WeakSet<object>();
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== 'object') return;
+    if (seen.has(node as object)) return;
+    seen.add(node as object);
+    const name = (node as { name?: unknown }).name;
+    if (typeof name === 'string') {
+      if (name.startsWith('projects/')) projects.add(name.slice('projects/'.length));
+      else if (name.startsWith('screens/')) screens.add(name.slice('screens/'.length));
+    }
+    if (Array.isArray(node)) {
+      for (const v of node) visit(v);
+    } else {
+      for (const v of Object.values(node as Record<string, unknown>)) visit(v);
+    }
+  };
+  visit(result);
+  return { projects: Array.from(projects), screens: Array.from(screens) };
 }

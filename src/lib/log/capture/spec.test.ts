@@ -21,7 +21,8 @@ describe('kindOf()', () => {
     ['list_projects', 'read'],
     ['get_project', 'read'],
     ['create_project', 'read'],
-    ['unknown_tool', null],
+    ['unknown_tool', 'unknown'],
+    ['list_design_systems', 'unknown'],
   ] as const)('kindOf(%s) === %s', (tool, expected) => {
     expect(kindOf(tool)).toBe(expected);
   });
@@ -62,15 +63,33 @@ describe('Payload schemas', () => {
     expect(r.success).toBe(true);
   });
 
-  test('Completed-read does not allow produced_screens', () => {
-    const r = CompletedPayloadSchema.safeParse({
+  test('Completed-read requires result_blob', () => {
+    const missing = CompletedPayloadSchema.safeParse({
       tool: 'get_screen', duration_ms: 1, kind: 'read',
       project_id: 'p', screen_ids: ['s'],
-      produced_screens: [],
     });
-    // discriminated union — read variant rejects extra-strict, but zod default is strip; assert "kind" preserved
-    if (r.success) expect((r.data as any).kind).toBe('read');
-    else expect(r.success).toBe(false);
+    expect(missing.success).toBe(false);
+
+    const ok = CompletedPayloadSchema.safeParse({
+      tool: 'get_screen', duration_ms: 1, kind: 'read',
+      project_id: 'p', screen_ids: ['s'], result_blob: validBlob,
+    });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect((ok.data as any).kind).toBe('read');
+  });
+
+  test('Completed-unknown requires result_blob', () => {
+    const missing = CompletedPayloadSchema.safeParse({
+      tool: 'list_design_systems', duration_ms: 1, kind: 'unknown',
+    });
+    expect(missing.success).toBe(false);
+
+    const ok = CompletedPayloadSchema.safeParse({
+      tool: 'list_design_systems', duration_ms: 1, kind: 'unknown',
+      result_blob: validBlob,
+    });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect((ok.data as any).kind).toBe('unknown');
   });
 
   test('Failed accepts is_error true | "empty"', () => {

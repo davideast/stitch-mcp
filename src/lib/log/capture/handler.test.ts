@@ -199,7 +199,7 @@ describe('edit_screens', () => {
 // --- 4) read calls -----------------------------------------------------------
 
 describe('read calls', () => {
-  test('get_screen logs read summary with project_id+screen_ids; NO blob fetches', async () => {
+  test('get_screen logs read summary with project_id+screen_ids+result_blob; NO blob fetches', async () => {
     const { result, duration_ms } = await probe('6-get-screen.json');
     const r = await h.capture({
       tool: 'get_screen',
@@ -213,22 +213,27 @@ describe('read calls', () => {
     if (completed.type !== 'call.completed' || completed.payload.kind !== 'read') throw new Error();
     expect(completed.payload.project_id).toBe('7240244230308968338');
     expect(completed.payload.screen_ids).toEqual(['871df1dad8e54bb0ad9a3322ceee6260']);
+    expect(completed.payload.result_blob).toBeDefined();
+    expect(completed.payload.result_blob.mime).toBe('application/json');
   });
 
-  test('list_projects logs as read; structured response is NOT blobbed', async () => {
+  test('list_projects logs as read; result is blobbed and returned_project_ids extracted', async () => {
     const { result, duration_ms } = await probe('1-list-projects.json');
     const beforePuts = blobs.putCount;
     const r = await h.capture({
       tool: 'list_projects', args: {}, result, duration_ms, started_at: 't0', finished_at: 't1',
     });
     expect(r.success).toBe(true);
-    // Only the args_blob should have been put (the response body is huge for list_projects)
-    expect(blobs.putCount - beforePuts).toBe(1);
+    // args_blob + result_blob now (response IS captured for replay)
+    expect(blobs.putCount - beforePuts).toBe(2);
     expect(blobs.fetchCount).toBe(0);
 
     const completed = appendCtl.events[1]!;
     if (completed.type !== 'call.completed' || completed.payload.kind !== 'read') throw new Error();
     expect(completed.payload.tool).toBe('list_projects');
+    expect(completed.payload.result_blob).toBeDefined();
+    // list_projects response is full of name="projects/<id>" entries
+    expect((completed.payload.returned_project_ids ?? []).length).toBeGreaterThan(0);
   });
 });
 
@@ -293,12 +298,28 @@ describe('robustness', () => {
     expect(ps.screenshot_blob).toBeNull();        // failed; null preserved
   });
 
-  test('unknown tool returns CAPTURE_UNKNOWN_TOOL', async () => {
+  test('unknown tool is logged with kind="unknown" and a result_blob', async () => {
     const r = await h.capture({
-      tool: 'nope', args: {}, result: {}, duration_ms: 0, started_at: 't', finished_at: 't',
+      tool: 'list_design_systems',
+      args: { projectId: 'p1' },
+      result: { structuredContent: { designSystems: [] } },
+      duration_ms: 5,
+      started_at: 't0',
+      finished_at: 't1',
     });
-    expect(r.success).toBe(false);
-    if (r.success) return;
-    expect(r.error.code).toBe('CAPTURE_UNKNOWN_TOOL');
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+
+    expect(appendCtl.events).toHaveLength(2);
+    const requested = appendCtl.events[0]!;
+    if (requested.type !== 'call.requested') throw new Error();
+    expect(requested.payload.tool).toBe('list_design_systems');
+
+    const completed = appendCtl.events[1]!;
+    if (completed.type !== 'call.completed' || completed.payload.kind !== 'unknown') throw new Error();
+    expect(completed.payload.tool).toBe('list_design_systems');
+    expect(completed.payload.project_id).toBe('p1');
+    expect(completed.payload.result_blob).toBeDefined();
+    expect(completed.payload.result_blob.mime).toBe('application/json');
   });
 });
