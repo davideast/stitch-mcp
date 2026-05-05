@@ -6,7 +6,7 @@
       "name": "@_davideast/stitch-mcp",
       "dependencies": {
         "@astrojs/compiler": "^2.13.1",
-        "@google/stitch-sdk": "0.1.2-next.2",
+        "@google/stitch-sdk": "0.2.0",
         "@inquirer/prompts": "^8.2.0",
         "@modelcontextprotocol/sdk": "^1.25.2",
         "adm-zip": "^0.5.16",
@@ -134,7 +134,7 @@
 
     "@exodus/bytes": ["@exodus/bytes@1.15.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-UY0nlA+feH81UGSHv92sLEPLCeZFjXOuHhrIo0HQydScuQc8s0A7kL/UdgwgDq8g8ilksmuoF35YVTNphV2aBQ=="],
 
-    "@google/stitch-sdk": ["@google/stitch-sdk@0.1.2-next.2", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.23.0", "cheerio": "^1.0.0-rc.12", "zod": "^4.3.5" } }, "sha512-5X42xSGFqiFASGhYprhmYAaRvYA6mAOykbujZZzQ1dWvc9PQjGcI2nYnsHI5nx9JDZGo8itS1v6YcgPbYFUgJQ=="],
+    "@google/stitch-sdk": ["@google/stitch-sdk@0.2.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.23.0", "cheerio": "^1.0.0-rc.12", "zod": "^4.3.5" } }, "sha512-xTpYX9hKdMygnVR+rBFNeXoyNWzWMTjQoAfgaiZlbvFNGfSipKBs+ZVYEfEx0GpDy9n9n7h4h9RM7BYRRk6Zuw=="],
 
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.9.0", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.9.0" } }, "sha512-lBW6/m5BIFl3pMuWPNN0lIOYw9LMCmPfix53ExS3FBi4E+NELEljQ3xH6aAV9IYiQRfn9YIIgzzMrD0vIcD7tw=="],
 
