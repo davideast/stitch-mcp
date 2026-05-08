@@ -1,13 +1,13 @@
 import { type CommandDefinition } from '../../framework/CommandDefinition.js';
 import { theme, icons } from '../../ui/theme.js';
-import { UploadImageInputSchema, type UploadImageInput } from './spec.js';
+import { UploadInputSchema, type UploadInput } from './spec.js';
 
 export const command: CommandDefinition<any, any> = {
-  name: 'upload-image',
-  description: 'Upload an image file to a Stitch project as a new screen',
+  name: 'upload',
+  description: 'Upload a design or HTML file asset to a Stitch project as a new screen',
   requiredOptions: [
-    { flags: '-p, --project <id>', description: 'Project ID to upload the image into' },
-    { flags: '-f, --file <path>', description: 'Path to the image file (PNG, JPG, JPEG, WEBP)' },
+    { flags: '-p, --project <id>', description: 'Project ID to upload the asset into' },
+    { flags: '-f, --file <path>', description: 'Path to the asset file (PNG, JPG, JPEG, WEBP, HTML)' },
   ],
   options: [
     { flags: '--title <title>', description: 'Optional display title for the created screen' },
@@ -15,24 +15,24 @@ export const command: CommandDefinition<any, any> = {
   action: async (_args, options) => {
     try {
       // "Parse, don't validate"
-      const input = UploadImageInputSchema.parse({
+      const input = UploadInputSchema.parse({
         projectId: options.project,
         filePath: options.file,
         title: options.title,
       });
 
-      const { UploadImageHandler } = await import('./handler.js');
+      const { UploadHandler } = await import('./handler.js');
 
 
       // Production Dependency Implementation
       const uploadFn = async (projectId: string, filePath: string, title: string | undefined) => {
         const { stitch } = await import('@google/stitch-sdk');
         const project = stitch.project(projectId);
-        const screens = await project.uploadImage(filePath, { title });
+        const screens = await project.upload(filePath, { title });
         return screens.map(s => ({ screenId: s.screenId, projectId: s.projectId }));
       };
 
-      const handler = new UploadImageHandler({ uploadImage: uploadFn });
+      const handler = new UploadHandler({ upload: uploadFn });
       const result = await handler.execute(input);
 
       if (!result.success) {
@@ -40,7 +40,7 @@ export const command: CommandDefinition<any, any> = {
         process.exit(1);
       }
 
-      console.log(theme.green(`\n${icons.success} Successfully uploaded image to project ${input.projectId}:`));
+      console.log(theme.green(`\n${icons.success} Successfully uploaded asset to project ${input.projectId}:`));
       for (const s of result.screens) {
         console.log(`  ${icons.success} screenId: ${theme.cyan(s.screenId)}`);
       }
@@ -51,3 +51,4 @@ export const command: CommandDefinition<any, any> = {
     }
   },
 };
+

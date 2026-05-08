@@ -1,15 +1,15 @@
 /**
- * Logic tests for UploadImageHandler.
+ * Logic tests for UploadHandler.
  * Tests the Chef — business logic, error mapping, success states.
  * Mocks the SDK Project dependency; never calls the real API.
  */
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { UploadImageHandler } from '../../../src/commands/upload-image/handler.js';
-import type { UploadImageInput } from '../../../src/commands/upload-image/spec.js';
+import { UploadHandler } from '../../../src/commands/upload/handler.js';
+import type { UploadInput } from '../../../src/commands/upload/spec.js';
 
 // ── Mock factory ───────────────────────────────────────────────────────────────
 
-function makeInput(overrides: Partial<UploadImageInput> = {}): UploadImageInput {
+function makeInput(overrides: Partial<UploadInput> = {}): UploadInput {
   return {
     projectId: 'proj-abc',
     filePath: '/home/user/mockup.png',
@@ -26,17 +26,17 @@ function makeUploadedScreens(count = 1) {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('UploadImageHandler', () => {
-  let mockUploadImage: ReturnType<typeof mock>;
+describe('UploadHandler', () => {
+  let mockUpload: ReturnType<typeof mock>;
 
   beforeEach(() => {
-    mockUploadImage = mock(() => Promise.resolve(makeUploadedScreens(1)));
+    mockUpload = mock(() => Promise.resolve(makeUploadedScreens(1)));
   });
 
   describe('success path', () => {
     it('returns success with uploaded screen IDs', async () => {
-      const handler = new UploadImageHandler({
-        uploadImage: mockUploadImage,
+      const handler = new UploadHandler({
+        upload: mockUpload,
       });
 
       const result = await handler.execute(makeInput());
@@ -49,23 +49,23 @@ describe('UploadImageHandler', () => {
       }
     });
 
-    it('passes projectId and filePath to uploadImage', async () => {
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+    it('passes projectId and filePath to upload', async () => {
+      const handler = new UploadHandler({ upload: mockUpload });
       await handler.execute(makeInput({ projectId: 'my-proj', filePath: '/path/to/img.png' }));
 
-      expect(mockUploadImage).toHaveBeenCalledWith('my-proj', '/path/to/img.png', undefined);
+      expect(mockUpload).toHaveBeenCalledWith('my-proj', '/path/to/img.png', undefined);
     });
 
-    it('passes optional title to uploadImage', async () => {
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+    it('passes optional title to upload', async () => {
+      const handler = new UploadHandler({ upload: mockUpload });
       await handler.execute(makeInput({ title: 'Home Screen' }));
 
-      expect(mockUploadImage).toHaveBeenCalledWith('proj-abc', '/home/user/mockup.png', 'Home Screen');
+      expect(mockUpload).toHaveBeenCalledWith('proj-abc', '/home/user/mockup.png', 'Home Screen');
     });
 
     it('returns all screens when multiple are uploaded', async () => {
-      mockUploadImage = mock(() => Promise.resolve(makeUploadedScreens(3)));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.resolve(makeUploadedScreens(3)));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput());
 
@@ -79,8 +79,8 @@ describe('UploadImageHandler', () => {
   describe('error path', () => {
     it('returns FILE_NOT_FOUND when upload throws ENOENT', async () => {
       const enoentError = Object.assign(new Error('File not found'), { code: 'ENOENT' });
-      mockUploadImage = mock(() => Promise.reject(enoentError));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.reject(enoentError));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput());
 
@@ -92,8 +92,8 @@ describe('UploadImageHandler', () => {
     });
 
     it('returns UNSUPPORTED_FORMAT when upload throws unsupported format error', async () => {
-      mockUploadImage = mock(() => Promise.reject(new Error('Unsupported file extension ".bmp"')));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.reject(new Error('Unsupported file extension ".bmp"')));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput({ filePath: '/img.bmp' }));
 
@@ -104,8 +104,8 @@ describe('UploadImageHandler', () => {
     });
 
     it('returns AUTH_FAILED on 401/403 errors', async () => {
-      mockUploadImage = mock(() => Promise.reject(new Error('Request failed with status 401')));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.reject(new Error('Request failed with status 401')));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput());
 
@@ -117,8 +117,8 @@ describe('UploadImageHandler', () => {
     });
 
     it('returns UPLOAD_FAILED on generic upload errors', async () => {
-      mockUploadImage = mock(() => Promise.reject(new Error('Network timeout')));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.reject(new Error('Network timeout')));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput());
 
@@ -130,8 +130,8 @@ describe('UploadImageHandler', () => {
     });
 
     it('never throws — always returns a Result', async () => {
-      mockUploadImage = mock(() => Promise.reject('string error (not an Error object)'));
-      const handler = new UploadImageHandler({ uploadImage: mockUploadImage });
+      mockUpload = mock(() => Promise.reject('string error (not an Error object)'));
+      const handler = new UploadHandler({ upload: mockUpload });
 
       const result = await handler.execute(makeInput());
 

@@ -10,20 +10,20 @@ const SafeFilePathSchema = z
 
 // ── Input (The Command) ────────────────────────────────────────────────────────
 
-export const UploadImageInputSchema = z.object({
-  /** The project to upload the image into. */
+export const UploadInputSchema = z.object({
+  /** The project to upload the asset into. */
   projectId: z.string().min(1, 'Project ID is required'),
-  /** Absolute or relative path to the image file on disk. */
+  /** Absolute or relative path to the asset file on disk. */
   filePath: SafeFilePathSchema,
   /** Optional display title for the created screen. */
   title: z.string().optional(),
 });
 
-export type UploadImageInput = z.infer<typeof UploadImageInputSchema>;
+export type UploadInput = z.infer<typeof UploadInputSchema>;
 
 // ── Error codes (Exhaustive) ───────────────────────────────────────────────────
 
-export const UploadImageErrorCode = z.enum([
+export const UploadErrorCode = z.enum([
   'FILE_NOT_FOUND',
   'UNSUPPORTED_FORMAT',
   'AUTH_FAILED',
@@ -31,7 +31,7 @@ export const UploadImageErrorCode = z.enum([
   'UNKNOWN_ERROR',
 ]);
 
-export type UploadImageErrorCode = z.infer<typeof UploadImageErrorCode>;
+export type UploadErrorCode = z.infer<typeof UploadErrorCode>;
 
 // ── Result (Discriminated union) ───────────────────────────────────────────────
 
@@ -40,12 +40,12 @@ export type UploadedScreen = {
   projectId: string;
 };
 
-export type UploadImageResult =
+export type UploadResult =
   | { success: true; screens: UploadedScreen[] }
   | {
       success: false;
       error: {
-        code: UploadImageErrorCode;
+        code: UploadErrorCode;
         message: string;
         recoverable: boolean;
       };
@@ -53,6 +53,7 @@ export type UploadImageResult =
 
 // ── Interface (The Capability) ─────────────────────────────────────────────────
 
-export interface UploadImageSpec {
-  execute(input: UploadImageInput): Promise<UploadImageResult>;
+export interface UploadSpec {
+  execute(input: UploadInput): Promise<UploadResult>;
 }
+
