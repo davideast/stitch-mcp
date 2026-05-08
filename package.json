@@ -1,6 +1,6 @@
 {
   "name": "@_davideast/stitch-mcp",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "description": "Stitch MCP CLI helper. Automates Google Cloud authentication. Generates MCP config for your client. Sets up a proxy server.",
   "type": "module",
   "publishConfig": {
@@ -35,7 +35,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@google/stitch-sdk": "0.2.0",
+    "@google/stitch-sdk": "0.3.2",
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "adm-zip": "^0.5.16",
