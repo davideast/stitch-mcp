@@ -1,6 +1,12 @@
-import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
+import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { ParseArgsStep } from "../../../../src/commands/tool/steps/ParseArgsStep.js";
 import type { ToolContext } from "../../../../src/commands/tool/context.js";
+
+const tmpDir = mkdtempSync(join(tmpdir(), "parse-args-test-"));
+afterAll(() => rmSync(tmpDir, { recursive: true, force: true }));
 
 describe("ParseArgsStep", () => {
   let step: ParseArgsStep;
@@ -44,14 +50,13 @@ describe("ParseArgsStep", () => {
     });
 
     it("should parse JSON data from @file", async () => {
-      const mockFileText = mock(() => Promise.resolve('{"title": "From File"}'));
-      spyOn(Bun, "file").mockReturnValue({ text: mockFileText } as any);
+      const filePath = join(tmpDir, "data.json");
+      writeFileSync(filePath, '{"title": "From File"}', "utf-8");
 
-      const context = makeContext({ toolName: "create_project", dataFile: "@data.json" });
+      const context = makeContext({ toolName: "create_project", dataFile: `@${filePath}` });
       await step.run(context);
 
       expect(context.parsedArgs).toEqual({ title: "From File" });
-      expect(Bun.file).toHaveBeenCalledWith("data.json");
     });
 
     it("should default to empty args when no data provided", async () => {
