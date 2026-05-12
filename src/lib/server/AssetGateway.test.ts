@@ -66,6 +66,48 @@ describe('AssetGateway', () => {
     });
   });
 
+  describe('validateAssetUrl', () => {
+    test('accepts googleapis.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://fonts.googleapis.com/css2?family=Roboto')).toBe(true);
+    });
+
+    test('accepts gstatic.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://fonts.gstatic.com/s/roboto/v30/font.woff2')).toBe(true);
+    });
+
+    test('accepts cdnjs.cloudflare.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css')).toBe(true);
+    });
+
+    test('accepts cdn.tailwindcss.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://cdn.tailwindcss.com?plugins=forms,container-queries')).toBe(true);
+    });
+
+    test('accepts images.unsplash.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://images.unsplash.com/photo-1234?auto=format&fit=crop')).toBe(true);
+    });
+
+    test('accepts cdn.jsdelivr.net', () => {
+      expect(AssetGateway.validateAssetUrl('https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js')).toBe(true);
+    });
+
+    test('accepts unpkg.com', () => {
+      expect(AssetGateway.validateAssetUrl('https://unpkg.com/htmx.org@1.9.10')).toBe(true);
+    });
+
+    test('rejects non-HTTPS URLs', () => {
+      expect(AssetGateway.validateAssetUrl('http://cdn.tailwindcss.com')).toBe(false);
+    });
+
+    test('rejects arbitrary domains', () => {
+      expect(AssetGateway.validateAssetUrl('https://evil.example.com/malware.js')).toBe(false);
+    });
+
+    test('rejects malformed URLs', () => {
+      expect(AssetGateway.validateAssetUrl('not-a-url')).toBe(false);
+    });
+  });
+
   describe('fetchAsset', () => {
     test('returns null for failed fetch (non-ok response)', async () => {
       // Mock fetch to return 404

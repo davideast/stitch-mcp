@@ -19,6 +19,10 @@ export class AssetGateway {
     /\.googleusercontent\.com$/,
     /\.gstatic\.com$/,
     /^cdnjs\.cloudflare\.com$/,
+    /^cdn\.tailwindcss\.com$/,
+    /^images\.unsplash\.com$/,
+    /^cdn\.jsdelivr\.net$/,
+    /^unpkg\.com$/,
   ];
 
   /**
