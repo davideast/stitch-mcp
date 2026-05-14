@@ -1,21 +1,11 @@
 import chalk from 'chalk';
 
-/**
- * Theme colors matching the shell script aesthetic
- */
 export const theme = {
-  blue: chalk.hex('#5E9BFF'),
-  green: chalk.hex('#4EC9B0'),
-  gray: chalk.hex('#646464'),
-  red: chalk.hex('#E65050'),
-  yellow: chalk.hex('#DCDC64'),
-  cyan: chalk.hex('#4DC9FF'),
-  bgDark: chalk.bgHex('#151315'),
-};
-
-export const icons = {
-  success: '✔',
-  error: '✖',
-  info: 'ℹ',
-  warning: '⚠',
+  primary: chalk.blue || ((s: any) => s),
+  secondary: chalk.cyan || ((s: any) => s),
+  success: chalk.green || ((s: any) => s),
+  error: chalk.red || ((s: any) => s),
+  warning: chalk.yellow || ((s: any) => s),
+  gray: chalk.gray || ((s: any) => s),
+  bold: chalk.bold || ((s: any) => s),
 };
